@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getCrmAccessToken } from '../../utils/crmToken';
 
 const API_BASE_URL = 'http://localhost:5002/api';
 
@@ -8,7 +9,26 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Send cookies with requests
 });
+
+// Add request interceptor to include auth token only if valid
+api.interceptors.request.use(
+  (config) => {
+    const token = getCrmAccessToken();
+    // Only add Authorization header if token exists and is not empty
+    if (token && token.trim() !== '') {
+      config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      // Explicitly remove Authorization header if no valid token
+      delete config.headers.Authorization;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 // Users API functions
 export const usersApi = {

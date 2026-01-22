@@ -1,6 +1,7 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import { getCrmAccessToken } from '../../utils/crmToken';
+
 const API_BASE_URL = 'http://localhost:5002/api';
 
 // Create axios instance

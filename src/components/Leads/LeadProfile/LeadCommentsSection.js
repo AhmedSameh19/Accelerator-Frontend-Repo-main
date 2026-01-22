@@ -81,6 +81,7 @@ export function LeadFollowUpsSection({
   followUpDate,
   setFollowUpDate,
   onAddFollowUp,
+  onMarkFollowUpComplete,
   isB2C 
 }) {
   const theme = useTheme();
@@ -180,13 +181,27 @@ export function LeadFollowUpsSection({
               <Typography variant="body2" sx={{ mb: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                 {followUp.follow_up_text}
               </Typography>
-              <Chip
-                label={`Scheduled: ${followUp.follow_up_at ? new Date(followUp.follow_up_at).toLocaleString() : 'N/A'}`}
-                size="small"
-                color={followUp.status === 'completed' ? 'success' : 'warning'}
-                icon={<ScheduleIcon />}
-                sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
-              />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', mt: 1 }}>
+                <Chip
+                  label={`Scheduled: ${followUp.follow_up_at ? new Date(followUp.follow_up_at).toLocaleString() : 'N/A'}`}
+                  size="small"
+                  color={followUp.status === 'completed' ? 'success' : 'warning'}
+                  icon={<ScheduleIcon />}
+                  sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, height: { xs: '20px', sm: '24px' } }}
+                />
+                {followUp.status !== 'completed' && onMarkFollowUpComplete && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="success"
+                    onClick={() => onMarkFollowUpComplete(followUp)}
+                    disabled={isB2C}
+                    sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, py: 0.5, px: 1 }}
+                  >
+                    Mark Complete
+                  </Button>
+                )}
+              </Box>
             </ListItem>
           ))
         )}

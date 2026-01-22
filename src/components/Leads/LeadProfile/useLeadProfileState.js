@@ -121,10 +121,43 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
 
     const fetchCustomerInterviewsComments = async () => {
       try {
-        const response = await b2cAPI.getComments(leadId);
-        setCustomerInterviewComments(response.comments || []);
+        const comments = await b2cAPI.getComments(leadId);
+        // Backend returns array directly, normalize to our expected format
+        const normalizedComments = Array.isArray(comments) ? comments.map(comment => ({
+          id: comment.id,
+          text: comment.comment || comment.text,
+          created_at: comment.created_at,
+          author: comment.creator_name || comment.author || 'Unknown'
+        })) : [];
+        setCustomerInterviewComments(normalizedComments);
       } catch (error) {
         console.error('Error fetching customer interview comments:', error);
+        setCustomerInterviewComments([]);
+      }
+    };
+
+    const fetchCustomerInterviewStatus = async () => {
+      try {
+        const response = await b2cAPI.getCustomerInterviewStatus(leadId);
+        console.log('🔍 [useLeadProfileState] Fetched customer interview status:', response);
+        if (response && typeof response === 'object') {
+          // Backend returns fields directly (contact_status, interested, process_status, reason)
+          setCustomerInterviewContactStatus(response.contact_status || '');
+          setCustomerInterviewInterested(response.interested || '');
+          setCustomerInterviewProcessStatus(response.process_status || '');
+          setCustomerInterviewReason(response.reason || '');
+        }
+      } catch (error) {
+        console.error('Error fetching customer interview status:', error);
+        // If endpoint doesn't exist yet, fall back to localStorage
+        const storedCustomerInterviewStatus = localStorage.getItem(customerInterviewStorageKey);
+        if (storedCustomerInterviewStatus) {
+          const status = JSON.parse(storedCustomerInterviewStatus);
+          setCustomerInterviewContactStatus(status.contactStatus || '');
+          setCustomerInterviewInterested(status.interested || '');
+          setCustomerInterviewProcessStatus(status.processStatus || '');
+          setCustomerInterviewReason(status.reason || '');
+        }
       }
     };
 
@@ -147,7 +180,14 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
     const fetchFollowUps = async () => {
       try {
         const response = await leadsApi.getFollowUps(leadId);
-        setFollowUps(response || []);
+        // Handle different response formats: array, { data: array }, or { data: { data: array } }
+        let followUpsArray = [];
+        if (Array.isArray(response)) {
+          followUpsArray = response;
+        } else if (response?.data) {
+          followUpsArray = Array.isArray(response.data) ? response.data : [];
+        }
+        setFollowUps(followUpsArray);
       } catch (error) {
         console.error('Failed to fetch follow-ups:', error);
       }
@@ -157,6 +197,7 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
     fetchCustomerInterviewsComments();
     fetchContactStatus();
     fetchFollowUps();
+    fetchCustomerInterviewStatus();
   }, [leadId]);
 
   // Load opportunity applications
@@ -192,22 +233,30 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
     }
   }, [opportunityApplications, lead, onStatusChange]);
 
-  // Save customer interview status to localStorage
-  useEffect(() => {
-    if (leadId && (customerInterviewContactStatus || customerInterviewInterested || customerInterviewProcessStatus || customerInterviewReason)) {
-      const status = {
-        contactStatus: customerInterviewContactStatus,
-        interested: customerInterviewInterested,
-        processStatus: customerInterviewProcessStatus,
-        reason: customerInterviewReason,
-        timestamp: new Date().toISOString()
-      };
-      localStorage.setItem(`lead_customer_interview_status_${leadId}`, JSON.stringify(status));
+  // Note: Customer interview status is now saved to backend via API calls in handlers
+  // localStorage is only used as fallback when fetching from backend fails
+
+  // Helper function to fetch and update status from backend
+  const fetchAndUpdateStatus = async () => {
+    if (!leadId) return;
+    try {
+      const data = await leadsApi.getContactStatus(leadId);
+      if (data) {
+        setContactStatus(data.contact_status || '');
+        setInterested(data.interested || '');
+        setProcessStatus(data.process_status || '');
+        setReason(data.reason || '');
+        setProject(data.project || '');
+        setCountry(data.country || '');
+        console.log('✅ Status updated from backend:', data);
+      }
+    } catch (error) {
+      console.error('Error fetching updated status:', error);
     }
-  }, [customerInterviewContactStatus, customerInterviewInterested, customerInterviewProcessStatus, customerInterviewReason, leadId]);
+  };
 
   // Handlers for status changes
-  const handleContactStatusChange = (event) => {
+  const handleContactStatusChange = async (event) => {
     if (!leadId) return;
     const value = event.target.value;
     setContactStatus(value);
@@ -220,10 +269,16 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
       setCountry('');
     }
     
-    leadsApi.updateLeadStatus(leadId, { contact_status: value });
+    try {
+      await leadsApi.updateLeadStatus(leadId, { contact_status: value });
+      // Fetch updated status from backend to ensure UI matches backend state
+      await fetchAndUpdateStatus();
+    } catch (error) {
+      console.error('Error updating contact status:', error);
+    }
   };
 
-  const handleInterestedChange = (event) => {
+  const handleInterestedChange = async (event) => {
     if (!leadId) return;
     const value = event.target.value;
     setInterested(value);
@@ -235,10 +290,16 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
       setCountry('');
     }
     
-    leadsApi.updateLeadStatus(leadId, { interested: value });
+    try {
+      await leadsApi.updateLeadStatus(leadId, { interested: value });
+      // Fetch updated status from backend to ensure UI matches backend state
+      await fetchAndUpdateStatus();
+    } catch (error) {
+      console.error('Error updating interested status:', error);
+    }
   };
 
-  const handleProcessStatusChange = (event) => {
+  const handleProcessStatusChange = async (event) => {
     if (!leadId) return;
     const value = event.target.value;
     setProcessStatus(value);
@@ -254,28 +315,52 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
       setCountry('');
     }
     
-    leadsApi.updateLeadStatus(leadId, { process_status: value });
+    try {
+      await leadsApi.updateLeadStatus(leadId, { process_status: value });
+      // Fetch updated status from backend to ensure UI matches backend state
+      await fetchAndUpdateStatus();
+    } catch (error) {
+      console.error('Error updating process status:', error);
+    }
   };
 
-  const handleReasonChange = (event) => {
+  const handleReasonChange = async (event) => {
     if (!leadId) return;
     const value = event.target.value;
     setReason(value);
-    leadsApi.updateLeadStatus(leadId, { reason: value });
+    try {
+      await leadsApi.updateLeadStatus(leadId, { reason: value });
+      // Fetch updated status from backend to ensure UI matches backend state
+      await fetchAndUpdateStatus();
+    } catch (error) {
+      console.error('Error updating reason:', error);
+    }
   };
 
-  const handleProjectChange = (event) => {
+  const handleProjectChange = async (event) => {
     if (!leadId) return;
     const value = event.target.value;
     setProject(value);
-    leadsApi.updateLeadStatus(leadId, { project: value });
+    try {
+      await leadsApi.updateLeadStatus(leadId, { project: value });
+      // Fetch updated status from backend to ensure UI matches backend state
+      await fetchAndUpdateStatus();
+    } catch (error) {
+      console.error('Error updating project:', error);
+    }
   };
 
-  const handleCountryChange = (event, newValue) => {
+  const handleCountryChange = async (event, newValue) => {
     if (!leadId) return;
     const value = newValue || '';
     setCountry(value);
-    leadsApi.updateLeadStatus(leadId, { country: value });
+    try {
+      await leadsApi.updateLeadStatus(leadId, { country: value });
+      // Fetch updated status from backend to ensure UI matches backend state
+      await fetchAndUpdateStatus();
+    } catch (error) {
+      console.error('Error updating country:', error);
+    }
   };
 
   // Handler for adding comments
@@ -301,7 +386,15 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
         next_follow_up_date: followUpDate,
       };
       const response = await leadsApi.createFollowUp(leadId, followUpData);
-      setFollowUps((prev) => [response, ...prev]);
+      // Handle different response formats
+      const newFollowUp = response?.data || response;
+      if (newFollowUp) {
+        setFollowUps((prev) => [newFollowUp, ...prev]);
+      } else {
+        // Refresh the list if response format is unexpected
+        const updatedFollowUps = await leadsApi.getFollowUps(leadId);
+        setFollowUps(updatedFollowUps || []);
+      }
       setNewFollowUp('');
       setFollowUpDate('');
     } catch (error) {
@@ -309,49 +402,217 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
     }
   };
 
-  // Handler for customer interview comments
-  const handleAddCustomerInterviewComment = async () => {
-    if (!leadId || !newCustomerInterviewComment.trim()) return;
+  // Handler for marking follow-up as completed
+  const handleMarkFollowUpComplete = async (followUp) => {
+    if (!leadId || !followUp?.id) return;
     try {
-      const response = await b2cAPI.addComment(leadId, newCustomerInterviewComment.trim());
-      const updatedComments = response.data.comments || [];
-      setCustomerInterviewComments(updatedComments);
-      setNewCustomerInterviewComment('');
+      await leadsApi.updateFollowUp(leadId, followUp.id);
+      // Refresh follow-ups list
+      const response = await leadsApi.getFollowUps(leadId);
+      // Handle different response formats
+      let followUpsArray = [];
+      if (Array.isArray(response)) {
+        followUpsArray = response;
+      } else if (response?.data) {
+        followUpsArray = Array.isArray(response.data) ? response.data : [];
+      }
+      setFollowUps(followUpsArray);
     } catch (error) {
-      console.error('Error adding comment:', error);
+      console.error('Failed to mark follow-up as completed:', error);
+    }
+  };
+
+  // Handler for customer interview comments
+  const handleAddCustomerInterviewComment = async (commentText) => {
+    // Use provided commentText or fall back to state
+    const textToSubmit = commentText || newCustomerInterviewComment;
+    if (!leadId || !textToSubmit?.trim()) {
+      throw new Error('Comment text is required');
+    }
+    
+    // Add the comment
+    let commentAdded = false;
+    try {
+      const response = await b2cAPI.addComment(leadId, textToSubmit.trim());
+      // Only clear input if we got a successful response
+      if (response || response === undefined) {
+        setNewCustomerInterviewComment('');
+        commentAdded = true;
+      }
+    } catch (error) {
+      console.error('Error adding customer interview comment:', error);
+      // Re-throw error so component can handle it
+      throw error;
+    }
+    
+    // Only try to refresh if comment was successfully added
+    if (!commentAdded) {
+      return;
+    }
+    
+    // Try to refresh comments list, but don't fail if this doesn't work
+    // The comment was already successfully added
+    try {
+      const comments = await b2cAPI.getComments(leadId);
+      // Backend returns array directly, normalize to our expected format
+      const normalizedComments = Array.isArray(comments) ? comments.map(comment => ({
+        id: comment.id,
+        text: comment.comment || comment.text,
+        created_at: comment.created_at,
+        author: comment.creator_name || comment.author || 'Unknown'
+      })) : [];
+      setCustomerInterviewComments(normalizedComments);
+    } catch (refreshError) {
+      console.warn('Failed to refresh comments list, but comment was added:', refreshError);
+      // Add the comment optimistically to the list
+      const optimisticComment = {
+        id: Date.now(),
+        text: textToSubmit.trim(),
+        created_at: new Date().toISOString(),
+        author: 'You'
+      };
+      setCustomerInterviewComments(prev => [optimisticComment, ...prev]);
+    }
+  };
+
+  // Helper function to fetch and update customer interview status from backend
+  const fetchAndUpdateCustomerInterviewStatus = async () => {
+    if (!leadId) return;
+    try {
+      const data = await b2cAPI.getCustomerInterviewStatus(leadId);
+      console.log('🔍 [useLeadProfileState] Fetching updated customer interview status:', data);
+      if (data && typeof data === 'object') {
+        // Backend returns fields directly from B2CLeadStatusSnapshot model
+        setCustomerInterviewContactStatus(data.contact_status || '');
+        setCustomerInterviewInterested(data.interested || '');
+        setCustomerInterviewProcessStatus(data.process_status || '');
+        setCustomerInterviewReason(data.reason || '');
+        console.log('✅ Customer Interview Status updated from backend:', {
+          contact_status: data.contact_status,
+          interested: data.interested,
+          process_status: data.process_status,
+          reason: data.reason
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching updated customer interview status:', error);
     }
   };
 
   // Handlers for customer interview status
-  const handleCustomerInterviewContactStatusChange = (event) => {
+  const handleCustomerInterviewContactStatusChange = async (event) => {
+    if (!leadId) return;
     const value = event.target.value;
     setCustomerInterviewContactStatus(value);
+    
+    let updatedInterested = customerInterviewInterested;
+    let updatedProcessStatus = customerInterviewProcessStatus;
+    let updatedReason = customerInterviewReason;
+    
     if (value.toLowerCase() !== 'yes') {
+      updatedInterested = '';
+      updatedProcessStatus = '';
+      updatedReason = '';
       setCustomerInterviewInterested('');
       setCustomerInterviewProcessStatus('');
       setCustomerInterviewReason('');
     }
+    
+    try {
+      const result = await b2cAPI.updateCustomerInterviewStatus(leadId, {
+        contact_status: value,
+        interested: updatedInterested,
+        process_status: updatedProcessStatus,
+        reason: updatedReason,
+      });
+      console.log('✅ [useLeadProfileState] Customer interview contact status updated:', result);
+      // Fetch updated status from backend to ensure UI matches backend state
+      await fetchAndUpdateCustomerInterviewStatus();
+    } catch (error) {
+      console.error('❌ [useLeadProfileState] Error updating customer interview contact status:', error);
+      // Show error to user - you might want to add a snackbar notification here
+      alert(`Failed to save status: ${error.message || 'Unknown error'}`);
+    }
   };
 
-  const handleCustomerInterviewInterestedChange = (event) => {
+  const handleCustomerInterviewInterestedChange = async (event) => {
+    if (!leadId) return;
     const value = event.target.value;
     setCustomerInterviewInterested(value);
+    
+    let updatedProcessStatus = customerInterviewProcessStatus;
+    let updatedReason = customerInterviewReason;
+    
     if (value.toLowerCase() !== 'yes') {
+      updatedProcessStatus = '';
+      updatedReason = '';
       setCustomerInterviewProcessStatus('');
       setCustomerInterviewReason('');
     }
-  };
-
-  const handleCustomerInterviewProcessStatusChange = (event) => {
-    const value = event.target.value;
-    setCustomerInterviewProcessStatus(value);
-    if (value.toLowerCase() !== 'out of process') {
-      setCustomerInterviewReason('');
+    
+    try {
+      const result = await b2cAPI.updateCustomerInterviewStatus(leadId, {
+        contact_status: customerInterviewContactStatus,
+        interested: value,
+        process_status: updatedProcessStatus,
+        reason: updatedReason,
+      });
+      console.log('✅ [useLeadProfileState] Customer interview interested status updated:', result);
+      // Fetch updated status from backend to ensure UI matches backend state
+      await fetchAndUpdateCustomerInterviewStatus();
+    } catch (error) {
+      console.error('❌ [useLeadProfileState] Error updating customer interview interested status:', error);
+      alert(`Failed to save status: ${error.message || 'Unknown error'}`);
     }
   };
 
-  const handleCustomerInterviewReasonChange = (event) => {
-    setCustomerInterviewReason(event.target.value);
+  const handleCustomerInterviewProcessStatusChange = async (event) => {
+    if (!leadId) return;
+    const value = event.target.value;
+    setCustomerInterviewProcessStatus(value);
+    
+    let updatedReason = customerInterviewReason;
+    
+    if (value.toLowerCase() !== 'out of process') {
+      updatedReason = '';
+      setCustomerInterviewReason('');
+    }
+    
+    try {
+      const result = await b2cAPI.updateCustomerInterviewStatus(leadId, {
+        contact_status: customerInterviewContactStatus,
+        interested: customerInterviewInterested,
+        process_status: value,
+        reason: updatedReason,
+      });
+      console.log('✅ [useLeadProfileState] Customer interview process status updated:', result);
+      // Fetch updated status from backend to ensure UI matches backend state
+      await fetchAndUpdateCustomerInterviewStatus();
+    } catch (error) {
+      console.error('❌ [useLeadProfileState] Error updating customer interview process status:', error);
+      alert(`Failed to save status: ${error.message || 'Unknown error'}`);
+    }
+  };
+
+  const handleCustomerInterviewReasonChange = async (event) => {
+    if (!leadId) return;
+    const value = event.target.value;
+    setCustomerInterviewReason(value);
+    
+    try {
+      const result = await b2cAPI.updateCustomerInterviewStatus(leadId, {
+        contact_status: customerInterviewContactStatus,
+        interested: customerInterviewInterested,
+        process_status: customerInterviewProcessStatus,
+        reason: value,
+      });
+      console.log('✅ [useLeadProfileState] Customer interview reason updated:', result);
+      // Fetch updated status from backend to ensure UI matches backend state
+      await fetchAndUpdateCustomerInterviewStatus();
+    } catch (error) {
+      console.error('❌ [useLeadProfileState] Error updating customer interview reason:', error);
+      alert(`Failed to save status: ${error.message || 'Unknown error'}`);
+    }
   };
 
   // Back to process handlers
@@ -361,23 +622,32 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
 
   const handleConfirmBackToProcess = async () => {
     if (!backToProcessComment.trim()) return;
-    setIsMarkedBackToProcess(true);
-    if (leadId) {
-      const epData = {
-        comments: [
-          {
-            text: backToProcessComment,
-            created_at: new Date().toISOString(),
-          },
-          ...customerInterviewComments
-        ],
-        ...lead,
-      };
-      await b2cAPI.addBackToProcess(epData);
-      localStorage.setItem(`lead_marked_back_to_process_${leadId}`, JSON.stringify(true));
+    
+    if (!leadId) {
+      console.error('Cannot mark lead back to process: leadId is missing');
+      return;
     }
-    setBackToProcessComment('');
-    setShowBackToProcessDialog(false);
+    
+    try {
+      // Backend expects only expa_person_id in the payload
+      // The backend will fetch all lead data from the database
+      await b2cAPI.addBackToProcess(leadId);
+      
+      // Mark as successful in local state
+      setIsMarkedBackToProcess(true);
+      localStorage.setItem(`lead_marked_back_to_process_${leadId}`, JSON.stringify(true));
+      
+      // Clear the comment and close dialog
+      setBackToProcessComment('');
+      setShowBackToProcessDialog(false);
+      
+      console.log('✅ Lead successfully marked back to process');
+    } catch (error) {
+      console.error('❌ Error marking lead back to process:', error);
+      // Show error to user (you might want to add a snackbar/alert here)
+      alert(error.message || 'Failed to mark lead back to process. Please try again.');
+      // Don't close the dialog on error so user can retry
+    }
   };
 
   // Back to process status handlers (save to localStorage)
@@ -547,6 +817,7 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
     handleCountryChange,
     handleAddComment,
     handleAddFollowUp,
+    handleMarkFollowUpComplete,
     handleAddCustomerInterviewComment,
     handleCustomerInterviewContactStatusChange,
     handleCustomerInterviewInterestedChange,

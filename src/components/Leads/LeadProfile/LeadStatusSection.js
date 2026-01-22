@@ -1,6 +1,6 @@
-import React from 'react';
-import { Paper, Grid, Typography, FormControl, InputLabel, Select, MenuItem, Autocomplete, TextField } from '@mui/material';
-import { AssignmentInd as AssignmentIndIcon } from '@mui/icons-material';
+import React, { useState } from 'react';
+import { Paper, Grid, Typography, FormControl, InputLabel, Select, MenuItem, Autocomplete, TextField, Chip, Box, IconButton } from '@mui/material';
+import { AssignmentInd as AssignmentIndIcon, Edit as EditIcon } from '@mui/icons-material';
 import { CONTACT_STATUS_OPTIONS, INTERESTED_OPTIONS, PROCESS_STATUS_OPTIONS, REASON_OPTIONS } from './constants';
 import { PROJECT_OPTIONS, COUNTRY_OPTIONS } from '../../../constants/leadProfileOptions';
 
@@ -19,6 +19,29 @@ export default function LeadStatusSection({
   onCountryChange,
   isB2C
 }) {
+  const [editing, setEditing] = useState({
+    contactStatus: false,
+    interested: false,
+    processStatus: false,
+    reason: false,
+    project: false,
+    country: false
+  });
+
+  const handleEdit = (field) => {
+    setEditing({ ...editing, [field]: true });
+  };
+
+  const handleChange = (field, handler, event, autocompleteValue = null) => {
+    if (autocompleteValue !== null) {
+      // Handle Autocomplete change (for country field)
+      onCountryChange(event, autocompleteValue);
+    } else {
+      // Handle Select change (for other fields)
+      handler(event);
+    }
+    setEditing({ ...editing, [field]: false });
+  };
   return (
     <Paper elevation={1} sx={{ 
       p: { xs: 1, sm: 2.5 }, 
@@ -39,172 +62,38 @@ export default function LeadStatusSection({
       }}>
         <AssignmentIndIcon color="primary" /> Lead Status
       </Typography>
-      <Grid container spacing={0.5}>
+      <Grid container spacing={1}>
+        {/* Contact Status */}
         <Grid item xs={12} sm={6} md={4}>
-          <FormControl fullWidth sx={{ mb: { xs: 1, sm: 2 }, minWidth: 150 }}>
-            <InputLabel sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' }, top: '-4px' }}>
+          <Box sx={{ mb: { xs: 1, sm: 2 } }}>
+            <Typography variant="caption" sx={{ fontSize: { xs: '0.7rem', sm: '0.8rem' }, color: 'text.secondary', mb: 0.5, display: 'block' }}>
               Contact Status
-            </InputLabel>
-            <Select
-              value={contactStatus}
-              onChange={onContactStatusChange}
-              label="Contact Status"
-              disabled={isB2C}
-              sx={{ 
-                fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
-                height: { xs: 40, sm: 56 }, 
-                minHeight: { xs: 40, sm: 56 }, 
-                minWidth: 150, 
-                width: '100%', 
-                '.MuiSelect-select': { py: { xs: 1, sm: 2 }, minWidth: 130, width: '100%' } 
-              }}
-            >
-              {CONTACT_STATUS_OPTIONS.map((option) => (
-                <MenuItem 
-                  key={option} 
-                  value={option} 
-                  sx={{ 
-                    fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
-                    minHeight: { xs: 36, sm: 52 }, 
-                    minWidth: 150, 
-                    width: '100%' 
-                  }}
+            </Typography>
+            {isB2C && contactStatus && !editing.contactStatus ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Chip 
+                  label={contactStatus} 
+                  color="primary" 
+                  sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                />
+                <IconButton 
+                  size="small" 
+                  onClick={() => handleEdit('contactStatus')}
+                  sx={{ p: 0.5 }}
                 >
-                  {option}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-
-        {contactStatus && contactStatus.toLowerCase() === 'yes' && (
-          <Grid item xs={12} sm={6} md={4}>
-            <FormControl fullWidth sx={{ mb: { xs: 1, sm: 2 }, minWidth: 150 }}>
-              <InputLabel sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' }, top: '-4px' }}>
-                Interested
-              </InputLabel>
-              <Select
-                value={interested}
-                onChange={onInterestedChange}
-                label="Interested"
-                disabled={isB2C}
-                sx={{ 
-                  fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
-                  height: { xs: 40, sm: 56 }, 
-                  minHeight: { xs: 40, sm: 56 }, 
-                  minWidth: 150, 
-                  width: '100%', 
-                  '.MuiSelect-select': { py: { xs: 1, sm: 2 }, minWidth: 130, width: '100%' } 
-                }}
-              >
-                {INTERESTED_OPTIONS.map((option) => (
-                  <MenuItem 
-                    key={option} 
-                    value={option} 
-                    sx={{ 
-                      fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
-                      minHeight: { xs: 36, sm: 52 }, 
-                      minWidth: 150, 
-                      width: '100%' 
-                    }}
-                  >
-                    {option}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-        )}
-
-        {interested && interested.toLowerCase() === 'yes' && (
-          <Grid item xs={12} sm={6} md={4}>
-            <FormControl fullWidth sx={{ mb: { xs: 1, sm: 2 }, minWidth: 150 }}>
-              <InputLabel sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' }, top: '-4px' }}>
-                Process Status
-              </InputLabel>
-              <Select
-                value={processStatus}
-                onChange={onProcessStatusChange}
-                label="Process Status"
-                disabled={isB2C}
-                sx={{ 
-                  fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
-                  height: { xs: 40, sm: 56 }, 
-                  minHeight: { xs: 40, sm: 56 }, 
-                  minWidth: 150, 
-                  width: '100%', 
-                  '.MuiSelect-select': { py: { xs: 1, sm: 2 }, minWidth: 130, width: '100%' } 
-                }}
-              >
-                {PROCESS_STATUS_OPTIONS.map((option) => (
-                  <MenuItem 
-                    key={option} 
-                    value={option} 
-                    sx={{ 
-                      fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
-                      minHeight: { xs: 36, sm: 52 }, 
-                      minWidth: 150, 
-                      width: '100%' 
-                    }}
-                  >
-                    {option}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-        )}
-
-        {processStatus && processStatus.toLowerCase() === 'out of process' && (
-          <Grid item xs={12} sm={6} md={4}>
-            <FormControl fullWidth sx={{ mb: { xs: 1, sm: 2 }, minWidth: 150 }}>
-              <InputLabel sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' }, top: '-4px' }}>
-                Reason
-              </InputLabel>
-              <Select
-                value={reason}
-                onChange={onReasonChange}
-                label="Reason"
-                disabled={isB2C}
-                sx={{ 
-                  fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
-                  height: { xs: 40, sm: 56 }, 
-                  minHeight: { xs: 40, sm: 56 }, 
-                  minWidth: 150, 
-                  width: '100%', 
-                  '.MuiSelect-select': { py: { xs: 1, sm: 2 }, minWidth: 130, width: '100%' } 
-                }}
-              >
-                {REASON_OPTIONS.map((option) => (
-                  <MenuItem 
-                    key={option} 
-                    value={option} 
-                    sx={{ 
-                      fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
-                      minHeight: { xs: 36, sm: 52 }, 
-                      minWidth: 150, 
-                      width: '100%' 
-                    }}
-                  >
-                    {option}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-        )}
-
-        {processStatus && processStatus.toLowerCase() === 'in process' && (
-          <>
-            <Grid item xs={12} sm={6} md={4}>
-              <FormControl fullWidth sx={{ mb: { xs: 1, sm: 2 }, minWidth: 150 }}>
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            ) : (
+              <FormControl fullWidth sx={{ minWidth: 150 }}>
                 <InputLabel sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' }, top: '-4px' }}>
-                  Project
+                  Contact Status
                 </InputLabel>
                 <Select
-                  value={project}
-                  onChange={onProjectChange}
-                  label="Project"
+                  value={contactStatus || ''}
+                  onChange={(e) => handleChange('contactStatus', onContactStatusChange, e)}
+                  label="Contact Status"
+                  disabled={isB2C}
                   sx={{ 
                     fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
                     height: { xs: 40, sm: 56 }, 
@@ -214,7 +103,7 @@ export default function LeadStatusSection({
                     '.MuiSelect-select': { py: { xs: 1, sm: 2 }, minWidth: 130, width: '100%' } 
                   }}
                 >
-                  {PROJECT_OPTIONS.map(option => (
+                  {CONTACT_STATUS_OPTIONS.map((option) => (
                     <MenuItem 
                       key={option} 
                       value={option} 
@@ -230,24 +119,295 @@ export default function LeadStatusSection({
                   ))}
                 </Select>
               </FormControl>
+            )}
+          </Box>
+        </Grid>
+
+        {/* Interested - Only show if Contact Status is Yes */}
+        {contactStatus && contactStatus.toLowerCase() === 'yes' && (
+          <Grid item xs={12} sm={6} md={4}>
+            <Box sx={{ mb: { xs: 1, sm: 2 } }}>
+              <Typography variant="caption" sx={{ fontSize: { xs: '0.7rem', sm: '0.8rem' }, color: 'text.secondary', mb: 0.5, display: 'block' }}>
+                Interested
+              </Typography>
+              {isB2C && interested && !editing.interested ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Chip 
+                    label={interested} 
+                    color={interested.toLowerCase() === 'yes' ? 'success' : 'default'}
+                    sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                  />
+                  <IconButton 
+                    size="small" 
+                    onClick={() => handleEdit('interested')}
+                    sx={{ p: 0.5 }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              ) : (
+                <FormControl fullWidth sx={{ minWidth: 150 }}>
+                  <InputLabel sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' }, top: '-4px' }}>
+                    Interested
+                  </InputLabel>
+                  <Select
+                    value={interested || ''}
+                    onChange={(e) => handleChange('interested', onInterestedChange, e)}
+                    label="Interested"
+                    disabled={isB2C}
+                    sx={{ 
+                      fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
+                      height: { xs: 40, sm: 56 }, 
+                      minHeight: { xs: 40, sm: 56 }, 
+                      minWidth: 150, 
+                      width: '100%', 
+                      '.MuiSelect-select': { py: { xs: 1, sm: 2 }, minWidth: 130, width: '100%' } 
+                    }}
+                  >
+                    {INTERESTED_OPTIONS.map((option) => (
+                      <MenuItem 
+                        key={option} 
+                        value={option} 
+                        sx={{ 
+                          fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
+                          minHeight: { xs: 36, sm: 52 }, 
+                          minWidth: 150, 
+                          width: '100%' 
+                        }}
+                      >
+                        {option}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            </Box>
+          </Grid>
+        )}
+
+        {/* Process Status - Only show if Interested is Yes */}
+        {interested && interested.toLowerCase() === 'yes' && (
+          <Grid item xs={12} sm={6} md={4}>
+            <Box sx={{ mb: { xs: 1, sm: 2 } }}>
+              <Typography variant="caption" sx={{ fontSize: { xs: '0.7rem', sm: '0.8rem' }, color: 'text.secondary', mb: 0.5, display: 'block' }}>
+                Process Status
+              </Typography>
+              {isB2C && processStatus && !editing.processStatus ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Chip 
+                    label={processStatus} 
+                    color={processStatus.toLowerCase() === 'in process' ? 'success' : 'warning'}
+                    sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                  />
+                  <IconButton 
+                    size="small" 
+                    onClick={() => handleEdit('processStatus')}
+                    sx={{ p: 0.5 }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              ) : (
+                <FormControl fullWidth sx={{ minWidth: 150 }}>
+                  <InputLabel sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' }, top: '-4px' }}>
+                    Process Status
+                  </InputLabel>
+                  <Select
+                    value={processStatus || ''}
+                    onChange={(e) => handleChange('processStatus', onProcessStatusChange, e)}
+                    label="Process Status"
+                    disabled={isB2C}
+                    sx={{ 
+                      fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
+                      height: { xs: 40, sm: 56 }, 
+                      minHeight: { xs: 40, sm: 56 }, 
+                      minWidth: 150, 
+                      width: '100%', 
+                      '.MuiSelect-select': { py: { xs: 1, sm: 2 }, minWidth: 130, width: '100%' } 
+                    }}
+                  >
+                    {PROCESS_STATUS_OPTIONS.map((option) => (
+                      <MenuItem 
+                        key={option} 
+                        value={option} 
+                        sx={{ 
+                          fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
+                          minHeight: { xs: 36, sm: 52 }, 
+                          minWidth: 150, 
+                          width: '100%' 
+                        }}
+                      >
+                        {option}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            </Box>
+          </Grid>
+        )}
+
+        {/* Reason - Only show if Process Status is Out of Process */}
+        {processStatus && processStatus.toLowerCase() === 'out of process' && (
+          <Grid item xs={12} sm={6} md={4}>
+            <Box sx={{ mb: { xs: 1, sm: 2 } }}>
+              <Typography variant="caption" sx={{ fontSize: { xs: '0.7rem', sm: '0.8rem' }, color: 'text.secondary', mb: 0.5, display: 'block' }}>
+                Reason
+              </Typography>
+              {isB2C && reason && !editing.reason ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Chip 
+                    label={reason} 
+                    color="warning"
+                    sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                  />
+                  <IconButton 
+                    size="small" 
+                    onClick={() => handleEdit('reason')}
+                    sx={{ p: 0.5 }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              ) : (
+                <FormControl fullWidth sx={{ minWidth: 150 }}>
+                  <InputLabel sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' }, top: '-4px' }}>
+                    Reason
+                  </InputLabel>
+                  <Select
+                    value={reason || ''}
+                    onChange={(e) => handleChange('reason', onReasonChange, e)}
+                    label="Reason"
+                    disabled={isB2C}
+                    sx={{ 
+                      fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
+                      height: { xs: 40, sm: 56 }, 
+                      minHeight: { xs: 40, sm: 56 }, 
+                      minWidth: 150, 
+                      width: '100%', 
+                      '.MuiSelect-select': { py: { xs: 1, sm: 2 }, minWidth: 130, width: '100%' } 
+                    }}
+                  >
+                    {REASON_OPTIONS.map((option) => (
+                      <MenuItem 
+                        key={option} 
+                        value={option} 
+                        sx={{ 
+                          fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
+                          minHeight: { xs: 36, sm: 52 }, 
+                          minWidth: 150, 
+                          width: '100%' 
+                        }}
+                      >
+                        {option}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            </Box>
+          </Grid>
+        )}
+
+        {/* Project and Country - Only show if Process Status is In Process */}
+        {processStatus && processStatus.toLowerCase() === 'in process' && (
+          <>
+            <Grid item xs={12} sm={6} md={4}>
+              <Box sx={{ mb: { xs: 1, sm: 2 } }}>
+                <Typography variant="caption" sx={{ fontSize: { xs: '0.7rem', sm: '0.8rem' }, color: 'text.secondary', mb: 0.5, display: 'block' }}>
+                  Project
+                </Typography>
+                {isB2C && project && !editing.project ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Chip 
+                      label={project} 
+                      color="info"
+                      sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    />
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleEdit('project')}
+                      sx={{ p: 0.5 }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ) : (
+                  <FormControl fullWidth sx={{ minWidth: 150 }}>
+                    <InputLabel sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' }, top: '-4px' }}>
+                      Project
+                    </InputLabel>
+                    <Select
+                      value={project || ''}
+                      onChange={(e) => handleChange('project', onProjectChange, e)}
+                      label="Project"
+                      sx={{ 
+                        fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
+                        height: { xs: 40, sm: 56 }, 
+                        minHeight: { xs: 40, sm: 56 }, 
+                        minWidth: 150, 
+                        width: '100%', 
+                        '.MuiSelect-select': { py: { xs: 1, sm: 2 }, minWidth: 130, width: '100%' } 
+                      }}
+                    >
+                      {PROJECT_OPTIONS.map(option => (
+                        <MenuItem 
+                          key={option} 
+                          value={option} 
+                          sx={{ 
+                            fontSize: { xs: '0.8rem', sm: '0.95rem' }, 
+                            minHeight: { xs: 36, sm: 52 }, 
+                            minWidth: 150, 
+                            width: '100%' 
+                          }}
+                        >
+                          {option}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              </Box>
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <Autocomplete
-                options={COUNTRY_OPTIONS}
-                value={country || null}
-                onChange={onCountryChange}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Country"
-                    variant="outlined"
-                    sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' }, minWidth: 150, mb: 2 }}
+              <Box sx={{ mb: { xs: 1, sm: 2 } }}>
+                <Typography variant="caption" sx={{ fontSize: { xs: '0.7rem', sm: '0.8rem' }, color: 'text.secondary', mb: 0.5, display: 'block' }}>
+                  Country
+                </Typography>
+                {isB2C && country && !editing.country ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Chip 
+                      label={country} 
+                      color="info"
+                      sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    />
+                    <IconButton 
+                      size="small" 
+                      onClick={() => handleEdit('country')}
+                      sx={{ p: 0.5 }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ) : (
+                  <Autocomplete
+                    options={COUNTRY_OPTIONS}
+                    value={country || null}
+                    onChange={(event, newValue) => handleChange('country', onCountryChange, { target: { value: newValue }, type: 'autocomplete' }, newValue)}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Country"
+                        variant="outlined"
+                        sx={{ fontSize: { xs: '0.8rem', sm: '0.95rem' }, minWidth: 150 }}
+                      />
+                    )}
+                    fullWidth
+                    disableClearable={false}
+                    isOptionEqualToValue={(option, value) => option === value}
                   />
                 )}
-                fullWidth
-                disableClearable={false}
-                isOptionEqualToValue={(option, value) => option === value}
-              />
+              </Box>
             </Grid>
           </>
         )}

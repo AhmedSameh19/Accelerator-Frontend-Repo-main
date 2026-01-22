@@ -1,5 +1,7 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { getCrmAccessToken } from '../../utils/crmToken';
+
 const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 // Create axios instance
@@ -8,7 +10,105 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Send cookies with requests
 });
+
+// Add request interceptor to include auth token only if valid
+api.interceptors.request.use(
+  (config) => {
+    const token = getCrmAccessToken();
+    // Only add Authorization header if token exists and is not empty
+    if (token && token.trim() !== '') {
+      config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      // Explicitly remove Authorization header if no valid token
+      delete config.headers.Authorization;
+      console.warn('⚠️ [leadsApi] No access token found. Request may fail if authentication is required.');
+    }
+    
+    // Add cache-busting headers to prevent browser caching
+    config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    config.headers['Pragma'] = 'no-cache';
+    config.headers['Expires'] = '0';
+    
+    // Log request details for debugging (only in dev mode to reduce noise)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 [leadsApi] Request config:', {
+        url: config.url,
+        method: config.method,
+        baseURL: config.baseURL,
+        fullURL: `${config.baseURL}${config.url}`,
+        hasToken: !!token,
+        withCredentials: config.withCredentials
+      });
+    }
+    
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  (response) => {
+    // Log successful response CORS headers
+    console.log('✅ [leadsApi] Response received:', {
+      status: response.status,
+      headers: {
+        'access-control-allow-origin': response.headers['access-control-allow-origin'],
+        'access-control-allow-credentials': response.headers['access-control-allow-credentials'],
+        'access-control-allow-methods': response.headers['access-control-allow-methods'],
+        'access-control-allow-headers': response.headers['access-control-allow-headers']
+      }
+    });
+    return response;
+  },
+  (error) => {
+    if (error.response) {
+      // Server responded with error status
+      console.error('❌ [leadsApi] Response error:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        headers: error.response.headers,
+        data: error.response.data
+      });
+      
+      if (error.response.status === 401) {
+        console.error('❌ [leadsApi] Unauthorized - token may be invalid or expired');
+      } else if (error.response.status === 403) {
+        console.error('❌ [leadsApi] Forbidden - insufficient permissions');
+      } else if (error.response.status === 404) {
+        console.error('❌ [leadsApi] Not found - endpoint may be incorrect');
+      } else if (error.response.status >= 500) {
+        console.error('❌ [leadsApi] Server error');
+      }
+    } else if (error.request) {
+      // Request made but no response (network error, CORS, etc.)
+      console.error('❌ [leadsApi] Network error - no response received');
+      console.error('❌ [leadsApi] Request details:', {
+        url: error.config?.url,
+        method: error.config?.method,
+        baseURL: error.config?.baseURL,
+        withCredentials: error.config?.withCredentials,
+        headers: error.config?.headers
+      });
+      
+      // Check if it's a CORS error
+      if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        console.error('❌ [leadsApi] This is likely a CORS issue. Check backend configuration:');
+        console.error('   1. Access-Control-Allow-Origin must be exactly: ' + window.location.origin);
+        console.error('   2. Access-Control-Allow-Credentials must be: true');
+        console.error('   3. Access-Control-Allow-Headers must include: Authorization, Content-Type');
+        console.error('   4. Backend must handle OPTIONS preflight requests');
+      }
+    } else {
+      console.error('❌ [leadsApi] Error setting up request:', error.message);
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Leads API functions
 export const leadsApi = {
@@ -30,8 +130,53 @@ export const leadsApi = {
       params.skip = Number(skip);
     }
 
-    const { data } = await api.get('/leads', { params });
-    return data;
+    try {
+      console.log('🔍 [leadsApi] Fetching leads with params:', params);
+      console.log('🔍 [leadsApi] API URL:', `${API_BASE_URL}/leads`);
+      const token = getCrmAccessToken();
+      console.log('🔍 [leadsApi] Has token:', !!token);
+      console.log('🔍 [leadsApi] Token preview:', token ? `${token.substring(0, 20)}...` : 'none');
+      
+      // Add cache-busting and ensure fresh request
+      const { data } = await api.get('/leads', { 
+        params: {
+          ...params,
+          _t: Date.now() // Cache busting parameter
+        },
+        // Prevent browser caching
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      console.log('🔍 [leadsApi] Response data:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ [leadsApi] Error fetching leads:', error);
+      if (error.response) {
+        console.error('❌ [leadsApi] Response status:', error.response.status);
+        console.error('❌ [leadsApi] Response data:', error.response.data);
+        console.error('❌ [leadsApi] Response headers:', error.response.headers);
+        
+        // Handle specific error cases
+        if (error.response.status === 401) {
+          console.error('❌ [leadsApi] Authentication failed - token may be expired or invalid');
+          console.error('💡 Try logging out and logging back in to refresh your token');
+        } else if (error.response.status === 403) {
+          console.error('❌ [leadsApi] Access forbidden - insufficient permissions');
+        } else if (error.response.status === 404) {
+          console.error('❌ [leadsApi] Endpoint not found - check if backend is running');
+        }
+      } else if (error.request) {
+        console.error('❌ [leadsApi] Request made but no response:', error.request);
+        console.error('❌ [leadsApi] This could be a network issue or CORS problem');
+        console.error('💡 Check if backend is running at:', API_BASE_URL);
+      } else {
+        console.error('❌ [leadsApi] Error setting up request:', error.message);
+      }
+      throw error;
+    }
   },
 
   addComment: async (leadId, comment, created_by) => {

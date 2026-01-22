@@ -19,6 +19,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCRMType } from '../../context/CRMTypeContext';
+import { API_BASE } from '../../utils/apiBase';
 import NotificationsMenu from '../Notifications/NotificationsMenu';
 import DrawerContent from './DrawerContent';
 import {
@@ -54,7 +55,7 @@ function MainLayout({ children }) {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' }); // Clear EXPA tokens (cookies)
+      await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST' }); // Clear EXPA tokens (cookies)
     } catch (err) {
       console.error('Failed to log out from EXPA:', err);
     }

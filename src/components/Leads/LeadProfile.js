@@ -27,7 +27,7 @@ function LeadProfile({ lead, open, onClose, onStatusChange, navigationState }) {
     setActiveSection, setActiveTab, setFollowUpFilter, setNewComment, setNewFollowUp, setFollowUpDate,
     setNewCustomerInterviewComment, setShowBackToProcessDialog, setBackToProcessComment,
     handleContactStatusChange, handleInterestedChange, handleProcessStatusChange, handleReasonChange,
-    handleProjectChange, handleCountryChange, handleAddComment, handleAddFollowUp,
+    handleProjectChange, handleCountryChange, handleAddComment, handleAddFollowUp, handleMarkFollowUpComplete,
     handleAddCustomerInterviewComment, handleCustomerInterviewContactStatusChange, handleCustomerInterviewInterestedChange,
     handleCustomerInterviewProcessStatusChange, handleCustomerInterviewReasonChange, handleMarkBackToProcess,
     handleConfirmBackToProcess, handleBackToProcessContactStatusChange, handleBackToProcessInterestedChange,
@@ -77,7 +77,7 @@ function LeadProfile({ lead, open, onClose, onStatusChange, navigationState }) {
               onBackToProcessInterestedChange: handleBackToProcessInterestedChange,
               onBackToProcessStatusChange: handleBackToProcessStatusChange,
               onBackToProcessReasonChange: handleBackToProcessReasonChange,
-              onAddComment: handleAddComment, onAddFollowUp: handleAddFollowUp,
+              onAddComment: handleAddComment, onAddFollowUp: handleAddFollowUp, onMarkFollowUpComplete: handleMarkFollowUpComplete,
               setActiveSection, setNewComment, setFollowUpFilter, setNewFollowUp, setFollowUpDate,
               isB2C, isFromBackToProcess, isFromLeadsPage, addingComment,
             }} />

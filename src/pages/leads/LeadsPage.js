@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import Cookies from 'js-cookie';
 import { useAuth } from '../../context/AuthContext';
 import { LC_CODES, MC_EGYPT_CODE } from '../../lcCodes';
 import { filterLeads } from '../../utils/leads/filterLeads';
@@ -27,14 +28,48 @@ function LeadsPage() {
   const [reasonFilter, setReasonFilter] = useState('');
 
   const getOfficeId = useCallback(() => {
+    // Try multiple sources for LC/office information
+    let officeId = null;
+    let lcName = null;
+    
+    // 1. Try current_offices from user object
     if (currentUser?.current_offices?.[0]?.id) {
-      return currentUser.current_offices[0].id;
+      officeId = currentUser.current_offices[0].id;
+      console.log('🔍 [LeadsPage] Found office ID from current_offices:', officeId);
+      return officeId;
     }
-    const lcName = currentUser?.lc || localStorage.getItem('userLC');
+    
+    // 2. Try LC name from various sources
+    lcName = currentUser?.lc || 
+             currentUser?.userLC || 
+             localStorage.getItem('userLC') ||
+             Cookies.get('userLC') ||
+             null;
+    
+    console.log('🔍 [LeadsPage] LC name from various sources:', {
+      currentUser_lc: currentUser?.lc,
+      currentUser_userLC: currentUser?.userLC,
+      localStorage_userLC: localStorage.getItem('userLC'),
+      cookie_userLC: Cookies.get('userLC'),
+      finalLcName: lcName
+    });
+    
+    // 3. Try to find LC ID from LC_CODES
     if (lcName && Array.isArray(LC_CODES)) {
-      const found = LC_CODES.find((lc) => lc.name === lcName);
-      if (found) return found.id;
+      const found = LC_CODES.find((lc) => 
+        lc.name === lcName || 
+        lc.name?.toLowerCase() === lcName?.toLowerCase() ||
+        lc.id?.toString() === lcName?.toString()
+      );
+      if (found) {
+        console.log('🔍 [LeadsPage] Found LC in LC_CODES:', found);
+        return found.id;
+      } else {
+        console.warn('⚠️ [LeadsPage] LC name not found in LC_CODES:', lcName, 'Available LCs:', LC_CODES.map(lc => lc.name));
+      }
     }
+    
+    console.warn('⚠️ [LeadsPage] Could not determine office/LC ID. Returning null.');
     return null;
   }, [currentUser]);
 
@@ -44,6 +79,20 @@ function LeadsPage() {
   const _adminMcCode = isAdmin ? MC_EGYPT_CODE : null;
 
   const homeLcId = useMemo(() => getOfficeId(), [getOfficeId]);
+
+  // Debug logging for homeLcId
+  React.useEffect(() => {
+    console.log('🔍 [LeadsPage] homeLcId computed:', {
+      homeLcId,
+      currentUser: currentUser ? {
+        id: currentUser.id,
+        lc: currentUser.lc,
+        current_offices: currentUser.current_offices
+      } : null,
+      userLC: localStorage.getItem('userLC'),
+      isAdmin
+    });
+  }, [homeLcId, currentUser, isAdmin]);
 
   const { leads, loading, refresh, loadMore, hasMore, error } = useLeadsCursorFetch({ homeLcId });
   const { members } = useTeamMembers({ homeLcId });

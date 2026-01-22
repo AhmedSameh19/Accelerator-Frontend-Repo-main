@@ -81,7 +81,7 @@ export function getMenuItems(crmType) {
       text: 'EPs Back to Process',
       icon: <RestoreIcon />,
       path: '/eps-back-to-process',
-      show: true,
+      show: crmType === 'oGX' || crmType === 'B2C',
     },
   ];
 }

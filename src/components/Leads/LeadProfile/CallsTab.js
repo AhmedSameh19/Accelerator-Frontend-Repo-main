@@ -32,7 +32,7 @@ const CallsTab = memo(({
         {activeSection === SECTIONS.COMMENTS ? (
           <LeadCommentsSection {...{ comments, newComment, setNewComment, onAddComment, addingComment, isB2C }} />
         ) : (
-          <LeadFollowUpsSection {...{ followUps, followUpFilter, setFollowUpFilter, newFollowUp, setNewFollowUp, followUpDate, setFollowUpDate, onAddFollowUp, isB2C }} />
+          <LeadFollowUpsSection {...{ followUps, followUpFilter, setFollowUpFilter, newFollowUp, setNewFollowUp, followUpDate, setFollowUpDate, onAddFollowUp, onMarkFollowUpComplete, isB2C }} />
         )}
       </Box>
     </Paper>

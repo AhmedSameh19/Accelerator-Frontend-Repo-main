@@ -15,12 +15,18 @@ export function useLeadsCursorFetch({ homeLcId }) {
   const fetchNextPage = useCallback(
     async ({ reset } = { reset: false }) => {
       if (!homeLcId) {
+        console.warn('⚠️ [useLeadsCursorFetch] homeLcId is missing:', {
+          homeLcId,
+          type: typeof homeLcId,
+          value: homeLcId
+        });
+        console.warn('💡 [useLeadsCursorFetch] Cannot fetch leads without homeLcId. Check user LC configuration.');
         nextCursorRef.current = null;
         pendingRef.current = null;
         setHasMore(false);
         setLeads([]);
         setLoading(false);
-        setError(null);
+        setError(new Error('LC ID (home_lc_id) is required to fetch leads. Please ensure your user account has an LC assigned.'));
         return;
       }
 
@@ -46,12 +52,15 @@ export function useLeadsCursorFetch({ homeLcId }) {
         const limit = 10;
         let page;
         try {
+          console.log('🔍 [useLeadsCursorFetch] Fetching leads for homeLcId:', homeLcId);
           page = await leadsApi.getLeads({
             home_lc_id: homeLcId,
             limit,
             cursor: nextCursorRef.current,
           });
+          console.log('🔍 [useLeadsCursorFetch] Received page:', page);
         } catch (e) {
+          console.error('❌ [useLeadsCursorFetch] Error fetching leads:', e);
           if (fetchSeqRef.current === fetchSeq) {
             setError(e);
             setHasMore(false);
@@ -61,15 +70,17 @@ export function useLeadsCursorFetch({ homeLcId }) {
 
         if (fetchSeqRef.current !== fetchSeq) return;
 
-        const rows = page?.items || [];
+        // Handle different response structures
+        const rows = page?.items || page?.data || page?.leads || (Array.isArray(page) ? page : []);
+        console.log('🔍 [useLeadsCursorFetch] Extracted rows:', rows.length);
 
         setLeads((prev) => {
           if (fetchSeqRef.current !== fetchSeq) return prev;
           return reset ? rows : [...prev, ...rows];
         });
 
-        nextCursorRef.current = page?.next_cursor ?? null;
-        setHasMore(Boolean(page?.next_cursor) && rows.length > 0);
+        nextCursorRef.current = page?.next_cursor ?? page?.cursor ?? null;
+        setHasMore(Boolean(nextCursorRef.current) && rows.length > 0);
       } finally {
         inFlightRef.current = false;
         if (fetchSeqRef.current === fetchSeq) setLoading(false);

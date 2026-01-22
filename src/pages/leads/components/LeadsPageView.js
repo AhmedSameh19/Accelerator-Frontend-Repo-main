@@ -72,7 +72,12 @@ export default function LeadsPageView({
       {error ? (
         <Box sx={{ py: 1 }}>
           <Alert severity="error" sx={{ mb: 1 }}>
-            Failed to load leads. You can retry.
+            {error?.message || 'Failed to load leads. You can retry.'}
+            {error?.message?.includes('LC ID') && (
+              <Box component="div" sx={{ mt: 1, fontSize: '0.875rem' }}>
+                <strong>Solution:</strong> Please log out and log back in to refresh your LC information, or contact your administrator to assign an LC to your account.
+              </Box>
+            )}
           </Alert>
         </Box>
       ) : null}
