@@ -63,6 +63,9 @@ function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMor
   const [assignments, setAssignments] = useState([]);
   const [assignedMemberFilter, setAssignedMemberFilter] = useState('');
 
+  // Immediate UI overrides for assignment changes (so table updates instantly)
+  const [assignedOverridesByLeadId, setAssignedOverridesByLeadId] = useState({});
+
   
   const [bulkAssignDialogOpen, setBulkAssignDialogOpen] = useState(false);
   const theme = useTheme();
@@ -155,6 +158,17 @@ function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMor
 
 const handleBulkAssignConfirm = async () => {
   if (selectedMember && selectedLeads.length > 0) {
+    const memberId = String(selectedMember);
+    const memberName =
+      members?.find((m) => String(m?.expa_person_id) === memberId)?.full_name || 'Unknown';
+
+    const prevOverrides = assignedOverridesByLeadId;
+    const optimisticOverrides = { ...prevOverrides };
+    for (const leadId of selectedLeads) {
+      optimisticOverrides[String(leadId)] = { memberId, memberName };
+    }
+    setAssignedOverridesByLeadId(optimisticOverrides);
+
     try {
       // Send one request for all selected leads at once
       const response = await leadsApi.bulkAssignLeads({
@@ -169,9 +183,47 @@ const handleBulkAssignConfirm = async () => {
       handleBulkAssignClose();
     } catch (error) {
       console.error('Error bulk assigning leads:', error);
+
+      // Roll back optimistic UI if request fails
+      setAssignedOverridesByLeadId(prevOverrides);
     }
   }
 };
+
+  const getAssignedMemberId = (lead) => {
+    const leadId = String(lead?.id ?? lead?.expa_person_id ?? '');
+    const override = leadId ? assignedOverridesByLeadId[leadId] : null;
+    if (override?.memberId != null) return override.memberId;
+
+    // common backend field names (support multiple shapes)
+    return (
+      lead?.assigned_to_expa_person_id ??
+      lead?.assigned_to_expa_id ??
+      lead?.assigned_to ??
+      lead?.assigned_member_id ??
+      lead?.assigned_member_expa_person_id ??
+      null
+    );
+  };
+
+  const getAssignedMember = (lead) => {
+    const leadId = String(lead?.id ?? lead?.expa_person_id ?? '');
+    const override = leadId ? assignedOverridesByLeadId[leadId] : null;
+    if (override?.memberName) return override.memberName;
+
+    if (lead?.assigned_member_name) return lead.assigned_member_name;
+
+    // fallback if assignments array is populated
+    const assignment = assignments?.find(
+      (a) => String(a?.lead_id ?? a?.expa_person_id ?? a?.lead_expa_person_id) === leadId,
+    );
+    const assignedTo = assignment?.assigned_to ?? assignment?.assigned_to_expa_person_id;
+    if (assignedTo != null) {
+      return members?.find((m) => String(m?.expa_person_id) === String(assignedTo))?.full_name || null;
+    }
+
+    return null;
+  };
 
 
   const filteredLeads = Array.isArray(leads)
@@ -263,7 +315,7 @@ const handleBulkAssignConfirm = async () => {
                 const leadName = lead.full_name ;
                 const leadLcName = lead.home_lc_name;
                 const leadStatus = lead.expa_status || '-';
-                const assignedMember = lead.assigned_member_name || getAssignedMember(leadId);
+                const assignedMember = getAssignedMember(lead);
                 const isSelected = selectedLeads.indexOf(leadId) !== -1;
                 
                 return (
