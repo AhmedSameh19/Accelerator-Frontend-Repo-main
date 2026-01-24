@@ -2,7 +2,7 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 
 // AIESEC API Access Token
-const ACCESS_TOKEN = "lCFZbi-9ywHvSAzEdj8iViNbAUAZdsGiKa1w3MjXt-M";
+const ACCESS_TOKEN = "BKueT_b0BFOqRiIEbGVKtYf2D9E-Pg2EUSOVC8NPt84";
 const API_URL = "https://gis-api.aiesec.org/graphql";
 const lcCodes = {
   2820: "6th October University",
@@ -320,11 +320,11 @@ export const fetchOpportunityApplications = async (personId, startDate = "2025-0
 };
 
 // Fetch detailed person information
-export const fetchPersonDetails = async (personId, accessToken) => {
+export const fetchPersonDetails = async (personId,access_token) => {
   try {
     console.log('🔍 [aiesecApi] Fetching person details for ID:', personId);
 
-    const response = await fetch(`https://gis-api.aiesec.org/v2/people/${personId}?access_token=${accessToken}`, {
+    const response = await fetch(`https://gis-api.aiesec.org/v2/people/${personId}?access_token=${access_token}`, {
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json"
@@ -347,11 +347,11 @@ export const fetchPersonDetails = async (personId, accessToken) => {
 };
 
 // Fetch current person with detailed information
-export const fetchCurrentPersonDetails = async (accessToken) => {
+export const fetchCurrentPersonDetails = async (access_token) => {
   try {
     console.log('🔍 [aiesecApi] Fetching current person details');
 
-    const response = await fetch(`https://gis-api.aiesec.org/v2/current_person?access_token=${accessToken}`, {
+    const response = await fetch(`https://gis-api.aiesec.org/v2/current_person?access_token=${access_token}`, {
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json"
@@ -374,11 +374,11 @@ export const fetchCurrentPersonDetails = async (accessToken) => {
 };
 
 // Fetch parent details for a person
-export const fetchParentDetails = async (personId, accessToken) => {
+export const fetchParentDetails = async (personId,access_token) => {
   try {
     console.log('🔍 [aiesecApi] Fetching parent details for person ID:', personId);
 
-    const response = await fetch(`https://gis-api.aiesec.org/v2/people/${personId}/parent?access_token=${accessToken}`, {
+    const response = await fetch(`https://gis-api.aiesec.org/v2/people/${personId}/parent?access_token=${access_token}`, {
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json"
@@ -401,11 +401,11 @@ export const fetchParentDetails = async (personId, accessToken) => {
 };
 
 // Fetch person's manager details
-export const fetchManagerDetails = async (personId, accessToken) => {
+export const fetchManagerDetails = async (personId,access_token) => {
   try {
     console.log('🔍 [aiesecApi] Fetching manager details for person ID:', personId);
 
-    const response = await fetch(`https://gis-api.aiesec.org/v2/people/${personId}/manager?access_token=${accessToken}`, {
+    const response = await fetch(`https://gis-api.aiesec.org/v2/people/${personId}/manager?access_token=${access_token}`, {
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json"

@@ -33,7 +33,7 @@ export function getMenuItems(crmType) {
       text: 'Campaigns',
       icon: <CampaignIcon />,
       path: '/campaigns',
-      show: crmType === 'oGX' || crmType === 'B2C',
+      show: crmType === 'B2C',
     },
     {
       text: 'Customer Surveys',
@@ -75,7 +75,7 @@ export function getMenuItems(crmType) {
       text: 'Reports',
       icon: <AssessmentIcon />,
       path: '/reports',
-      show: true,
+      show: false,
     },
     {
       text: 'EPs Back to Process',

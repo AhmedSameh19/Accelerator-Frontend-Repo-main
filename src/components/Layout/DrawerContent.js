@@ -33,7 +33,9 @@ export default function DrawerContent({
   currentUser,
   onToggleOpen,
   onNavigate,
-}) {
+})
+{
+
   return (
     <Box
       sx={{
@@ -137,11 +139,12 @@ export default function DrawerContent({
         <Box
           sx={{
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             gap: 1,
             p: 1,
             borderRadius: 0,
             bgcolor: 'rgba(255, 255, 255, 0.08)',
+            minHeight: 'auto',
           }}
         >
           <Avatar
@@ -149,6 +152,7 @@ export default function DrawerContent({
               width: 40,
               height: 40,
               bgcolor: 'rgba(255, 255, 255, 0.2)',
+              flexShrink: 0,
             }}
           >
             {currentUser?.name?.[0]?.toUpperCase() || 'U'}
@@ -162,7 +166,7 @@ export default function DrawerContent({
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'flex-start',
-              justifyContent: 'center',
+              justifyContent: 'flex-start',
               ml: 1,
             }}
           >
@@ -188,7 +192,7 @@ export default function DrawerContent({
                 lineHeight: 1.2,
               }}
             >
-              {currentUser?.email || 'user@example.com'}
+              {currentUser?.role || 'user@example.com'}
             </Typography>
             <Typography
               variant="caption"
@@ -201,7 +205,7 @@ export default function DrawerContent({
                 mt: 0.5,
               }}
             >
-              LC: {currentUser?.lc || 'N/A'}
+              {currentUser?.lc || 'N/A'}
             </Typography>
           </Box>
         </Box>
