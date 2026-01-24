@@ -53,7 +53,7 @@ export const b2cAPI = {
       // Clean and validate cookie values
       const personIdCookie = Cookies.get('person_id');
       const expaPersonIdCookie = Cookies.get('expa_person_id');
-      const userIdCookie = Cookies.get('userId');
+      const userIdCookie = Cookies.get('person_id');
       
       // Use the first valid non-empty value
       personId = [personIdCookie, expaPersonIdCookie, userIdCookie]
@@ -91,7 +91,7 @@ export const b2cAPI = {
         cookies: {
           person_id: Cookies.get('person_id'),
           expa_person_id: Cookies.get('expa_person_id'),
-          userId: Cookies.get('userId')
+          userId: Cookies.get('person_id')
         },
         allRelevantCookies: allCookies,
         localStorage: typeof window !== 'undefined' ? localStorage.getItem('user') : 'N/A'

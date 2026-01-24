@@ -76,7 +76,6 @@ import {
 } from '@mui/icons-material';
 import { useCRMType } from '../context/CRMTypeContext';
 import { getRealizations, bulkAssignLeads, getLeadAssignments } from '../api/services/realizationsService';
-import { uploadFile, getFileUrl } from '../api/services/uploadService';
 import ExperienceTab from '../components/ExperienceTab';
 import DateRangeFilter from '../components/DateRangeFilter';
 import { LC_CODES, MC_EGYPT_CODE } from '../lcCodes';

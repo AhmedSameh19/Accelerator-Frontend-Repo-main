@@ -17,7 +17,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import { useAuth } from '../context/AuthContext';
 import { fetchCurrentPersonDetails, fetchParentDetails, fetchManagerDetails } from '../api/services/aiesecApi';
 import Cookies from 'js-cookie';
-import { EXPA_ACCESS_TOKEN_KEY } from '../utils/tokenKeys';
+import { CRM_ACCESS_TOKEN_KEY } from '../utils/tokenKeys';
 
 const ProfilePage = () => {
   const { currentUser } = useAuth();
@@ -34,7 +34,7 @@ const ProfilePage = () => {
   const fetchPersonDetails = async () => {
     try {
       setLoading(true);
-      const accessToken = Cookies.get(EXPA_ACCESS_TOKEN_KEY);
+      const accessToken = Cookies.get(CRM_ACCESS_TOKEN_KEY);
       const personId = Cookies.get('person_id');
       
       if (!accessToken) {

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
-import { EXPA_ACCESS_TOKEN_KEY } from '../../utils/tokenKeys';
+import { CRM_ACCESS_TOKEN_KEY } from '../../utils/tokenKeys';
 
 // Remove the hardcoded API key - we'll use the user's access token
 const API_URL = "https://gis-api.aiesec.org/graphql";
@@ -263,7 +263,7 @@ const queryBreaks = `query{allOpportunityApplication(
 
 async function fetchData(query) {
   try {
-    const accessToken = Cookies.get(EXPA_ACCESS_TOKEN_KEY);
+    const accessToken = Cookies.get(CRM_ACCESS_TOKEN_KEY);
 
     if (!accessToken) {
       console.error('No access token found. User must be authenticated.');
@@ -363,7 +363,7 @@ async function getRealizations() {
     console.log('Starting getRealizations...');
 
     // Check if user is authenticated
-    const accessToken = Cookies.get(EXPA_ACCESS_TOKEN_KEY);
+    const accessToken = Cookies.get(CRM_ACCESS_TOKEN_KEY);
     if (!accessToken) {
       console.error('No access token found. User must be authenticated.');
       throw new Error('Authentication required. Please log in to view realizations data.');

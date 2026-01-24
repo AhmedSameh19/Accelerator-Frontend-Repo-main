@@ -80,9 +80,7 @@ export const AuthProvider = ({ children }) => {
           sameSite: 'lax'
         };
 
-        Cookies.set('token', accessToken, cookieOptions);
         Cookies.set('userRole', userRole || 'user', cookieOptions);
-        Cookies.set('userId', oauthUser.id, cookieOptions);
         Cookies.set('userLC', userLC, cookieOptions);
 
 
@@ -118,9 +116,7 @@ export const AuthProvider = ({ children }) => {
             sameSite: 'lax'
           };
 
-          Cookies.set('token', adminUser.token, cookieOptions);
           Cookies.set('userRole', 'admin', cookieOptions);
-          Cookies.set('userId', adminUser.id, cookieOptions);
 
           setCurrentUser(adminUser);
           setIsAdmin(true);
@@ -136,11 +132,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('isAdmin');
-    Cookies.remove('token');
-    Cookies.remove('userRole');
-    Cookies.remove('userId');
     setCurrentUser(null);
     setIsAdmin(false);
   };

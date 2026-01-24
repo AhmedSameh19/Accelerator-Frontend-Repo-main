@@ -2,7 +2,7 @@
 import Cookies from 'js-cookie';
 import { GetTokenResponse } from './auth-types';
 import axios, { AxiosResponse } from 'axios';
-import { CRM_ACCESS_TOKEN_KEY, EXPA_ACCESS_TOKEN_KEY, EXPA_REFRESH_TOKEN_KEY } from '../../utils/tokenKeys';
+import { CRM_ACCESS_TOKEN_KEY,PERSONID,USEREMAIL,USERLC,TOKEN_EXPIRY_KEY,REFRESH_TOKEN_KEY , USERNAME,USERROLE} from '../../utils/tokenKeys';
 
 const AUTH_CLIENT_ID = '0Bwg6JeTDUb6h0O9SHNkOwepr3W34gcwVjj_VsLr9vs';
 const AUTH_CLIENT_SECRET = 'Phri0eCQcwTjnnkji4wFLUJhSQ6qbJwTsqWc6tFCL7M';
@@ -49,49 +49,7 @@ export const login = async (email: string, password: string) => {
     return { token, user };
 };
 
-export function isAccessTokenPresent(): boolean {
-    const accessToken = Cookies.get(EXPA_ACCESS_TOKEN_KEY);
-    return !!(accessToken && accessToken !== '' && accessToken !== null);
-}
 
-export async function getAccessTokenFromOauth(code: string): Promise<GetTokenResponse> {
-    const requestData = {
-        grant_type: 'authorization_code',
-        client_id: AUTH_CLIENT_ID,
-        client_secret: AUTH_CLIENT_SECRET,
-        redirect_uri: AUTH_REDIRECT_URI,
-        code: code
-    };
-
-    try {
-        const response = await fetch(`${GIS_AUTH_ENDPOINT}/oauth/token`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData)
-        });
-
-        if (response.status !== 200) {
-            const error = await response.json();
-            console.error(error);
-            throw new Error('Error getting access token');
-        }
-
-        const tokenResponse: GetTokenResponse = await response.json();
-
-        // Store tokens in cookies with proper typing
-        Cookies.set(EXPA_ACCESS_TOKEN_KEY, tokenResponse.access_token, {
-            expires: new Date(new Date().getTime() + tokenResponse.expires_in * 1000)
-        });
-        Cookies.set(EXPA_REFRESH_TOKEN_KEY, tokenResponse.refresh_token);
-
-        return tokenResponse;
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
-}
 
 export const refreshAccessToken = async (): Promise<boolean> => {
     try {
@@ -102,21 +60,48 @@ export const refreshAccessToken = async (): Promise<boolean> => {
     }
 };
 
-export function getAccessToken(): string {
-    const accessToken = Cookies.get(EXPA_ACCESS_TOKEN_KEY);
-    if (accessToken) {
-        return accessToken;
-    }
-    throw new Error('No access token found');
-}
+
 
 export const logout = async (): Promise<void> => {
     try {
-        await axios.post('/api/auth/logout');
-        // Log out from EXPA as well
-        window.location.href = 'https://auth.aiesec.org/users/sign_out?redirect_to=https://accelerator.aiesec.org.eg/login';
+        // First, notify the backend to clear the server-side session
+        try {
+            await axios.post(`${API_BASE_URL}/api/auth/logout`);
+        } catch (error) {
+            console.error('Error notifying backend of logout:', error);
+            // Continue with client-side cleanup even if backend call fails
+        }
+
+        // Clear all authentication cookies
+        Cookies.remove(CRM_ACCESS_TOKEN_KEY);
+        Cookies.remove(REFRESH_TOKEN_KEY);
+        Cookies.remove(TOKEN_EXPIRY_KEY);
+        Cookies.remove(PERSONID);
+        Cookies.remove(USEREMAIL);
+        Cookies.remove(USERNAME);
+        Cookies.remove(USERLC);
+        Cookies.remove(USERROLE);
+        
+        // Clear localStorage
+        window.localStorage.clear();
+        
+        // Clear sessionStorage
+        window.sessionStorage.clear();
+        
+        // Clear all cookies in the domain (fallback method)
+        document.cookie.split(";").forEach((c) => {
+            document.cookie = c
+                .replace(/^ +/, "")
+                .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+        
+        // Redirect to login page
+        window.location.href = '/login';
+        
     } catch (error) {
         console.error('Error during logout:', error);
+        // Force redirect to login even if there's an error
+        window.location.href = '/login';
     }
 };
 

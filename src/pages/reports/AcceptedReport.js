@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Card, CardContent, FormControl, InputLabel, Select, MenuItem, CircularProgress, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
-import { getProfile } from '../../api/getProfile';
 import { API_BASE } from '../../utils/apiBase';
 import { getCrmAccessToken } from '../../utils/crmToken';
 

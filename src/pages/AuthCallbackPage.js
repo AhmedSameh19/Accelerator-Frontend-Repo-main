@@ -3,8 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import { useAuth } from '../context/AuthContext';
 import { Box, Typography, CircularProgress } from '@mui/material';
-import { fetchSignups } from '../api/services/aiesecApi';
-import { getRealizations } from '../api/services/realizationsService';
 
 // Get redirect URI from environment or use default
 const REDIRECT_URI = process.env.REACT_APP_AUTH_REDIRECT_URI || 
