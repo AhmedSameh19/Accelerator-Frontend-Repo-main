@@ -4,165 +4,9 @@ import { CRM_ACCESS_TOKEN_KEY } from '../../utils/tokenKeys';
 
 // Remove the hardcoded API key - we'll use the user's access token
 const API_URL = "https://gis-api.aiesec.org/graphql";
-const API_BASE_URL = 'http://localhost:5002/api';
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 const SERVER_URL = API_BASE_URL;
-// Test data for fallback
-const testData = {
-  icx: [
-    {
-      id: "1_1",
-      fullName: "John Doe",
-      status: "approved",
-      isRemote: "No",
-      email: "john.doe@example.com",
-      phone: "+1234567890",
-      homeMC: "AIESEC in USA",
-      homeLC: "New York",
-      opportunityHomeMC: "AIESEC in USA",
-      hostLC: "AIESEC in Egypt",
-      opportunityLink: "https://expa.aiesec.org/opportunities/1",
-      programme: "iGV",
-      durationType: "6-8 weeks",
-      apdDate: "2024-03-01",
-      slotStartDate: "2024-04-01",
-      slotEndDate: "2024-05-31",
-      realizedDate: "",
-      finishDate: "",
-      remoteDate: "",
-      subProduct: "Global Volunteer",
-      title: "Teaching English in Egypt",
-      lcAlignment: "Education",
-      createdAt: "2024-02-01"
-    },
-    {
-      id: "2_2",
-      fullName: "Jane Smith",
-      status: "realized",
-      isRemote: "No",
-      email: "jane.smith@example.com",
-      phone: "+1987654321",
-      homeMC: "AIESEC in UK",
-      homeLC: "London",
-      opportunityHomeMC: "AIESEC in UK",
-      hostLC: "AIESEC in Egypt",
-      opportunityLink: "https://expa.aiesec.org/opportunities/2",
-      programme: "iGV",
-      durationType: "8-12 weeks",
-      apdDate: "2024-02-15",
-      slotStartDate: "2024-03-01",
-      slotEndDate: "2024-05-31",
-      realizedDate: "2024-03-01",
-      finishDate: "2024-05-31",
-      remoteDate: "",
-      subProduct: "Global Volunteer",
-      title: "Environmental Project in Egypt",
-      lcAlignment: "Environment",
-      createdAt: "2024-01-15"
-    },
-    {
-      id: "3_3",
-      fullName: "Mike Johnson",
-      status: "approval_broken",
-      isRemote: "No",
-      email: "mike.johnson@example.com",
-      phone: "+1122334455",
-      homeMC: "AIESEC in Canada",
-      homeLC: "Toronto",
-      opportunityHomeMC: "AIESEC in Canada",
-      hostLC: "AIESEC in Egypt",
-      opportunityLink: "https://expa.aiesec.org/opportunities/3",
-      programme: "iGV",
-      durationType: "6-8 weeks",
-      apdDate: "2024-02-01",
-      slotStartDate: "2024-03-15",
-      slotEndDate: "2024-05-15",
-      realizedDate: "",
-      finishDate: "",
-      remoteDate: "",
-      subProduct: "Global Volunteer",
-      title: "Youth Development in Egypt",
-      lcAlignment: "Youth",
-      createdAt: "2024-01-01"
-    }
-  ],
-  ogx: [
-    {
-      id: "4_4",
-      fullName: "Sarah Wilson",
-      status: "approved",
-      isRemote: "No",
-      email: "sarah.wilson@example.com",
-      phone: "+1555666777",
-      homeMC: "AIESEC in Egypt",
-      homeLC: "Cairo",
-      opportunityHomeMC: "AIESEC in Egypt",
-      hostLC: "AIESEC in Brazil",
-      opportunityLink: "https://expa.aiesec.org/opportunities/4",
-      programme: "iGV",
-      durationType: "6-8 weeks",
-      apdDate: "2024-03-01",
-      slotStartDate: "2024-04-01",
-      slotEndDate: "2024-05-31",
-      realizedDate: "",
-      finishDate: "",
-      remoteDate: "",
-      subProduct: "Global Volunteer",
-      title: "Teaching in Brazil",
-      lcAlignment: "Education",
-      createdAt: "2024-02-01"
-    },
-    {
-      id: "5_5",
-      fullName: "David Brown",
-      status: "realized",
-      isRemote: "No",
-      email: "david.brown@example.com",
-      phone: "+1888999000",
-      homeMC: "AIESEC in Egypt",
-      homeLC: "Alexandria",
-      opportunityHomeMC: "AIESEC in Egypt",
-      hostLC: "AIESEC in India",
-      opportunityLink: "https://expa.aiesec.org/opportunities/5",
-      programme: "iGV",
-      durationType: "8-12 weeks",
-      apdDate: "2024-02-15",
-      slotStartDate: "2024-03-01",
-      slotEndDate: "2024-05-31",
-      realizedDate: "2024-03-01",
-      finishDate: "2024-05-31",
-      remoteDate: "",
-      subProduct: "Global Volunteer",
-      title: "Environmental Project in India",
-      lcAlignment: "Environment",
-      createdAt: "2024-01-15"
-    },
-    {
-      id: "6_6",
-      fullName: "Lisa Chen",
-      status: "approval_broken",
-      isRemote: "No",
-      email: "lisa.chen@example.com",
-      phone: "+1777888999",
-      homeMC: "AIESEC in Egypt",
-      homeLC: "Giza",
-      opportunityHomeMC: "AIESEC in Egypt",
-      hostLC: "AIESEC in Japan",
-      opportunityLink: "https://expa.aiesec.org/opportunities/6",
-      programme: "iGV",
-      durationType: "6-8 weeks",
-      apdDate: "2024-02-01",
-      slotStartDate: "2024-03-15",
-      slotEndDate: "2024-05-15",
-      realizedDate: "",
-      finishDate: "",
-      remoteDate: "",
-      subProduct: "Global Volunteer",
-      title: "Youth Development in Japan",
-      lcAlignment: "Youth",
-      createdAt: "2024-01-01"
-    }
-  ]
-};
+
 
 const queryAPDs = `query{allOpportunityApplication(
     filters:{
@@ -358,137 +202,148 @@ function processApplicationData(data) {
   });
 }
 
-async function getRealizations() {
+// async function getRealizations() {
+//   try {
+//     console.log('Starting getRealizations...');
+
+//     // Check if user is authenticated
+//     const accessToken = Cookies.get(CRM_ACCESS_TOKEN_KEY);
+//     if (!accessToken) {
+//       console.error('No access token found. User must be authenticated.');
+//       throw new Error('Authentication required. Please log in to view realizations data.');
+//     }
+
+//     console.log('Access token found, proceeding with API request...');
+
+//     // Fetch all applications
+//     const applications = await fetchData(queryAPDs);
+//     console.log('Fetched applications:', applications);
+
+//     if (!applications || applications.length === 0) {
+//       console.log('No applications found, using test data');
+//       return testData;
+//     }
+
+//     // Process the data
+//     const processedData = processApplicationData(applications);
+//     console.log('Processed data:', processedData);
+
+//     // List of Egyptian LCs
+//     const egyptianLCs = [
+//       'ain shams university',
+//       'helwan',
+//       'alexandria',
+//       'aast in cairo',
+//       'menofia',
+//       'msa',
+//       'suez',
+//       'mc egypt',
+//       '6th october university',
+//       'aast alexandria',
+//       'guc',
+//       'galala',
+//       'tanta',
+//       'beni suef',
+//       'cairo university',
+//       'mansoura',
+//       'miu',
+//       'must',
+//       'auc',
+//       'zagazig',
+//       'new capital'
+//     ];
+
+//     // Separate ICX and OGX applications with detailed logging
+//     console.log('Filtering ICX applications...');
+//     const icxApplications = processedData.filter(app => {
+//       // Check if the hostLC is an Egyptian LC
+//       const isICX = app.hostLC && egyptianLCs.some(lc =>
+//         app.hostLC.toLowerCase().includes(lc.toLowerCase())
+//       );
+//       console.log(`Application ${app.id}:`, {
+//         hostLC: app.hostLC,
+//         isICX: isICX
+//       });
+//       return isICX;
+//     });
+//     console.log('ICX applications:', icxApplications);
+
+//     console.log('Filtering OGX applications...');
+//     const ogxApplications = processedData.filter(app => {
+//       // Check if the homeLC is an Egyptian LC
+//       const isOGX = app.homeLC && egyptianLCs.some(lc =>
+//         app.homeLC.toLowerCase().includes(lc.toLowerCase())
+//       );
+//       console.log(`Application ${app.id}:`, {
+//         homeLC: app.homeLC,
+//         isOGX: isOGX
+//       });
+//       return isOGX;
+//     });
+//     console.log('OGX applications:', ogxApplications);
+
+//     // If no applications found in either category, use test data
+//     if (icxApplications.length === 0 && ogxApplications.length === 0) {
+//       console.log('No applications found in either category, using test data');
+//       return testData;
+//     }
+
+//     // Fetch and process breaks
+//     const breaks = await fetchData(queryBreaks);
+//     console.log('Fetched breaks:', breaks);
+
+//     const breakMap = new Map(
+//       breaks.map(break_ => [`${break_.person.id}_${break_.opportunity.id}`, break_.status])
+//     );
+
+//     // Update status for broken applications
+//     const updateBreaks = (applications) => {
+//       return applications.map(app => {
+//         const breakStatus = breakMap.get(app.id);
+//         if (breakStatus) {
+//           return { ...app, status: breakStatus };
+//         }
+//         return app;
+//       });
+//     };
+
+//     const result = {
+//       icx: updateBreaks(icxApplications),
+//       ogx: updateBreaks(ogxApplications)
+//     };
+//     console.log('Final result:', result);
+//     return result;
+//   } catch (error) {
+//     console.error('Error in getRealizations:', error);
+
+//     // If it's an authentication error, throw it to be handled by the UI
+//     if (error.message.includes('Authentication required')) {
+//       throw error;
+//     }
+
+//     console.log('Using test data due to error');
+//     return testData;
+//   }
+// }
+async function getRealizations(lcCode) {
   try {
-    console.log('Starting getRealizations...');
-
-    // Check if user is authenticated
-    const accessToken = Cookies.get(CRM_ACCESS_TOKEN_KEY);
-    if (!accessToken) {
-      console.error('No access token found. User must be authenticated.');
-      throw new Error('Authentication required. Please log in to view realizations data.');
-    }
-
-    console.log('Access token found, proceeding with API request...');
-
-    // Fetch all applications
-    const applications = await fetchData(queryAPDs);
-    console.log('Fetched applications:', applications);
-
-    if (!applications || applications.length === 0) {
-      console.log('No applications found, using test data');
-      return testData;
-    }
-
-    // Process the data
-    const processedData = processApplicationData(applications);
-    console.log('Processed data:', processedData);
-
-    // List of Egyptian LCs
-    const egyptianLCs = [
-      'ain shams university',
-      'helwan',
-      'alexandria',
-      'aast in cairo',
-      'menofia',
-      'msa',
-      'suez',
-      'mc egypt',
-      '6th october university',
-      'aast alexandria',
-      'guc',
-      'galala',
-      'tanta',
-      'beni suef',
-      'cairo university',
-      'mansoura',
-      'miu',
-      'must',
-      'auc',
-      'zagazig',
-      'new capital'
-    ];
-
-    // Separate ICX and OGX applications with detailed logging
-    console.log('Filtering ICX applications...');
-    const icxApplications = processedData.filter(app => {
-      // Check if the hostLC is an Egyptian LC
-      const isICX = app.hostLC && egyptianLCs.some(lc =>
-        app.hostLC.toLowerCase().includes(lc.toLowerCase())
-      );
-      console.log(`Application ${app.id}:`, {
-        hostLC: app.hostLC,
-        isICX: isICX
-      });
-      return isICX;
+    const response = await axios.get(`${API_BASE_URL}/realizations`, {
+      params: { home_lc_id: lcCode }
     });
-    console.log('ICX applications:', icxApplications);
-
-    console.log('Filtering OGX applications...');
-    const ogxApplications = processedData.filter(app => {
-      // Check if the homeLC is an Egyptian LC
-      const isOGX = app.homeLC && egyptianLCs.some(lc =>
-        app.homeLC.toLowerCase().includes(lc.toLowerCase())
-      );
-      console.log(`Application ${app.id}:`, {
-        homeLC: app.homeLC,
-        isOGX: isOGX
-      });
-      return isOGX;
-    });
-    console.log('OGX applications:', ogxApplications);
-
-    // If no applications found in either category, use test data
-    if (icxApplications.length === 0 && ogxApplications.length === 0) {
-      console.log('No applications found in either category, using test data');
-      return testData;
-    }
-
-    // Fetch and process breaks
-    const breaks = await fetchData(queryBreaks);
-    console.log('Fetched breaks:', breaks);
-
-    const breakMap = new Map(
-      breaks.map(break_ => [`${break_.person.id}_${break_.opportunity.id}`, break_.status])
-    );
-
-    // Update status for broken applications
-    const updateBreaks = (applications) => {
-      return applications.map(app => {
-        const breakStatus = breakMap.get(app.id);
-        if (breakStatus) {
-          return { ...app, status: breakStatus };
-        }
-        return app;
-      });
-    };
-
-    const result = {
-      icx: updateBreaks(icxApplications),
-      ogx: updateBreaks(ogxApplications)
-    };
-    console.log('Final result:', result);
-    return result;
+    console.log('Realizations fetched successfully:', response.data);
+    return response.data.items;
   } catch (error) {
-    console.error('Error in getRealizations:', error);
-
-    // If it's an authentication error, throw it to be handled by the UI
-    if (error.message.includes('Authentication required')) {
-      throw error;
-    }
-
-    console.log('Using test data due to error');
-    return testData;
+    console.error('Error fetching realizations:', error);
+    throw error;
   }
 }
-
 async function getStandards(epId) {
   if (!epId) throw new Error('EP ID is required');
 
   try {
     const response = await axios.get(`${API_BASE_URL}/realizations/${epId}`);
     console.log('EP standards fetched successfully:', response.data.data);
-    return response.data.data; // return the object with all columns
+    return response?.data?.data || response?.data || response?.items || {}; // return the object with all columns
   } catch (error) {
     console.error('Error fetching EP standards:', error);
     throw error;
@@ -508,7 +363,7 @@ async function updateStandards(epId, standards) {
 async function bulkAssignLeads(data) {
   try {
     console.log("Lead IDs: ", data);
-    const response = await axios.put(`${API_BASE_URL}/realizations/bulkassign`, data);
+    const response = await axios.patch(`${API_BASE_URL}/realizations/assign/bulk`, data);
     console.log('Bulk assign response:', response.data);
     return response.data;
   }

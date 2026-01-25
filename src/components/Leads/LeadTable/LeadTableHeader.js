@@ -29,7 +29,7 @@ export default function LeadTableHeader({
             {members.map((m) => (
               <MenuItem key={m.expa_person_id} value={String(m.expa_person_id)}>
                 {m.full_name}
-                {m?.role ? ' — ' + m.role : ''}
+                {m?.role ? ' (' + m.role + ')' : ''}
               </MenuItem>
             ))}
           </Select>

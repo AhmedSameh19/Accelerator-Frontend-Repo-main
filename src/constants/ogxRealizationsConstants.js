@@ -68,21 +68,37 @@ export const getCountryCode = (homeMC) => {
 };
 
 export const getUniqueHomeMCs = (leads) => {
-  const uniqueMCs = new Set((leads || []).map((lead) => lead.homeMC).filter(Boolean));
+  const uniqueMCs = new Set(
+    (leads || [])
+      .map((lead) => lead.homeMC || lead.home_mc_name)
+      .filter(Boolean)
+  );
   return Array.from(uniqueMCs).sort();
 };
 
 export const getUniqueHomeLCs = (leads) => {
-  const uniqueLCs = new Set((leads || []).map((lead) => lead.homeLC).filter(Boolean));
+  const uniqueLCs = new Set(
+    (leads || [])
+      .map((lead) => lead.homeLC || lead.home_lc_name)
+      .filter(Boolean)
+  );
   return Array.from(uniqueLCs).sort();
 };
 
 export const getUniqueHostMCs = (leads) => {
-  const uniqueMCs = new Set((leads || []).map((lead) => lead.hostMC).filter(Boolean));
+  const uniqueMCs = new Set(
+    (leads || [])
+      .map((lead) => lead.hostMC || lead.host_mc_name)
+      .filter(Boolean)
+  );
   return Array.from(uniqueMCs).sort();
 };
 
 export const getUniqueHostLCs = (leads) => {
-  const uniqueLCs = new Set((leads || []).map((lead) => lead.hostLC).filter(Boolean));
+  const uniqueLCs = new Set(
+    (leads || [])
+      .map((lead) => lead.hostLC || lead.host_lc_name)
+      .filter(Boolean)
+  );
   return Array.from(uniqueLCs).sort();
 };

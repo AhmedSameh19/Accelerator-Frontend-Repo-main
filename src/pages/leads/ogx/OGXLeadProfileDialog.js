@@ -41,6 +41,7 @@ import PostExperienceTab from '../../../components/PostExperienceTab';
 import PreparationStepsTab from '../../../components/PreparationStepsTab';
 
 import { getProgrammeChipSx, getStatusChipSx } from './ogxChipStyles';
+import { LC_CODES } from '../../../lcCodes';
 
 export default function OGXLeadProfileDialog({
   open,
@@ -59,6 +60,35 @@ export default function OGXLeadProfileDialog({
   formatDate,
 }) {
   if (!selectedLead) return null;
+
+  // Helper function to get LC name by ID
+  const getLCNameById = (lcId) => {
+    const lc = LC_CODES.find(lc => lc.id === lcId);
+    return lc ? lc.name : null;
+  };
+
+  // Get home LC name from home_lc_id
+  const homeLCName = getLCNameById(selectedLead.home_lc_id);
+
+  // Helper function to get AIESEC opportunity URL
+  const getOpportunityUrl = (programme, oppId) => {
+    if (!programme || !oppId) return null;
+    
+    const programType = programme.toLowerCase();
+    let urlPath = '';
+    
+    if (programType.includes('gv') || programType === 'global volunteer') {
+      urlPath = 'global-volunteer';
+    } else if (programType.includes('gte') || programType === 'global teacher') {
+      urlPath = 'global-teacher';
+    } else if (programType.includes('gta') || programType === 'global talent') {
+      urlPath = 'global-talent';
+    } else {
+      return null;
+    }
+    
+    return `https://aiesec.org/opportunity/${urlPath}/${oppId}`;
+  };
 
   return (
     <Dialog
@@ -109,7 +139,7 @@ export default function OGXLeadProfileDialog({
               ml: { xs: 0, sm: 2 },
             }}
           >
-            {selectedLead.fullName?.[0]?.toUpperCase()}
+            {(selectedLead.full_name || selectedLead.fullName)?.[0]?.toUpperCase()}
           </Avatar>
           <Box flex={1} sx={{ width: '100%', textAlign: { xs: 'center', sm: 'left' } }}>
             <Typography
@@ -122,7 +152,7 @@ export default function OGXLeadProfileDialog({
                 fontSize: { xs: '1.5rem', sm: '2rem' },
               }}
             >
-              {selectedLead.fullName}
+              {selectedLead.full_name || selectedLead.fullName}
             </Typography>
             <Stack spacing={1}>
               <Box
@@ -160,7 +190,7 @@ export default function OGXLeadProfileDialog({
                   Sending:
                 </Typography>
                 <Typography variant="body1" sx={{ color: '#e3f2fd' }}>
-                  {selectedLead.homeLC} • {selectedLead.homeMC}
+                  {homeLCName} • Egypt
                 </Typography>
               </Box>
               <Box
@@ -183,7 +213,7 @@ export default function OGXLeadProfileDialog({
                   Host:
                 </Typography>
                 <Typography variant="body1" sx={{ color: '#e3f2fd' }}>
-                  {selectedLead.hostLC} • {selectedLead.hostMC}
+                  {selectedLead.host_lc_name} • {selectedLead.host_mc_name}
                 </Typography>
               </Box>
             </Stack>
@@ -289,10 +319,10 @@ export default function OGXLeadProfileDialog({
                       >
                         {title === 'Phone Number' ? (
                           <a
-                            href={`tel:${getCountryCode(selectedLead.homeMC)}${value}`}
+                            href={`tel:${getCountryCode(selectedLead.home_mc_name || selectedLead.homeMC)}${value}`}
                             style={{ color: '#1976d2', textDecoration: 'underline' }}
                           >
-                            {getCountryCode(selectedLead.homeMC)} {value}
+                            {getCountryCode(selectedLead.home_mc_name || selectedLead.homeMC)} {value}
                           </a>
                         ) : title === 'Email' ? (
                           <a
@@ -361,7 +391,7 @@ export default function OGXLeadProfileDialog({
                     />
                     <InfoRow
                       title="Phone Number"
-                      value={selectedLead.phone}
+                      value={selectedLead.contact_number || selectedLead.phone}
                       icon={<PhoneIcon fontSize="small" color="action" />}
                     />
                   </Paper>
@@ -393,12 +423,12 @@ export default function OGXLeadProfileDialog({
                     </Typography>
                     <InfoRow
                       title="EP ID_Opp ID"
-                      value={selectedLead.id}
+                      value={`${selectedLead.expa_person_id}_${selectedLead.opp_id}`}
                       icon={<PersonIcon fontSize="small" color="action" />}
                     />
                     <InfoRow
                       title="Full Name"
-                      value={selectedLead.fullName}
+                      value={selectedLead.full_name || selectedLead.fullName}
                       icon={<PersonIcon fontSize="small" color="action" />}
                     />
                     <InfoRow
@@ -435,12 +465,12 @@ export default function OGXLeadProfileDialog({
                     </Typography>
                     <InfoRow
                       title="Host MC"
-                      value={selectedLead.hostMC}
+                      value={selectedLead.host_mc_name || selectedLead.hostMC}
                       icon={<FlagIcon fontSize="small" color="action" />}
                     />
                     <InfoRow
                       title="Host LC"
-                      value={selectedLead.hostLC}
+                      value={selectedLead.host_lc_name || selectedLead.hostLC}
                       icon={<LocationIcon fontSize="small" color="action" />}
                     />
                   </Paper>
@@ -472,15 +502,30 @@ export default function OGXLeadProfileDialog({
                     </Typography>
                     <InfoRow
                       title="Opportunity Link"
-                      value={
-                        <a
-                          href={selectedLead.opportunityLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: '#1976d2', textDecoration: 'underline' }}
-                        >
-                          {selectedLead.opportunityLink}
-                        </a>
+                      value={(() => {
+                        const oppUrl = getOpportunityUrl(selectedLead.programme, selectedLead.opp_id);
+                        return oppUrl ? (
+                          <a
+                            href={oppUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: '#1976d2', textDecoration: 'underline' }}
+                          >
+                            {oppUrl}
+                          </a>
+                        ) : (
+                          selectedLead.opportunityLink ? (
+                            <a
+                              href={selectedLead.opportunityLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: '#1976d2', textDecoration: 'underline' }}
+                            >
+                              {selectedLead.opportunityLink}
+                            </a>
+                          ) : '-'
+                        );
+                      })()
                       }
                       icon={<BusinessIcon fontSize="small" color="action" />}
                     />
@@ -509,11 +554,6 @@ export default function OGXLeadProfileDialog({
                         />
                       </Grid>
                     </Grid>
-                    <InfoRow
-                      title="Duration Type"
-                      value={selectedLead.durationType}
-                      icon={<EventIcon fontSize="small" color="action" />}
-                    />
                   </Paper>
 
                   {/* Dates */}
@@ -560,8 +600,8 @@ export default function OGXLeadProfileDialog({
                       <TableBody>
                         {[
                           { label: 'Date Approved', value: selectedLead.apdDate },
-                          { label: 'Slot Start Date', value: selectedLead.slotStartDate },
-                          { label: 'Slot End Date', value: selectedLead.slotEndDate },
+                          { label: 'Slot Start Date', value: selectedLead.slot_start_date },
+                          { label: 'Slot End Date', value: selectedLead.slot_end_date },
                           { label: 'Date Realized', value: selectedLead.realizedDate },
                           { label: 'Experience End Date', value: selectedLead.finishDate },
                         ].map((row, idx) => (
@@ -624,63 +664,19 @@ export default function OGXLeadProfileDialog({
                       <SchoolIcon fontSize="medium" color="action" /> Additional Information
                     </Typography>
                     <InfoRow
-                      title="Sub Product"
-                      value={selectedLead.subProduct}
-                      icon={<WorkIcon fontSize="small" color="action" />}
-                    />
-                    <InfoRow
                       title="Title"
-                      value={selectedLead.title}
+                      value={selectedLead.opp_title}
                       icon={<BusinessIcon fontSize="small" color="action" />}
                     />
-                    <InfoRow
-                      title="Campus"
-                      value={selectedLead.campus}
-                      icon={<SchoolIcon fontSize="small" color="action" />}
-                    />
+
                     <InfoRow
                       title="Signup Date"
-                      value={formatDate(selectedLead.signupDate)}
+                      value={formatDate(selectedLead.created_at)}
                       icon={<EventIcon fontSize="small" color="action" />}
                     />
                   </Paper>
 
-                  {/* Additional Display Fields */}
-                  <Paper
-                    elevation={2}
-                    sx={{
-                      p: 2.5,
-                      borderRadius: 3,
-                      bgcolor: 'white',
-                      mb: 2,
-                      boxShadow: '0 2px 12px rgba(40,60,90,0.06)',
-                    }}
-                  >
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        color: 'primary.main',
-                        fontWeight: 700,
-                        mb: 2,
-                        letterSpacing: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                      }}
-                    >
-                      <EventIcon fontSize="medium" color="action" /> Additional Display Fields
-                    </Typography>
-                    <InfoRow
-                      title="LC Alignment"
-                      value={selectedLead.lcAlignment}
-                      icon={<SchoolIcon fontSize="small" color="action" />}
-                    />
-                    <InfoRow
-                      title="Created At"
-                      value={formatDate(selectedLead.createdAt)}
-                      icon={<EventIcon fontSize="small" color="action" />}
-                    />
-                  </Paper>
+             
                 </>
               );
             })()}

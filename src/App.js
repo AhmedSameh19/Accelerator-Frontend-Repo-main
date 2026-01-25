@@ -4,6 +4,7 @@ import { ThemeProvider, CssBaseline } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
 import { CRMTypeProvider } from './context/CRMTypeContext';
 import { NotificationsProvider } from './context/NotificationsContext';
+import { TeamMembersProvider } from './context/TeamMembersContext';
 import ChickenInvaders from './components/EasterEgg/ChickenInvaders';
 import useEasterEgg from './hooks/useEasterEgg';
 import NotificationInitializer from './app/NotificationInitializer';
@@ -21,10 +22,12 @@ function App() {
         <NotificationsProvider>
           <NotificationInitializer />
           <AuthProvider>
-            <CRMTypeProvider>
-              <RouterProvider router={router} />
-              {showGame && <ChickenInvaders onClose={() => setShowGame(false)} />}
-            </CRMTypeProvider>
+            <TeamMembersProvider>
+              <CRMTypeProvider>
+                <RouterProvider router={router} />
+                {showGame && <ChickenInvaders onClose={() => setShowGame(false)} />}
+              </CRMTypeProvider>
+            </TeamMembersProvider>
           </AuthProvider>
         </NotificationsProvider>
       </ErrorBoundary>

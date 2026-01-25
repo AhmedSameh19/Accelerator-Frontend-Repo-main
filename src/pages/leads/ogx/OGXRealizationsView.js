@@ -27,16 +27,15 @@ export default function OGXRealizationsView({
   setSelectedCountry,
   selectedHostLC,
   setSelectedHostLC,
-  selectedLanguage,
-  setSelectedLanguage,
   selectedExchangeType,
   setSelectedExchangeType,
   selectedStatus,
   setSelectedStatus,
+  selectedAssignedMember,
+  setSelectedAssignedMember,
 
   uniqueHostMCs,
   uniqueHostLCs,
-  uniqueHomeLCs,
 
   exchangeTypes,
   statuses,
@@ -56,7 +55,6 @@ export default function OGXRealizationsView({
   copyToClipboard,
   calculateDaysTillRealization,
   formatDate,
-  getAssignedMember,
 
   openDialog,
   handleCloseDialog,
@@ -85,6 +83,7 @@ export default function OGXRealizationsView({
   setSelectedMember,
   members,
   handleBulkAssignConfirm,
+  bulkAssignLoading,
 }) {
   return (
     <Box sx={{ position: 'relative', minHeight: '80vh' }}>
@@ -107,18 +106,17 @@ export default function OGXRealizationsView({
           setSelectedCountry={setSelectedCountry}
           selectedHostLC={selectedHostLC}
           setSelectedHostLC={setSelectedHostLC}
-          selectedLanguage={selectedLanguage}
-          setSelectedLanguage={setSelectedLanguage}
           selectedExchangeType={selectedExchangeType}
           setSelectedExchangeType={setSelectedExchangeType}
           selectedStatus={selectedStatus}
           setSelectedStatus={setSelectedStatus}
+          selectedAssignedMember={selectedAssignedMember}
+          setSelectedAssignedMember={setSelectedAssignedMember}
           uniqueHostMCs={uniqueHostMCs}
           uniqueHostLCs={uniqueHostLCs}
-          uniqueHomeLCs={uniqueHomeLCs}
-     
           exchangeTypes={exchangeTypes}
           statuses={statuses}
+          members={members}
         />
 
         <OGXRealizationsTable
@@ -135,7 +133,6 @@ export default function OGXRealizationsView({
           copyToClipboard={copyToClipboard}
           calculateDaysTillRealization={calculateDaysTillRealization}
           formatDate={formatDate}
-          getAssignedMember={getAssignedMember}
         />
 
         {/* Add/Edit Lead Dialog */}
@@ -170,15 +167,18 @@ export default function OGXRealizationsView({
 
         <Snackbar
           open={snackbar.open}
-          autoHideDuration={3000}
+          autoHideDuration={snackbar.severity === 'success' ? 3000 : 5000}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
           <Alert
             onClose={() => setSnackbar({ ...snackbar, open: false })}
             severity={snackbar.severity}
             variant="filled"
-            sx={{ width: '100%' }}
+            sx={{ 
+              width: '100%',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            }}
           >
             {snackbar.message}
           </Alert>
@@ -193,6 +193,7 @@ export default function OGXRealizationsView({
           setSelectedMember={setSelectedMember}
           members={members}
           onConfirm={handleBulkAssignConfirm}
+          loading={bulkAssignLoading}
         />
       </Box>
     </Box>

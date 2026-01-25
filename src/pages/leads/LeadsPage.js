@@ -1,25 +1,85 @@
-import React, { useCallback, useMemo, useState } from 'react';
+/**
+ * LeadsPage
+ * 
+ * Main page component for managing leads in the CRM system.
+ * Handles displaying, filtering, and editing leads.
+ * 
+ * @module pages/leads/LeadsPage
+ * 
+ * Key Features:
+ * - Display leads with multiple filter options
+ * - Search by name, phone, email
+ * - Filter by status, contact status, interested, process status
+ * - Date range filtering
+ * - Infinite scroll pagination with cursor-based fetching
+ * - Edit leads through modal form
+ * 
+ * Dependencies:
+ * - TeamMembersContext: For cached team members data
+ * - AuthContext: For user authentication and admin status
+ * - useLeadsCursorFetch: For paginated lead fetching
+ * - useLeadStatuses: For lead status tracking
+ * 
+ * @see LeadsPageView - The presentational component
+ * @see useLeadsCursorFetch - Cursor-based pagination hook
+ * @see filterLeads - Lead filtering utility
+ */
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Cookies from 'js-cookie';
+
+// Context
 import { useAuth } from '../../context/AuthContext';
+import { useTeamMembersContext } from '../../context/TeamMembersContext';
+
+// Constants
 import { LC_CODES, MC_EGYPT_CODE } from '../../lcCodes';
+
+// Utilities
 import { filterLeads } from '../../utils/leads/filterLeads';
 
+// Components
 import LeadsPageView from './components/LeadsPageView';
+
+// Hooks
 import { useLeadsCursorFetch } from '../../hooks/leads/useLeadsCursorFetch';
-import { useTeamMembers } from '../../hooks/leads/useTeamMembers';
 import { useLeadStatuses } from '../../hooks/leads/useLeadStatuses';
 
 
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
+/**
+ * LeadsPage Component
+ * 
+ * @returns {JSX.Element}
+ */
 function LeadsPage() {
+  // ---------------------------------------------------------------------------
+  // CONTEXT & AUTH
+  // ---------------------------------------------------------------------------
   const { currentUser, isAdmin } = useAuth();
-  const [searchTerm, setSearchTerm] = useState("");
+  const { members, fetchMembers, hasFetched: membersFetched } = useTeamMembersContext();
+  
+  // ---------------------------------------------------------------------------
+  // FORM STATE
+  // ---------------------------------------------------------------------------
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  
+  // ---------------------------------------------------------------------------
+  // NOTIFICATION STATE
+  // ---------------------------------------------------------------------------
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success'
   });
+  
+  // ---------------------------------------------------------------------------
+  // FILTER STATE
+  // ---------------------------------------------------------------------------
+  const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
   const [statusFilter, setStatusFilter] = useState('');
   const [contactStatusFilter, setContactStatusFilter] = useState('');
@@ -27,6 +87,16 @@ function LeadsPage() {
   const [processStatusFilter, setProcessStatusFilter] = useState('');
   const [reasonFilter, setReasonFilter] = useState('');
 
+  // ===========================================================================
+  // OFFICE ID RESOLUTION
+  // ===========================================================================
+  
+  /**
+   * Get the office/LC ID for API calls
+   * Tries multiple sources in order of priority
+   * 
+   * @returns {number|null} The office ID or null if not found
+   */
   const getOfficeId = useCallback(() => {
     // Try multiple sources for LC/office information
     let officeId = null;
@@ -73,11 +143,11 @@ function LeadsPage() {
     return null;
   }, [currentUser]);
 
-  // This endpoint expects LC id (home_lc_id). Admin should still be scoped to their current office.
-  // (Keeping MC_EGYPT_CODE import for compatibility; not used here intentionally.)
+  // Note: Admin should still be scoped to their current office for this endpoint
   // eslint-disable-next-line no-unused-vars
   const _adminMcCode = isAdmin ? MC_EGYPT_CODE : null;
 
+  /** Computed home LC ID for API calls */
   const homeLcId = useMemo(() => getOfficeId(), [getOfficeId]);
 
   // Debug logging for homeLcId
@@ -94,24 +164,54 @@ function LeadsPage() {
     });
   }, [homeLcId, currentUser, isAdmin]);
 
-  const { leads, loading, refresh, loadMore, hasMore, error } = useLeadsCursorFetch({ homeLcId });
-  const { members } = useTeamMembers({ homeLcId });
+  // ===========================================================================
+  // DATA FETCHING
+  // ===========================================================================
 
+  const { leads, loading, refresh, loadMore, hasMore, error } = useLeadsCursorFetch({ homeLcId });
+
+  // Fetch team members if not already fetched (from TeamMembersContext cache)
+  useEffect(() => {
+    if (!membersFetched && currentUser) {
+      fetchMembers(currentUser, isAdmin);
+    }
+  }, [currentUser, isAdmin, membersFetched, fetchMembers]);
+
+  /** Lead IDs for status fetching */
   const leadIds = useMemo(() => (leads || []).map((l) => l?.expa_person_id).filter(Boolean), [leads]);
+  
+  /** Lead statuses mapped by ID */
   const { statusById: leadStatusById } = useLeadStatuses(leadIds);
 
+  // ===========================================================================
+  // FORM HANDLERS
+  // ===========================================================================
 
+  /**
+   * Open edit form for a lead
+   * @param {Object} lead - The lead to edit
+   */
   const handleEditClick = (lead) => {
     setEditing(lead);
     setFormOpen(true);
   };
 
-
+  /**
+   * Close the edit form and reset state
+   */
   const handleFormClose = () => {
     setFormOpen(false);
     setEditing(null);
   };
 
+  // ===========================================================================
+  // FILTER HANDLERS
+  // ===========================================================================
+
+  /**
+   * Handle date range filter change
+   * @param {Object} dateFilter - The date filter configuration
+   */
   const handleDateFilterChange = (dateFilter) => {
     setDateRange({
       startDate: dateFilter.startDate,
@@ -120,27 +220,38 @@ function LeadsPage() {
     });
   };
 
+  /**
+   * Clear date range filter
+   */
   const clearDateFilter = () => {
     setDateRange({ startDate: null, endDate: null, field: '' });
   };
 
+  /** @param {string} newStatus - New status filter value */
   const handleStatusFilterChange = (newStatus) => {
     setStatusFilter(newStatus);
   };
 
+  /** @param {string} newStatus - New contact status filter value */
   const handleContactStatusFilterChange = (newStatus) => {
     setContactStatusFilter(newStatus);
   };
 
+  /** @param {string} newStatus - New interested filter value */
   const handleInterestedFilterChange = (newStatus) => {
     setInterestedFilter(newStatus);
   };
 
+  /** @param {string} newStatus - New process status filter value */
   const handleProcessStatusFilterChange = (newStatus) => {
     setProcessStatusFilter(newStatus);
   };
 
- 
+  // ===========================================================================
+  // COMPUTED VALUES
+  // ===========================================================================
+
+  /** Filtered leads based on current filter state */
   const filteredLeads = filterLeads({
     leads,
     searchTerm,
@@ -152,6 +263,10 @@ function LeadsPage() {
     reasonFilter,
     leadStatusById,
   });
+
+  // ===========================================================================
+  // RENDER
+  // ===========================================================================
 
   return (
     <LeadsPageView

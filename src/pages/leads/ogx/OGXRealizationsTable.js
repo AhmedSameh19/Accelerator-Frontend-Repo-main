@@ -18,7 +18,10 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { ContentCopy as ContentCopyIcon } from '@mui/icons-material';
+import { 
+  ContentCopy as ContentCopyIcon,
+  SearchOff as SearchOffIcon,
+} from '@mui/icons-material';
 
 import { getProgrammeChipSx, getStatusChipSx } from './ogxChipStyles';
 
@@ -36,7 +39,6 @@ export default function OGXRealizationsTable({
   copyToClipboard,
   calculateDaysTillRealization,
   formatDate,
-  getAssignedMember,
 }) {
   const theme = useTheme();
 
@@ -98,7 +100,7 @@ export default function OGXRealizationsTable({
                   </TableSortLabel>
                 </TableCell>
 
-                <TableCell
+                {/* <TableCell
                   sx={{
                     whiteSpace: 'nowrap',
                     fontSize: { xs: '0.75rem', sm: '0.875rem' },
@@ -128,7 +130,7 @@ export default function OGXRealizationsTable({
                   >
                     Home MC
                   </TableSortLabel>
-                </TableCell>
+                </TableCell> */}
 
                 <TableCell
                   sx={{
@@ -257,14 +259,24 @@ export default function OGXRealizationsTable({
             <TableBody>
               {leads.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center">
-                    <Typography variant="body2" color="text.secondary">
-                      No EPs found. Adjust your search criteria.
-                    </Typography>
+                  <TableCell colSpan={13} align="center" sx={{ py: 6 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                      <SearchOffIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
+                      <Typography variant="h6" color="text.secondary">
+                        No realizations found
+                      </Typography>
+                      <Typography variant="body2" color="text.disabled">
+                        Try adjusting your filters or click "Refresh API" to load the latest data
+                      </Typography>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ) : (
-                sortData(leads, orderBy, order).map((lead) => (
+                sortData(leads, orderBy, order).map((lead) => {
+                  // Get the expa_person_id for selection tracking
+                  const leadExpaId = lead?.expa_person_id || lead?.expaPerson_id || lead.id;
+                  
+                  return (
                   <TableRow
                     key={lead.id}
                     hover
@@ -278,7 +290,7 @@ export default function OGXRealizationsTable({
                   >
                     <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
-                        checked={selectedLeads.includes(lead.id)}
+                        checked={selectedLeads.includes(leadExpaId)}
                         onChange={(e) => {
                           e.stopPropagation();
                           handleSelectLead(lead.id);
@@ -301,9 +313,9 @@ export default function OGXRealizationsTable({
                             fontSize: { xs: '0.875rem', sm: '1rem' },
                           }}
                         >
-                          {lead.fullName?.[0]?.toUpperCase()}
+                          {(lead.full_name || lead.fullName)?.[0]?.toUpperCase()}
                         </Avatar>
-                        <Typography variant="body2">{lead.fullName}</Typography>
+                        <Typography variant="body2">{lead.full_name || lead.fullName}</Typography>
                       </Box>
                     </TableCell>
 
@@ -315,13 +327,13 @@ export default function OGXRealizationsTable({
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography variant="body2">
-                          {getCountryCode(lead.homeMC)} {lead.phone}
+                          {getCountryCode(lead.home_mc_name || lead.homeMC)} {lead.contact_number || lead.phone}
                         </Typography>
                         <IconButton
                           size="small"
                           onClick={(e) => {
                             e.stopPropagation();
-                            copyToClipboard(lead.phone, 'Phone Number', lead);
+                            copyToClipboard(lead.contact_number || lead.phone, 'Phone Number', lead);
                           }}
                           sx={{
                             color: 'primary.main',
@@ -341,7 +353,7 @@ export default function OGXRealizationsTable({
                         py: { xs: 1, sm: 2 },
                       }}
                     >
-                      <Typography variant="body2">{lead.homeLC}</Typography>
+                      <Typography variant="body2">{lead.host_mc_name || lead.hostMC}</Typography>
                     </TableCell>
 
                     <TableCell
@@ -350,25 +362,7 @@ export default function OGXRealizationsTable({
                         py: { xs: 1, sm: 2 },
                       }}
                     >
-                      <Typography variant="body2">{lead.homeMC}</Typography>
-                    </TableCell>
-
-                    <TableCell
-                      sx={{
-                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                        py: { xs: 1, sm: 2 },
-                      }}
-                    >
-                      <Typography variant="body2">{lead.hostMC}</Typography>
-                    </TableCell>
-
-                    <TableCell
-                      sx={{
-                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                        py: { xs: 1, sm: 2 },
-                      }}
-                    >
-                      <Typography variant="body2">{lead.hostLC}</Typography>
+                      <Typography variant="body2">{lead.host_lc_name || lead.hostLC}</Typography>
                     </TableCell>
 
                     <TableCell
@@ -409,7 +403,7 @@ export default function OGXRealizationsTable({
                       }}
                     >
                       <Typography variant="body2">
-                        {calculateDaysTillRealization(lead.apdDate, lead.slotStartDate)}
+                        {calculateDaysTillRealization(lead.created_at || lead.apdDate, lead.slot_start_date || lead.slotStartDate)}
                       </Typography>
                     </TableCell>
 
@@ -419,7 +413,7 @@ export default function OGXRealizationsTable({
                         py: { xs: 1, sm: 2 },
                       }}
                     >
-                      <Typography variant="body2">{formatDate(lead.apdDate)}</Typography>
+                      <Typography variant="body2">{formatDate(lead.created_at || lead.apdDate)}</Typography>
                     </TableCell>
 
                     <TableCell
@@ -428,7 +422,7 @@ export default function OGXRealizationsTable({
                         py: { xs: 1, sm: 2 },
                       }}
                     >
-                      <Typography variant="body2">{formatDate(lead.slotStartDate)}</Typography>
+                      <Typography variant="body2">{formatDate(lead.slot_start_date || lead.slotStartDate)}</Typography>
                     </TableCell>
 
                     <TableCell
@@ -437,20 +431,13 @@ export default function OGXRealizationsTable({
                         py: { xs: 1, sm: 2 },
                       }}
                     >
-                      {getAssignedMember(lead.id) ? (
-                        <Chip
-                          label={getAssignedMember(lead.id) || 'Unknown'}
-                          size="small"
-                          color="primary"
-                        />
-                      ) : (
-                        <Typography variant="body2" color="text.secondary">
-                          Not assigned
+                         <Typography variant="body2" color="text.secondary">
+                          {lead.assigned_member_name || 'Not assigned'}
                         </Typography>
-                      )}
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>

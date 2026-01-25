@@ -20,17 +20,17 @@ export default function OGXFiltersCard({
   setSelectedCountry,
   selectedHostLC,
   setSelectedHostLC,
-  selectedLanguage,
-  setSelectedLanguage,
   selectedExchangeType,
   setSelectedExchangeType,
   selectedStatus,
   setSelectedStatus,
+  selectedAssignedMember,
+  setSelectedAssignedMember,
   uniqueHostMCs,
   uniqueHostLCs,
-  uniqueHomeLCs,
   exchangeTypes,
   statuses,
+  members = [],
 }) {
   return (
     <Card sx={{ mb: { xs: 2, sm: 3 } }}>
@@ -169,55 +169,6 @@ export default function OGXFiltersCard({
 
           <Grid item xs={12} sm={6} md={2.4}>
             <FormControl fullWidth>
-              <Autocomplete
-                value={selectedLanguage}
-                onChange={(event, newValue) => {
-                  setSelectedLanguage(newValue);
-                }}
-                options={['Show All', ...uniqueHomeLCs]}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Home LC"
-                    variant="outlined"
-                    sx={{
-                      minWidth: { xs: '100%', sm: '156px' },
-                      '& .MuiOutlinedInput-root': {
-                        height: { xs: '48px', sm: '56px' },
-                        fontSize: { xs: '0.875rem', sm: '1rem' },
-                        '& fieldset': {
-                          borderColor: 'rgba(0, 0, 0, 0.23)',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: 'primary.main',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: 'primary.main',
-                        },
-                      },
-                    }}
-                  />
-                )}
-                ListboxProps={{
-                  sx: {
-                    maxHeight: '300px',
-                    minWidth: {
-                      xs: '100% !important',
-                      sm: '156px !important',
-                    },
-                    '& .MuiAutocomplete-option': {
-                      fontSize: { xs: '0.875rem', sm: '0.9rem' },
-                      padding: '8px 16px',
-                      minHeight: '40px',
-                    },
-                  },
-                }}
-              />
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={2.4}>
-            <FormControl fullWidth>
               <InputLabel>Product</InputLabel>
               <Select
                 value={selectedExchangeType}
@@ -304,6 +255,75 @@ export default function OGXFiltersCard({
                   </MenuItem>
                 ))}
               </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={2.4}>
+            <FormControl fullWidth>
+              <Autocomplete
+                value={
+                  selectedAssignedMember === 'all' || !selectedAssignedMember
+                    ? { id: 'all', name: 'All Members' }
+                    : selectedAssignedMember === 'unassigned'
+                      ? { id: 'unassigned', name: 'Unassigned' }
+                      : members.find((m) => m.expa_person_id === selectedAssignedMember) || null
+                }
+                onChange={(event, newValue) => {
+                  if (newValue?.id === 'all' || newValue?.id === 'unassigned') {
+                    setSelectedAssignedMember(newValue.id);
+                  } else {
+                    setSelectedAssignedMember(newValue?.expa_person_id || 'all');
+                  }
+                }}
+                options={[
+                  { id: 'all', name: 'All Members' },
+                  { id: 'unassigned', name: 'Unassigned' },
+                  ...members.map((m) => ({ ...m, id: m.expa_person_id })),
+                ]}
+                getOptionLabel={(option) => option?.name || option?.full_name || ''}
+                isOptionEqualToValue={(option, value) => {
+                  const optionId = option?.id || option?.expa_person_id;
+                  const valueId = value?.id || value?.expa_person_id;
+                  return optionId === valueId;
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Assigned Member"
+                    variant="outlined"
+                    sx={{
+                      minWidth: { xs: '100%', sm: '156px' },
+                      '& .MuiOutlinedInput-root': {
+                        height: { xs: '48px', sm: '56px' },
+                        fontSize: { xs: '0.875rem', sm: '1rem' },
+                        '& fieldset': {
+                          borderColor: 'rgba(0, 0, 0, 0.23)',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: 'primary.main',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: 'primary.main',
+                        },
+                      },
+                    }}
+                  />
+                )}
+                ListboxProps={{
+                  sx: {
+                    maxHeight: '300px',
+                    minWidth: {
+                      xs: '100% !important',
+                      sm: '156px !important',
+                    },
+                    '& .MuiAutocomplete-option': {
+                      fontSize: { xs: '0.875rem', sm: '0.9rem' },
+                      padding: '8px 16px',
+                      minHeight: '40px',
+                    },
+                  },
+                }}
+              />
             </FormControl>
           </Grid>
         </Grid>

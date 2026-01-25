@@ -23,7 +23,7 @@ export function AssignLeadDialog({
             {members.map((member) => (
               <MenuItem key={member.expa_person_id} value={member.expa_person_id}>
                 {member.full_name} 
-                {member?.role ? ' — ' + member.role : ''}
+                {member?.role ? ' (' + member.role + ')' : ''}
               </MenuItem>
             ))}
           </Select>

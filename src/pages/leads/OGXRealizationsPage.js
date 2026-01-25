@@ -1,122 +1,132 @@
-import React, { useEffect, useRef, useState } from 'react';
+/**
+ * OGXRealizationsPage
+ * 
+ * Main page component for managing OGX (Outgoing Exchange) realizations.
+ * Handles displaying, filtering, sorting, and bulk assignment of exchange participants.
+ * 
+ * @module pages/leads/OGXRealizationsPage
+ * 
+ * Key Features:
+ * - Display OGX realizations with filtering and sorting
+ * - Bulk assignment of leads to team members
+ * - Print functionality for selected leads
+ * - Lead profile viewing with preparation steps
+ * 
+ * Dependencies:
+ * - TeamMembersContext: For cached team members data
+ * - AuthContext: For user authentication and admin status
+ * - CRMTypeContext: For CRM type determination
+ * 
+ * @see OGXRealizationsView - The presentational component
+ * @see useTeamMembersContext - For team members data
+ */
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 
-import Cookies from 'js-cookie';
-
-import { fetchActiveMembers } from '../../api/services/membersAPI';
+// API Services
 import {
   bulkAssignLeads,
   getLeadAssignments,
   getRealizations,
 } from '../../api/services/realizationsService';
+
+// Constants
 import {
   countries,
   educationLevels,
   exchangeTypes,
   formatDate,
   getCountryCode,
-  getUniqueHomeLCs,
   getUniqueHostLCs,
   getUniqueHostMCs,
   languages,
   statuses,
 } from '../../constants/ogxRealizationsConstants';
+
+// Context
 import { useAuth } from '../../context/AuthContext';
 import { useCRMType } from '../../context/CRMTypeContext';
+import { useTeamMembersContext } from '../../context/TeamMembersContext';
+
+// Utilities
 import { LC_CODES, MC_EGYPT_CODE } from '../../lcCodes';
-import { getCrmAccessToken } from '../../utils/crmToken';
 import { fileToBase64 } from '../../utils/fileToBase64';
 
+// Components
 import OGXRealizationsView from './ogx/OGXRealizationsView';
 
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
 
+/**
+ * Get the office ID for API calls based on current user
+ * 
+ * @param {Object} currentUser - The authenticated user object
+ * @param {Array} [currentUser.current_offices] - User's current offices
+ * @param {string} [currentUser.lc] - User's LC name
+ * @returns {number|null} The office ID or null if not found
+ */
 function getOfficeId(currentUser) {
+  // First try to get from current_offices
   if (currentUser?.current_offices?.[0]?.id) {
     return currentUser.current_offices[0].id;
   }
+  
+  // Fallback: Try to find by LC name
   const lcName = currentUser?.lc || localStorage.getItem('userLC');
   if (lcName && Array.isArray(LC_CODES)) {
     const found = LC_CODES.find((lc) => lc.name === lcName);
     if (found) return found.id;
   }
+  
   return null;
 }
 
-const getTeamUnderCurrentUser = (membersTree) => {
-  const currentUserId = Cookies.get('person_id');
-  const userRole = Cookies.get('userRole');
-  if (!membersTree || !currentUserId) return [];
 
-  // If user is LCVP, return all TLs + TMs under them.
-  if (userRole && userRole.toUpperCase().includes('LCVP')) {
-    const allMembers = [];
-    for (const member of membersTree.children || []) {
-      allMembers.push({ id: member.id, role: member.role, person: member.person });
-      for (const child of member.children || []) {
-        allMembers.push({ id: child.id, role: child.role, person: child.person });
-      }
-    }
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
-    allMembers.sort((a, b) => {
-      const order = { TL: 1, TM: 2 };
-      const aRole = a.role?.toUpperCase().includes('TL') ? 'TL' : 'TM';
-      const bRole = b.role?.toUpperCase().includes('TL') ? 'TL' : 'TM';
-      return order[aRole] - order[bRole];
-    });
-
-    return allMembers;
-  }
-
-  let targetNode = null;
-  const findNode = (node) => {
-    if (String(node.user_id) === String(currentUserId)) {
-      targetNode = node;
-      return;
-    }
-    for (const child of node.children || []) {
-      findNode(child);
-      if (targetNode) return;
-    }
-  };
-
-  for (const member of membersTree.children || []) {
-    findNode(member);
-    if (targetNode) break;
-  }
-
-  if (!targetNode) return [];
-
-  const children =
-    targetNode.children?.map((child) => ({
-      id: child.id,
-      role: child.role,
-      person: child.person,
-    })) || [];
-
-  children.sort((a, b) => {
-    const order = { TL: 1, TM: 2 };
-    const aRole = a.role?.toUpperCase().includes('TL') ? 'TL' : 'TM';
-    const bRole = b.role?.toUpperCase().includes('TL') ? 'TL' : 'TM';
-    return order[aRole] - order[bRole];
-  });
-
-  return children;
-};
-
-
+/**
+ * OGXRealizationsPage Component
+ * 
+ * @param {Object} props
+ * @param {string} [props.crmTypeOverride] - Optional CRM type override
+ * @returns {JSX.Element}
+ */
 function OGXRealizationsPage({ crmTypeOverride }) {
+  // ---------------------------------------------------------------------------
+  // CONTEXT & AUTH
+  // ---------------------------------------------------------------------------
   const context = useCRMType();
   const crmType = crmTypeOverride || context.crmType;
   const { currentUser, isAdmin } = useAuth();
+  const { members, fetchMembers, hasFetched: membersFetched } = useTeamMembersContext();
 
+  // ---------------------------------------------------------------------------
+  // FILTER STATE
+  // ---------------------------------------------------------------------------
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('');
-  const [selectedLanguage, setSelectedLanguage] = useState('');
   const [selectedExchangeType, setSelectedExchangeType] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedHostLC, setSelectedHostLC] = useState('');
+  const [selectedAssignedMember, setSelectedAssignedMember] = useState('');
+  const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
+
+  // ---------------------------------------------------------------------------
+  // DATA STATE
+  // ---------------------------------------------------------------------------
   const [leads, setLeads] = useState([]);
   const [originalLeads, setOriginalLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [assignments, setAssignments] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // ---------------------------------------------------------------------------
+  // DIALOG STATE
+  // ---------------------------------------------------------------------------
   const [openDialog, setOpenDialog] = useState(false);
   const [openProfileDialog, setOpenProfileDialog] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
@@ -133,65 +143,113 @@ function OGXRealizationsPage({ crmTypeOverride }) {
     comments: [],
     followups: [],
   });
+
+  // ---------------------------------------------------------------------------
+  // PROFILE TAB STATE
+  // ---------------------------------------------------------------------------
   const [tab, setTab] = useState(0);
   const [prepState, setPrepState] = useState({});
+
+  // ---------------------------------------------------------------------------
+  // SORTING STATE
+  // ---------------------------------------------------------------------------
   const [order, setOrder] = useState('asc');
   const [orderBy, setOrderBy] = useState('id');
-  const [selectedHostLC, setSelectedHostLC] = useState('');
+
+  // ---------------------------------------------------------------------------
+  // NOTIFICATION STATE
+  // ---------------------------------------------------------------------------
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success',
   });
-  const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
+
+  // ---------------------------------------------------------------------------
+  // BULK ASSIGNMENT STATE
+  // ---------------------------------------------------------------------------
   const [selectedLeads, setSelectedLeads] = useState([]);
   const [selectedMember, setSelectedMember] = useState('');
   const [bulkAssignDialogOpen, setBulkAssignDialogOpen] = useState(false);
-  const membersFetched = useRef(false);
-  const [members, setActiveMembers] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [bulkAssignLoading, setBulkAssignLoading] = useState(false);
 
-  // keep previous variables (behavior unchanged)
+  // Suppress unused variable warnings
   void crmType;
   void error;
 
+  // ===========================================================================
+  // DATA FETCHING
+  // ===========================================================================
+
+  /**
+   * Fetch OGX realizations from the API
+   * Uses MC_EGYPT_CODE for admins, otherwise user's LC code
+   */
   const fetchLeads = async () => {
     try {
       setLoading(true);
-      const data = await getRealizations();
-      if (data && data.ogx) {
-        setLeads(data.ogx);
-        setOriginalLeads(data.ogx);
+      setError(null);
+      const lcCode = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
+      
+      if (!lcCode) {
         setSnackbar({
           open: true,
-          message: `Successfully loaded ${data.ogx.length} Expected Realizations from AIESEC API`,
-          severity: 'success',
+          message: 'Unable to determine your office. Please try logging in again.',
+          severity: 'warning',
         });
-      } else {
         setLeads([]);
         setOriginalLeads([]);
+        return;
       }
-      setError(null);
+      
+      const data = await getRealizations(lcCode);
+      console.log('Fetched OGX realizations:', data);
+      setLeads(data || []);
+      setOriginalLeads(data || []);
+      
+      if (!data || data.length === 0) {
+        setSnackbar({
+          open: true,
+          message: 'No realizations found. They will appear here once available.',
+          severity: 'info',
+        });
+      }
     } catch (err) {
       console.error('Error fetching OGX realizations:', err);
-      setError('Failed to fetch leads. Please try again later.');
+      setError('Unable to load realizations');
       setLeads([]);
       setOriginalLeads([]);
+      
+      // User-friendly error messages based on error type
+      let userMessage = 'Unable to load realizations. Please try again.';
+      if (err?.response?.status === 401 || err?.response?.status === 403) {
+        userMessage = 'Your session has expired. Please log in again.';
+      } else if (err?.response?.status === 404) {
+        userMessage = 'No realizations found for your office.';
+      } else if (err?.message?.includes('Network') || err?.code === 'ERR_NETWORK') {
+        userMessage = 'Unable to connect to the server. Please check your internet connection.';
+      }
+      
       setSnackbar({
         open: true,
-        message: 'Failed to fetch OGX realizations',
-        severity: 'error',
+        message: userMessage,
+        severity: 'warning',
       });
     } finally {
       setLoading(false);
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // EFFECTS
+  // ---------------------------------------------------------------------------
+
+  // Fetch leads on mount
   useEffect(() => {
     fetchLeads();
   }, []);
 
+  // Load preparation state from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem('prepState');
@@ -201,128 +259,142 @@ function OGXRealizationsPage({ crmTypeOverride }) {
     }
   }, []);
 
+  // Save preparation state to localStorage
   useEffect(() => {
     localStorage.setItem('prepState', JSON.stringify(prepState));
   }, [prepState]);
 
+  // Fetch team members if not already fetched
   useEffect(() => {
-    const lcCode = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
-    const token = getCrmAccessToken();
-
-    if (!isAdmin && !lcCode) {
-      setActiveMembers([]);
-      return;
+    if (!membersFetched && currentUser) {
+      fetchMembers(currentUser, isAdmin);
     }
+  }, [currentUser, isAdmin, membersFetched, fetchMembers]);
 
-    const currentMembers = async () => {
-      try {
-        const membersTree = await fetchActiveMembers(lcCode, token);
-        const filtered = (membersTree || []).filter((member) => {
-          const position = member.role;
-          const parentTitle = String(member.function || '').toUpperCase();
-          const isLCVP = position === 'LCVP';
-          const isUnderOGX =
-            parentTitle.includes('OGV') ||
-            parentTitle.includes('OGTA') ||
-            parentTitle.includes('OGTE') ||
-            parentTitle.includes('OGX');
-          return isLCVP && isUnderOGX;
-        });
+  // ===========================================================================
+  // PROFILE HANDLERS
+  // ===========================================================================
 
-        const teamMembers = filtered[0] ? getTeamUnderCurrentUser(filtered[0]) : [];
-        setActiveMembers(teamMembers);
-      } catch (e) {
-        console.error('Error fetching active members:', e);
-        setSnackbar({
-          open: true,
-          message: 'Failed to fetch active members',
-          severity: 'error',
-        });
-      }
-    };
-
-    if (!membersFetched.current && lcCode) {
-      membersFetched.current = true;
-      currentMembers();
-    }
-  }, [currentUser, isAdmin]);
-
+  /**
+   * Open the lead profile dialog
+   * @param {Object} lead - The lead to view
+   */
   const handleOpenProfile = (lead) => {
     setSelectedLead(lead);
     setOpenProfileDialog(true);
     setTab(0);
   };
 
-  const getAssignedMember = (leadId) => {
-    if (assignments.length === 0) return null;
-    for (const assignment of assignments) {
-      if (parseInt(assignment.id, 10) === parseInt(leadId, 10)) {
-        const member = members.find((m) => m.id === assignment.assigned_to);
-        return member?.person || null;
-      }
-    }
-    return null;
-  };
+  // ===========================================================================
+  // BULK ASSIGNMENT HANDLERS
+  // ===========================================================================
 
+  /**
+   * Handle bulk assignment confirmation
+   * Assigns selected leads to the selected member
+   */
   const handleBulkAssignConfirm = async () => {
-    if (!selectedMember || selectedLeads.length === 0) return;
+    if (!selectedMember || selectedLeads.length === 0 || bulkAssignLoading) return;
+    
+    setBulkAssignLoading(true);
     try {
+      // Find selected member details
+      const selectedMemberData = members.find(m => m.expa_person_id === selectedMember);
+      const memberName = selectedMemberData?.full_name || selectedMemberData?.person?.name || 'Unknown Member';
+      
       await bulkAssignLeads({
-        leadIds: selectedLeads,
-        assigned_to: selectedMember,
+        expa_person_ids: selectedLeads,
+        member_id: selectedMember,
       });
 
-      setRefreshKey((prev) => prev + 1);
-      const updatedAssignments = await getLeadAssignments();
-      setAssignments(updatedAssignments);
+      // Immediately update the leads in the UI to show assignments
+      const updatedLeads = leads.map(lead => {
+        const leadExpaId = lead?.expa_person_id || lead?.expaPerson_id || lead.id;
+        if (selectedLeads.includes(leadExpaId)) {
+          return {
+            ...lead,
+            assigned_member_id: selectedMember,
+            assigned_member_name: memberName
+          };
+        }
+        return lead;
+      });
+      
+      setLeads(updatedLeads);
+      setOriginalLeads(updatedLeads);
 
+      // Update assignments data
+      setRefreshKey((prev) => prev + 1);
+      
+      // Show success message
+      const assignCount = selectedLeads.length;
       setSnackbar({
         open: true,
-        message: `Successfully assigned ${selectedLeads.length} realizations to member`,
+        message: `Successfully assigned ${assignCount} realization${assignCount > 1 ? 's' : ''} to ${memberName}`,
         severity: 'success',
       });
-
+      
+      // Clear selections and close dialog
       setSelectedLeads([]);
       handleBulkAssignClose();
+      
     } catch (e) {
       console.error('Error bulk assigning leads:', e);
+      
+      // User-friendly error messages
+      let userMessage = 'Unable to complete the assignment. Please try again.';
+      if (e?.response?.status === 401 || e?.response?.status === 403) {
+        userMessage = 'You don\'t have permission to assign realizations.';
+      } else if (e?.message?.includes('Network') || e?.code === 'ERR_NETWORK') {
+        userMessage = 'Connection lost. Please check your internet and try again.';
+      }
+      
       setSnackbar({
         open: true,
-        message: 'Failed to assign realizations',
-        severity: 'error',
+        message: userMessage,
+        severity: 'warning',
       });
+    } finally {
+      setBulkAssignLoading(false);
     }
   };
 
-  useEffect(() => {
-    const fetchAssignments = async () => {
-      try {
-        const assignmentsData = await getLeadAssignments();
-        setAssignments(assignmentsData);
-      } catch (e) {
-        console.error('Error fetching lead assignments:', e);
-      }
-    };
-    fetchAssignments();
-  }, [refreshKey]);
 
+  // ===========================================================================
+  // COMPUTED VALUES
+  // ===========================================================================
+
+  /** Unique host MCs from the original leads */
   const uniqueHostMCs = getUniqueHostMCs(originalLeads || []);
-  const uniqueHostLCs = getUniqueHostLCs(originalLeads || []);
-  const uniqueHomeLCs = getUniqueHomeLCs(originalLeads || []);
-
- 
   
+  /** Unique host LCs from the original leads */
+  const uniqueHostLCs = getUniqueHostLCs(originalLeads || []);
+
+  // ===========================================================================
+  // FILTER HANDLERS
+  // ===========================================================================
+ 
+  // Re-run search when filters change
   useEffect(() => {
     handleSearch();
-  }, [searchTerm, selectedCountry, selectedLanguage, selectedExchangeType, selectedStatus]);
+  }, [searchTerm, selectedCountry, selectedExchangeType, selectedStatus, selectedHostLC, selectedAssignedMember]);
 
+  /**
+   * Handle date filter changes
+   * @param {Object} dateFilter - The date filter object
+   */
   const handleDateFilterChange = (dateFilter) => {
     setDateRange(dateFilter);
     handleSearch(dateFilter);
   };
 
+  /**
+   * Filter leads based on current filter state
+   * @param {Object} [searchDateFilter=dateRange] - Date filter to apply
+   */
   const handleSearch = (searchDateFilter = dateRange) => {
     const filteredLeads = originalLeads.filter((lead) => {
+      // Date range filter
       if (
         searchDateFilter?.field &&
         searchDateFilter?.startDate &&
@@ -336,45 +408,71 @@ function OGXRealizationsPage({ crmTypeOverride }) {
 
       if (!lead) return false;
 
-      const matchesSearch =
+      // Get field values (handle both camelCase and snake_case)
+      const leadFullName = (lead.fullName || lead.full_name || '').toLowerCase();
+      const leadPhone = (lead.phone || lead.contact_number || '').toLowerCase();
+      const leadHostMC = lead.hostMC || lead.host_mc_name || '';
+      const leadHostLC = lead.hostLC || lead.host_lc_name || '';
+      const leadHomeLC = lead.homeLC || lead.home_lc_name || '';
+      const leadHomeMC = lead.homeMC || lead.home_mc_name || '';
+      const leadProgramme = lead.programme || '';
+      const leadStatus = (lead.status || '').toLowerCase();
+
+      // Search term filter (ID, name, phone)
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = !searchTerm ||
         (lead.id?.toString() || '').includes(searchTerm) ||
         (lead.opportunityId?.toString() || '').includes(searchTerm) ||
         (lead.oppId?.toString() || '').includes(searchTerm) ||
         (lead.opportunity_id?.toString() || '').includes(searchTerm) ||
-        (lead.fullName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (lead.phone?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        `${getCountryCode(lead.homeMC || '')} ${lead.phone || ''}`
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
+        (lead.expa_person_id?.toString() || '').includes(searchTerm) ||
+        leadFullName.includes(searchLower) ||
+        leadPhone.includes(searchLower) ||
+        `${getCountryCode(leadHomeMC)} ${leadPhone}`.toLowerCase().includes(searchLower);
 
+      // Host MC filter
       const matchesMC =
         selectedCountry === 'Show All' ||
         !selectedCountry ||
-        lead.hostMC === selectedCountry;
+        leadHostMC === selectedCountry;
 
-      const matchesLC =
-        selectedLanguage === 'Show All' ||
-        !selectedLanguage ||
-        lead.homeLC === selectedLanguage;
-
+      // Host LC filter
       const matchesHostLC =
         selectedHostLC === 'Show All' ||
         !selectedHostLC ||
-        lead.hostLC === selectedHostLC;
+        leadHostLC === selectedHostLC;
 
-      const matchesProduct = !selectedExchangeType || lead.programme === selectedExchangeType;
+      // Product/Programme filter
+      const matchesProduct = !selectedExchangeType || leadProgramme === selectedExchangeType;
 
+      // Status filter
       const matchesStatus =
         selectedStatus === 'Show All' ||
         !selectedStatus ||
-        (lead.status && lead.status.toLowerCase() === selectedStatus.toLowerCase());
+        leadStatus === selectedStatus.toLowerCase();
 
-      return matchesSearch && matchesMC && matchesLC && matchesHostLC && matchesProduct && matchesStatus;
+      // Assigned Member filter
+      const leadAssignedMemberId = lead.assigned_member_id || '';
+      const matchesAssignedMember =
+        selectedAssignedMember === 'all' ||
+        !selectedAssignedMember ||
+        (selectedAssignedMember === 'unassigned'
+          ? !leadAssignedMemberId
+          : leadAssignedMemberId === selectedAssignedMember);
+
+      return matchesSearch && matchesMC && matchesHostLC && matchesProduct && matchesStatus && matchesAssignedMember;
     });
 
     setLeads(filteredLeads);
   };
 
+  // ===========================================================================
+  // DIALOG HANDLERS
+  // ===========================================================================
+
+  /**
+   * Close the add/edit lead dialog and reset form state
+   */
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setSelectedLead(null);
@@ -393,6 +491,11 @@ function OGXRealizationsPage({ crmTypeOverride }) {
     });
   };
 
+  /**
+   * Handle input change for the lead form
+   * @param {string} field - The field name to update
+   * @returns {Function} Event handler function
+   */
   const handleInputChange = (field) => (event) => {
     setNewLead((prev) => ({
       ...prev,
@@ -400,17 +503,22 @@ function OGXRealizationsPage({ crmTypeOverride }) {
     }));
   };
 
+  /**
+   * Save the current lead (create or update)
+   */
   const handleSaveLead = () => {
     const now = new Date().toISOString();
     let updatedLeads;
 
     if (selectedLead) {
+      // Update existing lead
       updatedLeads = leads.map((lead) =>
         lead.id === selectedLead.id
           ? { ...newLead, id: selectedLead.id, lastUpdated: now }
           : lead
       );
     } else {
+      // Create new lead
       const leadToAdd = {
         ...newLead,
         id: Date.now(),
@@ -425,22 +533,49 @@ function OGXRealizationsPage({ crmTypeOverride }) {
     handleSearch();
   };
 
+  /**
+   * Close the lead profile dialog
+   */
   const handleCloseProfile = () => {
     setSelectedLead(null);
     setOpenProfileDialog(false);
   };
 
+  // ===========================================================================
+  // UTILITY FUNCTIONS
+  // ===========================================================================
+
+  /**
+   * Copy a value to clipboard
+   * @param {string} value - The value to copy
+   * @param {string} title - The field title (for logging)
+   * @param {Object} lead - The lead object (unused)
+   */
   const copyToClipboard = (value, title, lead) => {
     void lead;
     console.log(`Copying ${title} to clipboard: ${value}`);
   };
 
+  // ===========================================================================
+  // SORTING HANDLERS
+  // ===========================================================================
+
+  /**
+   * Handle sort request for a column
+   * @param {string} property - The column property to sort by
+   */
   const handleRequestSort = (property) => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
     setOrderBy(property);
   };
 
+  /**
+   * Calculate days until realization from slot start date
+   * @param {string} apdDate - APD date (unused)
+   * @param {string} slotStartDate - Slot start date
+   * @returns {number|string} Days until realization or '-' if invalid
+   */
   const calculateDaysTillRealization = (apdDate, slotStartDate) => {
     void apdDate;
     if (!slotStartDate) return '-';
@@ -451,64 +586,132 @@ function OGXRealizationsPage({ crmTypeOverride }) {
     return diffDays > 0 ? diffDays : 0;
   };
 
+  /**
+   * Sort data by a given key and order
+   * Handles null values and different data types safely
+   * 
+   * @param {Array} data - The data array to sort
+   * @param {string} sortKey - The key to sort by
+   * @param {string} sortOrder - 'asc' or 'desc'
+   * @returns {Array} Sorted data array
+   */
   const sortData = (data, sortKey, sortOrder) => {
     return [...data].sort((a, b) => {
       const orderModifier = sortOrder === 'asc' ? 1 : -1;
+      
+      // Helper function to safely compare values
+      const safeCompare = (aVal, bVal) => {
+        // Handle null/undefined values
+        if (aVal == null && bVal == null) return 0;
+        if (aVal == null) return -1;
+        if (bVal == null) return 1;
+        
+        // Convert to strings for comparison
+        const aStr = String(aVal);
+        const bStr = String(bVal);
+        return aStr.localeCompare(bStr);
+      };
+      
+      // Helper function for numeric comparison
+      const numericCompare = (aVal, bVal) => {
+        const aNum = Number(aVal);
+        const bNum = Number(bVal);
+        if (isNaN(aNum) && isNaN(bNum)) return 0;
+        if (isNaN(aNum)) return -1;
+        if (isNaN(bNum)) return 1;
+        return aNum - bNum;
+      };
+      
       if (sortKey === 'id') {
-        return a.id.localeCompare(b.id) * orderModifier;
+        return numericCompare(a.id, b.id) * orderModifier;
       } else if (sortKey === 'fullName') {
-        return a.fullName.localeCompare(b.fullName) * orderModifier;
+        return safeCompare(a.fullName || a.full_name, b.fullName || b.full_name) * orderModifier;
       } else if (sortKey === 'phone') {
-        return a.phone.localeCompare(b.phone) * orderModifier;
+        return safeCompare(a.phone || a.contact_number, b.phone || b.contact_number) * orderModifier;
       } else if (sortKey === 'homeLC') {
-        return a.homeLC.localeCompare(b.homeLC) * orderModifier;
+        return safeCompare(a.homeLC || a.home_lc_name, b.homeLC || b.home_lc_name) * orderModifier;
       } else if (sortKey === 'homeMC') {
-        return a.homeMC.localeCompare(b.homeMC) * orderModifier;
+        return safeCompare(a.homeMC || a.home_mc_name, b.homeMC || b.home_mc_name) * orderModifier;
       } else if (sortKey === 'programme') {
-        return a.programme.localeCompare(b.programme) * orderModifier;
+        return safeCompare(a.programme, b.programme) * orderModifier;
       } else if (sortKey === 'status') {
-        return a.status.localeCompare(b.status) * orderModifier;
+        return safeCompare(a.status, b.status) * orderModifier;
       } else if (sortKey === 'daysTillRealization') {
+        const aStartDate = a.slotStartDate || a.slot_start_date;
+        const bStartDate = b.slotStartDate || b.slot_start_date;
+        const aAPDDate = a.apdDate || a.created_at;
+        const bAPDDate = b.apdDate || b.created_at;
         return (
-          calculateDaysTillRealization(a.apdDate, a.slotStartDate) -
-          calculateDaysTillRealization(b.apdDate, b.slotStartDate) * orderModifier
-        );
+          calculateDaysTillRealization(aAPDDate, aStartDate) -
+          calculateDaysTillRealization(bAPDDate, bStartDate)
+        ) * orderModifier;
       } else if (sortKey === 'apdDate') {
-        return a.apdDate.localeCompare(b.apdDate) * orderModifier;
+        return safeCompare(a.apdDate || a.created_at, b.apdDate || b.created_at) * orderModifier;
       } else if (sortKey === 'slotStartDate') {
-        return a.slotStartDate.localeCompare(b.slotStartDate) * orderModifier;
+        return safeCompare(a.slotStartDate || a.slot_start_date, b.slotStartDate || b.slot_start_date) * orderModifier;
       }
       return 0;
     });
   };
 
+  // ===========================================================================
+  // SELECTION HANDLERS
+  // ===========================================================================
+
+  /**
+   * Handle selection of a single lead
+   * Uses expa_person_id for selection tracking
+   * 
+   * @param {string|number} leadId - The lead ID
+   */
   const handleSelectLead = (leadId) => {
+    const lead = leads.find(l => l.id === leadId);
+    const expaPersonId = lead?.expa_person_id || lead?.expaPerson_id || leadId;
+    
     setSelectedLeads((prev) => {
-      if (prev.includes(leadId)) {
-        return prev.filter((id) => id !== leadId);
+      if (prev.includes(expaPersonId)) {
+        return prev.filter((id) => id !== expaPersonId);
       }
-      return [...prev, leadId];
+      return [...prev, expaPersonId];
     });
   };
 
+  /**
+   * Handle select all leads toggle
+   * @param {Object} event - The checkbox change event
+   */
   const handleSelectAll = (event) => {
     if (event.target.checked) {
-      setSelectedLeads(leads.map((lead) => lead.id));
+      setSelectedLeads(leads.map((lead) => lead.expa_person_id || lead.expaPerson_id || lead.id));
     } else {
       setSelectedLeads([]);
     }
   };
 
+  /**
+   * Open the bulk assign dialog
+   */
   const handleAssignClick = () => {
     setBulkAssignDialogOpen(true);
   };
 
+  /**
+   * Close the bulk assign dialog and reset state
+   */
   const handleBulkAssignClose = () => {
     setBulkAssignDialogOpen(false);
     setSelectedMember('');
+    setBulkAssignLoading(false);
   };
 
-  
+  // ===========================================================================
+  // PRINT HANDLER
+  // ===========================================================================
+
+  /**
+   * Print selected leads in a new window
+   * Creates a formatted table with styling for printing
+   */
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     const tableContainer = document.querySelector('.MuiTableContainer-root');
@@ -581,7 +784,8 @@ function OGXRealizationsPage({ crmTypeOverride }) {
       rows.forEach((row) => row.remove());
 
       leads.forEach((lead) => {
-        if (selectedLeads.includes(lead.id)) {
+        const leadExpaId = lead?.expa_person_id || lead?.expaPerson_id || lead.id;
+        if (selectedLeads.includes(leadExpaId)) {
           const row = document.createElement('tr');
           row.innerHTML = `
             <td>${lead.fullName || '-'}</td>
@@ -625,7 +829,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
             <td>${calculateDaysTillRealization(lead.apdDate, lead.slotStartDate)}</td>
             <td>${formatDate(lead.apdDate)}</td>
             <td>${formatDate(lead.slotStartDate)}</td>
-            <td>${getAssignedMember(lead.id) || '-'}</td>
+            <td>${lead.assigned_member_name || '-'}</td>
           `;
           tbody.appendChild(row);
         }
@@ -641,6 +845,10 @@ function OGXRealizationsPage({ crmTypeOverride }) {
     }, 250);
   };
 
+  // ===========================================================================
+  // RENDER
+  // ===========================================================================
+
   return (
     <OGXRealizationsView
       fetchLeads={fetchLeads}
@@ -655,15 +863,14 @@ function OGXRealizationsPage({ crmTypeOverride }) {
       setSelectedCountry={setSelectedCountry}
       selectedHostLC={selectedHostLC}
       setSelectedHostLC={setSelectedHostLC}
-      selectedLanguage={selectedLanguage}
-      setSelectedLanguage={setSelectedLanguage}
       selectedExchangeType={selectedExchangeType}
       setSelectedExchangeType={setSelectedExchangeType}
       selectedStatus={selectedStatus}
       setSelectedStatus={setSelectedStatus}
+      selectedAssignedMember={selectedAssignedMember}
+      setSelectedAssignedMember={setSelectedAssignedMember}
       uniqueHostMCs={uniqueHostMCs}
       uniqueHostLCs={uniqueHostLCs}
-      uniqueHomeLCs={uniqueHomeLCs}
       exchangeTypes={exchangeTypes}
       statuses={statuses}
       leads={leads}
@@ -678,7 +885,6 @@ function OGXRealizationsPage({ crmTypeOverride }) {
       copyToClipboard={copyToClipboard}
       calculateDaysTillRealization={calculateDaysTillRealization}
       formatDate={formatDate}
-      getAssignedMember={getAssignedMember}
       openDialog={openDialog}
       handleCloseDialog={handleCloseDialog}
       selectedLead={selectedLead}
@@ -703,6 +909,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
       setSelectedMember={setSelectedMember}
       members={members}
       handleBulkAssignConfirm={handleBulkAssignConfirm}
+      bulkAssignLoading={bulkAssignLoading}
     />
   );
 }

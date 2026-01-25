@@ -132,6 +132,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Clear team members cache
+    localStorage.removeItem('team_members');
+    localStorage.removeItem('team_members_timestamp');
+    
+    // Clear user data
+    localStorage.removeItem('user');
+    localStorage.removeItem('isAdmin');
+    localStorage.removeItem('userLC');
+    
     setCurrentUser(null);
     setIsAdmin(false);
   };
