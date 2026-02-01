@@ -341,7 +341,7 @@ async function getStandards(epId) {
   if (!epId) throw new Error('EP ID is required');
 
   try {
-    const response = await axios.get(`${API_BASE_URL}/realizations/${epId}`);
+    const response = await axios.get(`${API_BASE_URL}/realizations/standards/${epId}`);
     console.log('EP standards fetched successfully:', response.data.data);
     return response?.data?.data || response?.data || response?.items || {}; // return the object with all columns
   } catch (error) {
@@ -352,7 +352,86 @@ async function getStandards(epId) {
 
 async function updateStandards(epId, standards) {
   try {
-    const response = await axios.put(`${API_BASE_URL}/realizations/${epId}/standard`, standards);
+    const allowedKeys = new Set([
+      'health_insurance',
+      'expectation_settings',
+      'visa_and_work_permit',
+      'communication_10_days_before',
+      'arrival_pickup',
+      'accommodation',
+      'ips',
+      'ops',
+      'pgs',
+      'alignment_space',
+      'first_day_of_work',
+      'job_description',
+      'working_hours',
+      'duration',
+      'opportunity_benefits',
+      'value_driven_leadership_education',
+      'communication_first_10_days',
+      'communication_second_10_days',
+      'communication_third_10_days',
+      'communication_fourth_10_days',
+      'departure_support',
+      'debrief',
+    ]);
+
+    const legacyToApiKey = {
+      // Preparation steps tab legacy keys
+      healthinsurancecompleted: 'health_insurance',
+      expectationsettingscompleted: 'expectation_settings',
+      communicationcompleted: 'communication_10_days_before',
+      accommodationcompleted: 'accommodation',
+      psgcompleted: 'pgs',
+      opscompleted: 'ops',
+      ipscompleted: 'ips',
+
+      // Experience tab legacy keys
+      alignmentspacesdone: 'alignment_space',
+      firstdayofworkdone: 'first_day_of_work',
+      jobdescriptiondone: 'job_description',
+      workinghoursmatchopp: 'working_hours',
+      minimumdurationreached: 'duration',
+      benefitsdelivered: 'opportunity_benefits',
+      valuedriveneducationdelivered: 'value_driven_leadership_education',
+      firsttendayscommunication: 'communication_first_10_days',
+      secondtendayscommunication: 'communication_second_10_days',
+      thirdtendayscommunication: 'communication_third_10_days',
+      fourthtendayscommunication: 'communication_fourth_10_days',
+      departuredone: 'departure_support',
+
+      // Post experience legacy typo
+      debreif: 'debrief',
+    };
+
+    const normalizePatch = (input) => {
+      if (!input || typeof input !== 'object') return {};
+
+      // Support legacy wrapper payloads: { standardName, value }
+      if ('standardName' in input && 'value' in input) {
+        const mappedKey = legacyToApiKey[input.standardName] || input.standardName;
+        return allowedKeys.has(mappedKey) ? { [mappedKey]: input.value } : {};
+      }
+
+      const patch = {};
+      for (const [key, value] of Object.entries(input)) {
+        // Ignore wrapper-like keys if they appear alongside others
+        if (key === 'standardName' || key === 'value' || key === 'standardKey') continue;
+
+        const mappedKey = legacyToApiKey[key] || key;
+        if (!allowedKeys.has(mappedKey)) continue;
+        patch[mappedKey] = value;
+      }
+      return patch;
+    };
+
+    const patch = normalizePatch(standards);
+    if (!Object.keys(patch).length) {
+      throw new Error('No valid OGX standards fields to update');
+    }
+
+    const response = await axios.patch(`${API_BASE_URL}/realizations/standards/${epId}`, patch);
     return response.data;
   } catch (error) {
     console.error('Error in updateStandards:', error);

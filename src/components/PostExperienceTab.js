@@ -12,46 +12,23 @@ import {
   Checkbox,
 } from '@mui/material';
 import { Chat as ChatIcon } from '@mui/icons-material';
-import { getStandards, updateStandards } from '../api/services/realizationsService';
-import { useEffect } from 'react';
-import { useState } from 'react';
+import { updateStandards } from '../api/services/realizationsService';
 
-const PostExperienceTab = ({ selectedLead}) => {
+const PostExperienceTab = ({ selectedLead, prepState, setPrepState }) => {
   if (!selectedLead) return null;
-  const [prepState, setPrepState] = useState({});
+  const leadId = selectedLead?.expa_person_id || selectedLead?.id;
 
-  useEffect(() => {
-    const fetchPrepState = async () => {
-      if (!selectedLead?.id) return;
-  
-      try {
-        const response = await getStandards(selectedLead.id);
-        const data = response; // object containing all standards
-        if (data) {
-          setPrepState({ [selectedLead.id]: data });
-        } else {
-          // EP has no record yet, initialize empty
-          setPrepState({ [selectedLead.id]: {} });
-        }
-      } catch (error) {
-        console.error('Failed to fetch prep state:', error);
-      }
-    };
-    
-    fetchPrepState();
-  }, [selectedLead?.id]);
-  console.log('selectedLead', prepState);
   const handleToggle = async (standardKey, checked) => {
     setPrepState(prev => ({
       ...prev,
-      [selectedLead.id]: {
-        ...prev[selectedLead.id],
+      [leadId]: {
+        ...prev[leadId],
         [standardKey]: checked
       }
     }));
   
     try {
-      const response = await updateStandards(selectedLead.id, {
+      const response = await updateStandards(leadId, {
         standardName: standardKey,
         value: checked
       });
@@ -59,9 +36,9 @@ const PostExperienceTab = ({ selectedLead}) => {
       // Update state with backend response (optional, ensures sync)
       setPrepState(prev => ({
         ...prev,
-        [selectedLead.id]: {
-          ...prev[selectedLead.id],
-          ...response.data // full row from backend
+        [leadId]: {
+          ...prev[leadId],
+          ...(response?.data ?? response) // full row from backend
         }
       }));
     } catch (error) {
@@ -69,8 +46,8 @@ const PostExperienceTab = ({ selectedLead}) => {
       // Optionally revert local state if API fails
       setPrepState(prev => ({
         ...prev,
-        [selectedLead.id]: {
-          ...prev[selectedLead.id],
+        [leadId]: {
+          ...prev[leadId],
           [standardKey]: !checked
         }
       }));
@@ -114,8 +91,8 @@ const PostExperienceTab = ({ selectedLead}) => {
                   }}
                 >
                   <Checkbox
-                    checked={prepState[selectedLead.id]?.debreif === true}
-                    onChange={e=>handleToggle('debreif', e.target.checked)}
+                    checked={prepState[leadId]?.debrief === true}
+                    onChange={e=>handleToggle('debrief', e.target.checked)}
                     
                     color="primary"
                     sx={{ mr: 1 }}

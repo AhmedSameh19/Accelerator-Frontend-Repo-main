@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -24,34 +24,39 @@ import {
   InsertDriveFile as InsertDriveFileIcon,
   AttachMoney as AttachMoneyIcon,
 } from '@mui/icons-material';
-import { getStandards, updateStandards } from '../api/services/realizationsService';
+import { updateStandards } from '../api/services/realizationsService';
 
-const PreparationStepsTab = ({ selectedLead, fileToBase64 }) => {
-  const [prepState, setPrepState] = useState({});
-  const leadId = selectedLead?.id;
+const PreparationStepsTab = ({ selectedLead, fileToBase64, prepState, setPrepState }) => {
+  const leadId = selectedLead?.expa_person_id || selectedLead?.id;
   const leadPrep = useMemo(() => (leadId ? prepState[leadId] || {} : {}), [leadId, prepState]);
-
-  useEffect(() => {
-    const fetchPrepState = async () => {
-      if (!leadId) return;
-  
-      try {
-        const response = await getStandards(leadId);
-        const data = response; // object containing all standards
-        setPrepState((prev) => ({
-          ...prev,
-          [leadId]: data || {},
-        }));
-      } catch (error) {
-        console.error('Failed to fetch prep state:', error);
-      }
-    };
-    
-    fetchPrepState();
-  }, [leadId]);
 
   const handleToggle = async (standardKey, checked) => {
     if (!leadId) return;
+
+    const persistKeys = new Set([
+      'health_insurance',
+      'expectation_settings',
+      'visa_and_work_permit',
+      'communication_10_days_before',
+      'arrival_pickup',
+      'accommodation',
+      'ips',
+      'ops',
+      'pgs',
+      'alignment_space',
+      'first_day_of_work',
+      'job_description',
+      'working_hours',
+      'duration',
+      'opportunity_benefits',
+      'value_driven_leadership_education',
+      'communication_first_10_days',
+      'communication_second_10_days',
+      'communication_third_10_days',
+      'communication_fourth_10_days',
+      'departure_support',
+      'debrief',
+    ]);
 
     setPrepState(prev => ({
       ...prev,
@@ -60,6 +65,8 @@ const PreparationStepsTab = ({ selectedLead, fileToBase64 }) => {
         [standardKey]: checked
       }
     }));
+
+    if (!persistKeys.has(standardKey)) return;
   
     try {
       const response = await updateStandards(leadId, {
@@ -105,8 +112,8 @@ const PreparationStepsTab = ({ selectedLead, fileToBase64 }) => {
                   <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
                   <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                     <Checkbox
-                      checked={leadPrep.psgcompleted === true}
-                      onChange={e => handleToggle('psgcompleted', e.target.checked)}
+                      checked={leadPrep.pgs === true}
+                      onChange={e => handleToggle('pgs', e.target.checked)}
                       color="primary"
                       sx={{ mr: 1 }}
                     />
@@ -118,7 +125,7 @@ const PreparationStepsTab = ({ selectedLead, fileToBase64 }) => {
                   label="Notes"
                   size="small"
                   fullWidth
-                  value={prepState[selectedLead.id]?.iceNotes || ''}
+                  value={prepState[leadId]?.iceNotes || ''}
                   onChange={e => {
                     if (!leadId) return;
                     setPrepState(prev => ({
@@ -147,8 +154,8 @@ const PreparationStepsTab = ({ selectedLead, fileToBase64 }) => {
                   <ListItemIcon><InsertDriveFileIcon color="action" /></ListItemIcon>
                   <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                     <Checkbox
-                      checked={leadPrep.opscompleted === true}
-                      onChange={e => handleToggle('opscompleted', e.target.checked)}
+                      checked={leadPrep.ops === true}
+                      onChange={e => handleToggle('ops', e.target.checked)}
                       color="primary"
                       sx={{ mr: 1 }}
                     />
@@ -199,8 +206,8 @@ const PreparationStepsTab = ({ selectedLead, fileToBase64 }) => {
                   <ListItemIcon><LocalHospitalIcon color="action" /></ListItemIcon>
                   <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                     <Checkbox
-                      checked={leadPrep.healthinsurancecompleted === true}
-                      onChange={e => handleToggle('healthinsurancecompleted', e.target.checked)}
+                      checked={leadPrep.health_insurance === true}
+                      onChange={e => handleToggle('health_insurance', e.target.checked)}
                       color="primary"
                       sx={{ mr: 1 }}
                     />
@@ -221,8 +228,8 @@ const PreparationStepsTab = ({ selectedLead, fileToBase64 }) => {
                   <ListItemIcon><SettingsIcon color="action" /></ListItemIcon>
                   <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                     <Checkbox
-                      checked={leadPrep.expectationsettingscompleted === true}
-                      onChange={e => handleToggle('expectationsettingscompleted', e.target.checked)}
+                      checked={leadPrep.expectation_settings === true}
+                      onChange={e => handleToggle('expectation_settings', e.target.checked)}
                       color="primary"
                       sx={{ mr: 1 }}
                     />
@@ -252,8 +259,8 @@ const PreparationStepsTab = ({ selectedLead, fileToBase64 }) => {
                   <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
                   <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                     <Checkbox
-                      checked={leadPrep.communicationcompleted === true}
-                      onChange={e => handleToggle('communicationcompleted', e.target.checked)}
+                      checked={leadPrep.communication_10_days_before === true}
+                      onChange={e => handleToggle('communication_10_days_before', e.target.checked)}
                       color="primary"
                       sx={{ mr: 1 }}
                     />
@@ -274,8 +281,8 @@ const PreparationStepsTab = ({ selectedLead, fileToBase64 }) => {
                   <ListItemIcon><HomeIcon color="action" /></ListItemIcon>
                   <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                     <Checkbox
-                      checked={leadPrep.accommodationcompleted === true}
-                      onChange={e => handleToggle('accommodationcompleted', e.target.checked)}
+                      checked={leadPrep.accommodation === true}
+                      onChange={e => handleToggle('accommodation', e.target.checked)}
                       color="primary"
                       sx={{ mr: 1 }}
                     />
@@ -313,8 +320,8 @@ const PreparationStepsTab = ({ selectedLead, fileToBase64 }) => {
                   <ListItemIcon><SchoolIcon color="action" /></ListItemIcon>
                   <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                     <Checkbox
-                      checked={leadPrep.ipscompleted === true}
-                      onChange={e => handleToggle('ipscompleted', e.target.checked)}
+                      checked={leadPrep.ips === true}
+                      onChange={e => handleToggle('ips', e.target.checked)}
                       color="primary"
                       sx={{ mr: 1 }}
                     />

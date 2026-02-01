@@ -15,7 +15,7 @@ const CallsTab = memo(({
   onContactStatusChange, onInterestedChange, onProcessStatusChange, onReasonChange, onProjectChange, onCountryChange,
   onBackToProcessContactStatusChange, onBackToProcessInterestedChange, onBackToProcessStatusChange, onBackToProcessReasonChange,
   onAddComment, onAddFollowUp, setActiveSection, setNewComment, setFollowUpFilter, setNewFollowUp, setFollowUpDate,
-  isB2C, isFromBackToProcess, isFromLeadsPage, addingComment,
+  isB2C, isFromBackToProcess, isFromLeadsPage, addingComment,onMarkFollowUpComplete
 }) => (
   <Stack spacing={3}>
     <LeadInfoSectionsWrapper {...{ leadId, lead, leadName, leadStatus, opportunitySectionRef }} />

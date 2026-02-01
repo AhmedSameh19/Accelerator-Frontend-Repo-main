@@ -24,43 +24,59 @@ import {
   EventNote as EventNoteIcon,
   RateReview as RateReviewIcon,
 } from '@mui/icons-material';
-import { getStandards, updateStandards } from '../api/services/realizationsService';
-import { useEffect } from 'react';
-import { useState } from 'react';
-const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
+import { updateStandards } from '../api/services/realizationsService';
+const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64, prepState, setPrepState }) => {
   if (!selectedLead) return null;
-  const [prepState, setPrepState] = useState({});
-  useEffect(() => {
-    const fetchPrepState = async () => {
-      if (!selectedLead?.id) return;
-      const response = await getStandards(selectedLead.id);
-      const data = response; // object containing all standards
-      setPrepState({ [selectedLead.id]: data });
-    };
-    fetchPrepState();
-  }, [selectedLead?.id]);
+  const leadId = selectedLead?.expa_person_id || selectedLead?.id;
   if (!selectedLead) return null;
   const handleToggle = async (standardKey, checked) => {
+    const persistKeys = new Set([
+      'health_insurance',
+      'expectation_settings',
+      'visa_and_work_permit',
+      'communication_10_days_before',
+      'arrival_pickup',
+      'accommodation',
+      'ips',
+      'ops',
+      'pgs',
+      'alignment_space',
+      'first_day_of_work',
+      'job_description',
+      'working_hours',
+      'duration',
+      'opportunity_benefits',
+      'value_driven_leadership_education',
+      'communication_first_10_days',
+      'communication_second_10_days',
+      'communication_third_10_days',
+      'communication_fourth_10_days',
+      'departure_support',
+      'debrief',
+    ]);
+
     setPrepState(prev => ({
       ...prev,
-      [selectedLead.id]: {
-        ...prev[selectedLead.id],
+      [leadId]: {
+        ...prev[leadId],
         [standardKey]: checked
       }
     }));
+
+    if (!persistKeys.has(standardKey)) return;
   
     try {
-      const response = await updateStandards(selectedLead.id, {
+      const response = await updateStandards(leadId, {
         standardName: standardKey,
-        value: checked
+        value: checked,
       });
   
       // Update state with backend response (optional, ensures sync)
       setPrepState(prev => ({
         ...prev,
-        [selectedLead.id]: {
-          ...prev[selectedLead.id],
-          ...response.data // full row from backend
+        [leadId]: {
+          ...prev[leadId],
+          ...(response?.data ?? response) // full row from backend
         }
       }));
     } catch (error) {
@@ -68,8 +84,8 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
       // Optionally revert local state if API fails
       setPrepState(prev => ({
         ...prev,
-        [selectedLead.id]: {
-          ...prev[selectedLead.id],
+        [leadId]: {
+          ...prev[leadId],
           [standardKey]: !checked
         }
       }));
@@ -78,10 +94,10 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
   // Calculate progress based on communication checkboxes
   const calculateProgress = () => {
     const communicationChecks = [
-      prepState[selectedLead.id]?.firsttendayscommunication,
-      prepState[selectedLead.id]?.secondtendayscommunication,
-      prepState[selectedLead.id]?.thirdtendayscommunication,
-      prepState[selectedLead.id]?.fourthtendayscommunication,
+      prepState[leadId]?.communication_first_10_days,
+      prepState[leadId]?.communication_second_10_days,
+      prepState[leadId]?.communication_third_10_days,
+      prepState[leadId]?.communication_fourth_10_days,
     ];
     
     const checkedCount = communicationChecks.filter(Boolean).length;
@@ -103,8 +119,8 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
                 <ListItemIcon><EventNoteIcon color="action" /></ListItemIcon>
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                   <Checkbox
-                    checked={prepState[selectedLead.id]?.firstdayofworkdone === true}
-                    onChange={e=>handleToggle('firstdayofworkdone', e.target.checked)}
+                    checked={prepState[leadId]?.first_day_of_work === true}
+                    onChange={e=>handleToggle('first_day_of_work', e.target.checked)}
                     color="primary"
                     sx={{ mr: 1 }}
                   />
@@ -126,8 +142,8 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
                 <ListItemIcon><WorkIcon color="action" /></ListItemIcon>
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                   <Checkbox
-                    checked={prepState[selectedLead.id]?.alignmentspacesdone === true}
-                    onChange={e=>handleToggle('alignmentspacesdone', e.target.checked)}
+                    checked={prepState[leadId]?.alignment_space === true}
+                    onChange={e=>handleToggle('alignment_space', e.target.checked)}
                     color="primary"
                     sx={{ mr: 1 }}
                   />
@@ -161,10 +177,10 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
                           );
                           setPrepState(prev => ({
                             ...prev,
-                            [selectedLead.id]: {
-                              ...prev[selectedLead.id],
+                            [leadId]: {
+                              ...prev[leadId],
                               alignmentSpacesFiles: [
-                                ...(prev[selectedLead.id]?.alignmentSpacesFiles || []),
+                                ...(prev[leadId]?.alignmentSpacesFiles || []),
                                 ...uploadedFiles
                               ]
                             }
@@ -175,7 +191,7 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
                       }}
                     />
                   </Button>
-                  {prepState[selectedLead.id]?.alignmentSpacesFiles?.map((file, index) => (
+                  {prepState[leadId]?.alignmentSpacesFiles?.map((file, index) => (
                     <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Typography variant="body2" sx={{ fontWeight: 500 }}>
                         <a
@@ -209,8 +225,8 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
                 <ListItemIcon><WorkIcon color="action" /></ListItemIcon>
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                   <Checkbox
-                    checked={prepState[selectedLead.id]?.jobdescriptiondone === true}
-                    onChange={e=>handleToggle('jobdescriptiondone', e.target.checked)}
+                    checked={prepState[leadId]?.job_description === true}
+                    onChange={e=>handleToggle('job_description', e.target.checked)}
                     color="primary"
                     sx={{ mr: 1 }}
                   />
@@ -232,8 +248,8 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
                 <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                   <Checkbox
-                    checked={prepState[selectedLead.id]?.firsttendayscommunication === true}
-                    onChange={e=>handleToggle('firsttendayscommunication', e.target.checked)}
+                    checked={prepState[leadId]?.communication_first_10_days === true}
+                    onChange={e=>handleToggle('communication_first_10_days', e.target.checked)}
                     color="primary"
                     sx={{ mr: 1 }}
                   />
@@ -255,8 +271,8 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
                 <ListItemIcon><AccessTimeIcon color="action" /></ListItemIcon>
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                   <Checkbox
-                    checked={prepState[selectedLead.id]?.workinghoursmatchopp === true}
-                    onChange={e=>handleToggle('workinghoursmatchopp', e.target.checked)}
+                    checked={prepState[leadId]?.working_hours === true}
+                    onChange={e=>handleToggle('working_hours', e.target.checked)}
                     color="primary"
                     sx={{ mr: 1 }}
                   />
@@ -278,8 +294,8 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
                 <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                   <Checkbox
-                    checked={prepState[selectedLead.id]?.secondtendayscommunication === true}
-                    onChange={e=>handleToggle('secondtendayscommunication', e.target.checked)}
+                    checked={prepState[leadId]?.communication_second_10_days === true}
+                    onChange={e=>handleToggle('communication_second_10_days', e.target.checked)}
                     color="primary"
                     sx={{ mr: 1 }}
                   />
@@ -301,8 +317,8 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
                 <ListItemIcon><EventIcon color="action" /></ListItemIcon>
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                   <Checkbox
-                    checked={prepState[selectedLead.id]?.minimumdurationreached === true}
-                    onChange={e=>handleToggle('minimumdurationreached', e.target.checked)}
+                    checked={prepState[leadId]?.duration === true}
+                    onChange={e=>handleToggle('duration', e.target.checked)}
                     color="primary"
                     sx={{ mr: 1 }}
                   />
@@ -324,8 +340,8 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
                 <ListItemIcon><AttachMoneyIcon color="action" /></ListItemIcon>
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                   <Checkbox
-                    checked={prepState[selectedLead.id]?.benefitsdelivered === true}
-                    onChange={e=>handleToggle('benefitsdelivered', e.target.checked)}
+                    checked={prepState[leadId]?.opportunity_benefits === true}
+                    onChange={e=>handleToggle('opportunity_benefits', e.target.checked)}
                     color="primary"
                     sx={{ mr: 1 }}
                   />
@@ -347,8 +363,8 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
                 <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                   <Checkbox
-                    checked={prepState[selectedLead.id]?.thirdtendayscommunication === true}
-                    onChange={e=>handleToggle('thirdtendayscommunication', e.target.checked)}
+                    checked={prepState[leadId]?.communication_third_10_days === true}
+                    onChange={e=>handleToggle('communication_third_10_days', e.target.checked)}
                     color="primary"
                     sx={{ mr: 1 }}
                   />
@@ -370,8 +386,8 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
                 <ListItemIcon><SchoolIcon color="action" /></ListItemIcon>
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                   <Checkbox
-                    checked={prepState[selectedLead.id]?.valuedriveneducationdelivered === true}
-                    onChange={e=>handleToggle('valuedriveneducationdelivered', e.target.checked)}
+                    checked={prepState[leadId]?.value_driven_leadership_education === true}
+                    onChange={e=>handleToggle('value_driven_leadership_education', e.target.checked)}
                     color="primary"
                     sx={{ mr: 1 }}
                   />
@@ -393,8 +409,8 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
                 <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                   <Checkbox
-                    checked={prepState[selectedLead.id]?.fourthtendayscommunication === true}
-                    onChange={e=>handleToggle('fourthtendayscommunication', e.target.checked)}
+                    checked={prepState[leadId]?.communication_fourth_10_days === true}
+                    onChange={e=>handleToggle('communication_fourth_10_days', e.target.checked)}
                     color="primary"
                     sx={{ mr: 1 }}
                   />
@@ -416,8 +432,8 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64 }) => {
                 <ListItemIcon><FlightTakeoffIcon color="action" /></ListItemIcon>
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
                   <Checkbox
-                    checked={prepState[selectedLead.id]?.departuredone === true}
-                    onChange={e=>handleToggle('departuredone', e.target.checked)}
+                    checked={prepState[leadId]?.departure_support === true}
+                    onChange={e=>handleToggle('departure_support', e.target.checked)}
                     color="primary"
                     sx={{ mr: 1 }}
                   />

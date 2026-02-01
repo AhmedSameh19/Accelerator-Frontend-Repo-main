@@ -40,6 +40,8 @@ import ExperienceTab from '../../../components/ExperienceTab';
 import PostExperienceTab from '../../../components/PostExperienceTab';
 import PreparationStepsTab from '../../../components/PreparationStepsTab';
 
+import { getStandards } from '../../../api/services/realizationsService';
+
 import { getProgrammeChipSx, getStatusChipSx } from './ogxChipStyles';
 import { LC_CODES } from '../../../lcCodes';
 
@@ -60,6 +62,31 @@ export default function OGXLeadProfileDialog({
   formatDate,
 }) {
   if (!selectedLead) return null;
+
+  const leadId = selectedLead?.expa_person_id || selectedLead?.id;
+
+  React.useEffect(() => {
+    const fetchStandardsOnce = async () => {
+      if (!open || !leadId) return;
+      if (prepState?.[leadId]) return;
+
+      try {
+        const data = await getStandards(leadId);
+        setPrepState((prev) => ({
+          ...(prev || {}),
+          [leadId]: data || {},
+        }));
+      } catch (error) {
+        console.error('Failed to fetch OGX standards:', error);
+        setPrepState((prev) => ({
+          ...(prev || {}),
+          [leadId]: {},
+        }));
+      }
+    };
+
+    fetchStandardsOnce();
+  }, [open, leadId, prepState, setPrepState]);
 
   // Helper function to get LC name by ID
   const getLCNameById = (lcId) => {
@@ -705,6 +732,8 @@ export default function OGXLeadProfileDialog({
         {tab === 3 && (
           <PostExperienceTab
             selectedLead={selectedLead}
+            prepState={prepState}
+            setPrepState={setPrepState}
             formatDateTime={formatDate}
             fileToBase64={fileToBase64}
           />
