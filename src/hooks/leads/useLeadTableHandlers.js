@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import leadsApi from '../../api/services/leadsApi';
 
-export function useLeadTableHandlers({ onLoadMore, hasMore, loading, leads }) {
+export function useLeadTableHandlers({ onLoadMore, hasMore, loading, leads, isICX = false }) {
   const [selectedLead, setSelectedLead] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [page, setPage] = useState(0);
@@ -14,7 +14,12 @@ export function useLeadTableHandlers({ onLoadMore, hasMore, loading, leads }) {
   const [bulkAssignDialogOpen, setBulkAssignDialogOpen] = useState(false);
 
   const handleProfileClick = (lead) => {
-    setSelectedLead(lead);
+    const normalizedLead =
+      lead && lead.expa_status == null && lead.status != null
+        ? { ...lead, expa_status: lead.status }
+        : lead;
+
+    setSelectedLead(normalizedLead);
     setProfileOpen(true);
   };
 
@@ -56,11 +61,18 @@ export function useLeadTableHandlers({ onLoadMore, hasMore, loading, leads }) {
     setSelectedLead(null);
   };
 
+  const getLeadSelectionId = (lead) => {
+    if (!lead) return null;
+    if (isICX) return lead.application_id ?? lead.id ?? lead.expa_person_id;
+    return lead.id ?? lead.expa_person_id;
+  };
+
   const handleSelectAll = (event, filteredLeads) => {
     if (event.target.checked) {
       const newSelected = filteredLeads
         .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-        .map((lead) => lead.id ?? lead.expa_person_id);
+        .map((lead) => getLeadSelectionId(lead))
+        .filter((id) => id != null);
       setSelectedLeads(newSelected);
     } else {
       setSelectedLeads([]);
@@ -99,10 +111,15 @@ export function useLeadTableHandlers({ onLoadMore, hasMore, loading, leads }) {
   const handleBulkAssignConfirm = async () => {
     if (selectedMember && selectedLeads.length > 0) {
       try {
-        const response = await leadsApi.bulkAssignLeads({
-          expa_person_ids: selectedLeads,
-          member_id: selectedMember
-        });
+        const response = isICX
+          ? await leadsApi.bulkAssignICXLeads({
+              application_ids: selectedLeads,
+              member_id: selectedMember,
+            })
+          : await leadsApi.bulkAssignLeads({
+              expa_person_ids: selectedLeads,
+              member_id: selectedMember,
+            });
         console.log('Bulk assign response:', response);
         refreshTable();
         setSelectedLeads([]);

@@ -148,7 +148,7 @@ export function LeadFollowUpsSection({
         variant="contained"
         onClick={onAddFollowUp}
         startIcon={<ScheduleIcon />}
-        disabled={isB2C}
+        disabled={isB2C || !newFollowUp.trim() || !followUpDate}
         sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 } }}
       >
         Schedule Follow-up

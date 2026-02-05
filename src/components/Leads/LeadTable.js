@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Table,
   TableBody,
@@ -12,15 +12,17 @@ import {
   Checkbox,
 } from '@mui/material';
 import LeadProfile from './LeadProfile';
-import leadsApi from '../../api/services/leadsApi';
 import LeadTableHeader from './LeadTable/LeadTableHeader';
 import LeadTableRow from './LeadTable/LeadTableRow';
 import { AssignLeadDialog, BulkAssignDialog } from './LeadTable/LeadTableDialogs';
 import { getAssignedMemberId } from './LeadTable/utils';
 import { useLeadTableHandlers } from '../../hooks/leads/useLeadTableHandlers';
+import { useCRMType } from '../../context/CRMTypeContext';
 
 function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMore }) {
   const theme = useTheme();
+  const { crmType } = useCRMType();
+  const isICX = crmType === 'iCX';
 
   // Use hook for state and handlers
   const {
@@ -45,7 +47,7 @@ function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMor
     handleBulkAssignClick,
     handleBulkAssignClose,
     handleBulkAssignConfirm
-  } = useLeadTableHandlers({ onLoadMore, hasMore, loading, leads });
+  } = useLeadTableHandlers({ onLoadMore, hasMore, loading, leads, isICX });
 
   // Apply filter to leads
   const actuallyFilteredLeads = Array.isArray(leads)
@@ -100,6 +102,7 @@ function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMor
               </TableCell>
               <TableCell>Lead</TableCell>
               <TableCell>LC</TableCell>
+              {isICX ? <TableCell>Home MC</TableCell> : null}
               <TableCell>Phone</TableCell>
               <TableCell>Signup Date</TableCell>
               <TableCell>Status</TableCell>
@@ -110,17 +113,22 @@ function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMor
             {actuallyFilteredLeads
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map(lead => {
-                const leadId = lead.expa_person_id;
-                const isSelected = selectedLeads.indexOf(leadId) !== -1;
+                const selectionId = isICX
+                  ? (lead.application_id ?? lead.expa_person_id)
+                  : (lead.id ?? lead.expa_person_id);
+
+                const isSelected = selectedLeads.indexOf(selectionId) !== -1;
                 
                 return (
                   <LeadTableRow
-                    key={leadId}
+                    key={selectionId}
                     lead={lead}
                     isSelected={isSelected}
                     onSelect={handleSelectLead}
                     onProfileClick={handleProfileClick}
                     theme={theme}
+                    isICX={isICX}
+                    selectionId={selectionId}
                   />
                 );
               })}

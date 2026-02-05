@@ -30,6 +30,9 @@ import Cookies from 'js-cookie';
 // Context
 import { useAuth } from '../../context/AuthContext';
 import { useTeamMembersContext } from '../../context/TeamMembersContext';
+import { useCRMType } from '../../context/CRMTypeContext';
+
+import ICXLeadsPage from './icx/ICXLeadsPage';
 
 // Constants
 import { LC_CODES, MC_EGYPT_CODE } from '../../lcCodes';
@@ -54,7 +57,7 @@ import { useLeadStatuses } from '../../hooks/leads/useLeadStatuses';
  * 
  * @returns {JSX.Element}
  */
-function LeadsPage() {
+function OGXB2CLeadsPage() {
   // ---------------------------------------------------------------------------
   // CONTEXT & AUTH
   // ---------------------------------------------------------------------------
@@ -302,4 +305,12 @@ function LeadsPage() {
   );
 }
 
-export default LeadsPage;
+export default function LeadsPage() {
+  const { crmType } = useCRMType();
+
+  if (crmType === 'iCX') {
+    return <ICXLeadsPage />;
+  }
+
+  return <OGXB2CLeadsPage />;
+}

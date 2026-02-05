@@ -11,9 +11,11 @@ import { NAVIGATION_STATES, TABS, CONFIRMATION_TIMEOUT, DIALOG_CONFIG, CONTENT_S
 function LeadProfile({ lead, open, onClose, onStatusChange, navigationState }) {
   const { crmType } = useCRMType();
   const isB2C = crmType === 'B2C';
+  const isICX = crmType === 'iCX';
   const isFromBackToProcess = navigationState?.from === NAVIGATION_STATES.BACK_TO_PROCESS;
   const isFromLeadsPage = navigationState?.from === NAVIGATION_STATES.LEADS;
   const leadId = lead?.expa_person_id;
+  const icxApplicationId = lead?.application_id ?? null;
   const leadName = lead?.full_name ?? '';
   const leadStatus = lead?.expa_status ?? '';
 
@@ -32,7 +34,17 @@ function LeadProfile({ lead, open, onClose, onStatusChange, navigationState }) {
     handleCustomerInterviewProcessStatusChange, handleCustomerInterviewReasonChange, handleMarkBackToProcess,
     handleConfirmBackToProcess, handleBackToProcessContactStatusChange, handleBackToProcessInterestedChange,
     handleBackToProcessStatusChange, handleBackToProcessReasonChange, handleStepClick, handleTabChange,
-  } = useLeadProfileState({ lead, leadId, onStatusChange });
+    icxContacted,
+    icxInterviewed,
+    icxExpectationsEmailStatus,
+    icxOutOfProcess,
+    icxReason,
+    handleICXContactedChange,
+    handleICXInterviewedChange,
+    handleICXExpectationsEmailStatusChange,
+    handleICXOutOfProcessChange,
+    handleICXReasonChange,
+  } = useLeadProfileState({ lead, leadId, icxApplicationId, onStatusChange, isICX });
 
   const [showMarkedConfirmation, setShowMarkedConfirmation] = useState(false);
 
@@ -41,8 +53,10 @@ function LeadProfile({ lead, open, onClose, onStatusChange, navigationState }) {
   }, [handleStepClick, leadId]);
 
   useEffect(() => {
-    if (isFromBackToProcess && activeTab === TABS.CUSTOMER_INTERVIEWS) setActiveTab(TABS.CALLS);
-  }, [isFromBackToProcess, activeTab, setActiveTab]);
+    if ((isFromBackToProcess || isICX) && activeTab === TABS.CUSTOMER_INTERVIEWS) {
+      setActiveTab(TABS.CALLS);
+    }
+  }, [isFromBackToProcess, isICX, activeTab, setActiveTab]);
 
   const handleConfirmBackToProcessWithConfirmation = useCallback(async () => {
     await handleConfirmBackToProcess();
@@ -50,39 +64,46 @@ function LeadProfile({ lead, open, onClose, onStatusChange, navigationState }) {
     setTimeout(() => setShowMarkedConfirmation(false), CONFIRMATION_TIMEOUT);
   }, [handleConfirmBackToProcess]);
 
-  const tabWidthStyle = useMemo(() => ({
-    width: isFromBackToProcess ? '100%' : '50%',
-    maxWidth: isFromBackToProcess ? '100%' : '50%',
-  }), [isFromBackToProcess]);
-
   return (
     <Dialog open={open} onClose={onClose} maxWidth={DIALOG_CONFIG.maxWidth} fullWidth={DIALOG_CONFIG.fullWidth} slotProps={{ paper: { sx: DIALOG_CONFIG.paperSx } }}>
       <LeadProfileHeader {...{ lead, leadId, leadName, leadStatus, onClose, handleStepClick: handleStepClickWrapper }} />
       <DialogContent dividers sx={{ p: { xs: 0, sm: 0 }, ...CONTENT_STYLES }}>
         <Box sx={{ p: { xs: 0.5, sm: 3 } }}>
-          <Tabs value={activeTab} onChange={handleTabChange} aria-label="lead profile tabs" sx={{ ...TAB_STYLES.container, '& .MuiTab-root': { ...TAB_STYLES.container['& .MuiTab-root'], ...tabWidthStyle } }}>
+          <Tabs
+            value={activeTab}
+            onChange={handleTabChange}
+            aria-label="lead profile tabs"
+            variant="fullWidth"
+            sx={TAB_STYLES.container}
+          >
             <Tab label="Calls" />
-            {!isFromBackToProcess && <Tab label="Customer Interviews Output" />}
+            {!isFromBackToProcess && !isICX ? <Tab label="Customer Interviews Output" /> : null}
           </Tabs>
           {activeTab === TABS.CALLS && (
             <CallsTab {...{
               leadId, lead, leadName, leadStatus, opportunitySectionRef,
               contactStatus, interested, processStatus, reason, project, country,
+              icxContacted, icxInterviewed, icxExpectationsEmailStatus, icxOutOfProcess, icxReason,
               backToProcessContactStatus, backToProcessInterested, backToProcessStatus, backToProcessReason, hasBackToProcessStatus,
               activeSection, comments, newComment, followUps, followUpFilter, newFollowUp, followUpDate,
               onContactStatusChange: handleContactStatusChange, onInterestedChange: handleInterestedChange,
               onProcessStatusChange: handleProcessStatusChange, onReasonChange: handleReasonChange,
               onProjectChange: handleProjectChange, onCountryChange: handleCountryChange,
+              onICXContactedChange: handleICXContactedChange,
+              onICXInterviewedChange: handleICXInterviewedChange,
+              onICXExpectationsEmailStatusChange: handleICXExpectationsEmailStatusChange,
+              onICXOutOfProcessChange: handleICXOutOfProcessChange,
+              onICXReasonChange: handleICXReasonChange,
               onBackToProcessContactStatusChange: handleBackToProcessContactStatusChange,
               onBackToProcessInterestedChange: handleBackToProcessInterestedChange,
               onBackToProcessStatusChange: handleBackToProcessStatusChange,
               onBackToProcessReasonChange: handleBackToProcessReasonChange,
               onAddComment: handleAddComment, onAddFollowUp: handleAddFollowUp, onMarkFollowUpComplete: handleMarkFollowUpComplete,
               setActiveSection, setNewComment, setFollowUpFilter, setNewFollowUp, setFollowUpDate,
-              isB2C, isFromBackToProcess, isFromLeadsPage, addingComment,
+              isB2C, isICX, isFromBackToProcess, isFromLeadsPage, addingComment,
             }} />
           )}
-          {!isFromBackToProcess && activeTab === TABS.CUSTOMER_INTERVIEWS && (
+          {!isFromBackToProcess && !isICX && activeTab === TABS.CUSTOMER_INTERVIEWS && (
             <CustomerInterviewsTab {...{
               leadId, lead, leadName, leadStatus, opportunitySectionRef,
               customerInterviewContactStatus, customerInterviewInterested, customerInterviewProcessStatus, customerInterviewReason,

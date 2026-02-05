@@ -3,6 +3,7 @@ import { Stack, Paper, ButtonGroup, Button, Box } from '@mui/material';
 import { Comment as CommentIcon, Schedule as ScheduleIcon } from '@mui/icons-material';
 import LeadInfoSectionsWrapper from './LeadInfoSectionsWrapper';
 import LeadStatusSection from './LeadStatusSection';
+import ICXLeadStatusSection from './ICXLeadStatusSection';
 import BackToProcessStatusSection from './BackToProcessStatusSection';
 import { LeadCommentsSection, LeadFollowUpsSection } from './LeadCommentsSection';
 import { SECTIONS } from './LeadProfileConfig';
@@ -10,16 +11,33 @@ import { SECTIONS } from './LeadProfileConfig';
 const CallsTab = memo(({
   leadId, lead, leadName, leadStatus, opportunitySectionRef,
   contactStatus, interested, processStatus, reason, project, country,
+  icxContacted, icxInterviewed, icxExpectationsEmailStatus, icxOutOfProcess, icxReason,
   backToProcessContactStatus, backToProcessInterested, backToProcessStatus, backToProcessReason, hasBackToProcessStatus,
   activeSection, comments, newComment, followUps, followUpFilter, newFollowUp, followUpDate,
   onContactStatusChange, onInterestedChange, onProcessStatusChange, onReasonChange, onProjectChange, onCountryChange,
+  onICXContactedChange, onICXInterviewedChange, onICXExpectationsEmailStatusChange, onICXOutOfProcessChange, onICXReasonChange,
   onBackToProcessContactStatusChange, onBackToProcessInterestedChange, onBackToProcessStatusChange, onBackToProcessReasonChange,
   onAddComment, onAddFollowUp, setActiveSection, setNewComment, setFollowUpFilter, setNewFollowUp, setFollowUpDate,
-  isB2C, isFromBackToProcess, isFromLeadsPage, addingComment,onMarkFollowUpComplete
+  isB2C, isICX, isFromBackToProcess, isFromLeadsPage, addingComment,onMarkFollowUpComplete
 }) => (
   <Stack spacing={3}>
     <LeadInfoSectionsWrapper {...{ leadId, lead, leadName, leadStatus, opportunitySectionRef }} />
-    <LeadStatusSection {...{ contactStatus, interested, processStatus, reason, project, country, onContactStatusChange, onInterestedChange, onProcessStatusChange, onReasonChange, onProjectChange, onCountryChange, isB2C }} />
+    {isICX ? (
+      <ICXLeadStatusSection
+        contacted={icxContacted}
+        interviewed={icxInterviewed}
+        expectationsEmailStatus={icxExpectationsEmailStatus}
+        outOfProcess={icxOutOfProcess}
+        reason={icxReason}
+        onContactedChange={onICXContactedChange}
+        onInterviewedChange={onICXInterviewedChange}
+        onExpectationsEmailStatusChange={onICXExpectationsEmailStatusChange}
+        onOutOfProcessChange={onICXOutOfProcessChange}
+        onReasonChange={onICXReasonChange}
+      />
+    ) : (
+      <LeadStatusSection {...{ contactStatus, interested, processStatus, reason, project, country, onContactStatusChange, onInterestedChange, onProcessStatusChange, onReasonChange, onProjectChange, onCountryChange, isB2C }} />
+    )}
     {(isFromBackToProcess || hasBackToProcessStatus) && (
       <BackToProcessStatusSection {...{ backToProcessContactStatus, backToProcessInterested, backToProcessStatus, backToProcessReason, onContactStatusChange: onBackToProcessContactStatusChange, onInterestedChange: onBackToProcessInterestedChange, onStatusChange: onBackToProcessStatusChange, onReasonChange: onBackToProcessReasonChange, isB2C, isFromLeadsPage }} />
     )}

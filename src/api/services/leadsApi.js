@@ -179,6 +179,47 @@ export const leadsApi = {
     }
   },
 
+  // Get iCX leads (applications) scoped by host LC
+  // Backend: GET /api/v1/icx/leads?host_lc_id=...&cursor_created_at=...&cursor_application_id=...
+  getICXLeads: async ({ host_lc_id, limit = 50, cursor = null, skip } = {}) => {
+    if (host_lc_id == null) throw new Error('host_lc_id is required');
+
+    const params = { host_lc_id: String(host_lc_id), limit: Number(limit) };
+
+    // preferred: cursor pagination
+    if (typeof cursor === 'string' && cursor.length) {
+      params.cursor = cursor;
+    } else if (cursor?.created_at && cursor?.application_id) {
+      params.cursor_created_at = cursor.created_at;
+      params.cursor_application_id = cursor.application_id;
+    } else if (skip !== undefined) {
+      // fallback: offset pagination
+      params.skip = Number(skip);
+    }
+
+    try {
+      console.log('🔍 [leadsApi] Fetching iCX leads with params:', params);
+      console.log('🔍 [leadsApi] API URL:', `${API_BASE_URL}/icx/leads`);
+
+      const { data } = await api.get('/icx/leads', {
+        params: {
+          ...params,
+          _t: Date.now(),
+        },
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
+
+      return data;
+    } catch (error) {
+      console.error('❌ [leadsApi] Error fetching iCX leads:', error);
+      throw error;
+    }
+  },
+
   addComment: async (leadId, comment, created_by) => {
     try {
       const createdByValue = created_by ?? Cookies.get('person_id') ?? null;
@@ -189,6 +230,27 @@ export const leadsApi = {
       return response.data;
     } catch (error) {
       console.error('Error adding comment:', error);
+      throw error;
+    }
+  },
+
+  // iCX comments
+  // Backend: POST /api/v1/icx/leads/{application_id}/comments
+  addICXComment: async (applicationId, comment, created_by) => {
+    try {
+      const createdByValue = created_by ?? Cookies.get('person_id') ?? null;
+
+      if (!createdByValue) {
+        throw new Error('created_by is required for iCX comments');
+      }
+
+      const response = await api.post(`/icx/leads/${applicationId}/comments`, {
+        text: comment,
+        created_by: createdByValue,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error adding iCX comment:', error);
       throw error;
     }
   },
@@ -212,6 +274,23 @@ export const leadsApi = {
     }
   },
 
+  // Backend: GET /api/v1/icx/leads/{application_id}/comments
+  getICXComments: async (applicationId) => {
+    try {
+      const response = await api.get(`/icx/leads/${applicationId}/comments`);
+      const data = response.data;
+
+      if (Array.isArray(data)) return data;
+      if (Array.isArray(data?.data)) return data.data;
+      if (Array.isArray(data?.comments)) return data.comments;
+
+      return [];
+    } catch (error) {
+      console.error('Error fetching iCX comments:', error);
+      throw error;
+    }
+  },
+
   // Bulk assign leads
   bulkAssignLeads: async (data) => {
     try {
@@ -220,6 +299,17 @@ export const leadsApi = {
     }
     catch (error) {
       console.error('Error bulk assigning leads:', error);
+      throw error;
+    }
+  },
+
+  // Bulk assign iCX leads (by application_id)
+  bulkAssignICXLeads: async (data) => {
+    try {
+      const response = await api.patch('/icx/leads/assign/bulk', data);
+      return response?.data || response;
+    } catch (error) {
+      console.error('Error bulk assigning iCX leads:', error);
       throw error;
     }
   },
@@ -239,6 +329,24 @@ export const leadsApi = {
       throw error;
     }
   },
+
+  // iCX follow-ups
+  // Backend: POST /api/v1/icx/leads/{application_id}/followups
+  createICXFollowUp: async (applicationId, { text, next_follow_up_date, created_by } = {}) => {
+    try {
+      const payload = {
+        follow_up_text: text,
+        created_by: created_by ?? Cookies.get('person_id') ?? null,
+        follow_up_at: next_follow_up_date,
+      };
+
+      const response = await api.post(`/icx/leads/${applicationId}/followups`, payload);
+      return response?.data || response;
+    } catch (error) {
+      console.error('Error creating iCX follow-up:', error);
+      throw error;
+    }
+  },
     getFollowUps: async (leadId) => {
     try {
       // Call backend endpoint
@@ -253,12 +361,24 @@ export const leadsApi = {
     }
   },
 
-    updateFollowUp: async (epId, followUpId) => {
+  // Backend: GET /api/v1/icx/leads/{application_id}/followups
+  getICXFollowUps: async (applicationId) => {
+    try {
+      const response = await api.get(`/icx/leads/${applicationId}/followups`);
+      return response?.data || response || [];
+    } catch (error) {
+      console.error('Error fetching iCX follow-ups:', error);
+      throw error;
+    }
+  },
+
+    updateFollowUp: async (epId, followUpId, updateData) => {
     try {
       // Call backend endpoint to update follow-up
-      const payload = {
-          "status":"completed"
-      }
+      const payload = updateData && typeof updateData === 'object'
+        ? updateData
+        : { status: 'completed' };
+
       const response = await api.patch(`/leads/${epId}/followups/${followUpId}/status`, payload);
 
       // Backend returns { message, data }, so we extract data
@@ -266,6 +386,23 @@ export const leadsApi = {
 
     } catch (error) {
       console.error('Error updating follow-up:', error);
+      throw error;
+    }
+  },
+
+  // Backend: PATCH /api/v1/icx/leads/{application_id}/followups/{followup_id}/status
+  updateICXFollowUpStatus: async (applicationId, followUpId, statusValue = 'completed') => {
+    try {
+      const payload = {
+        status: statusValue,
+      };
+      const response = await api.patch(
+        `/icx/leads/${applicationId}/followups/${followUpId}/status`,
+        payload,
+      );
+      return response?.data || response;
+    } catch (error) {
+      console.error('Error updating iCX follow-up status:', error);
       throw error;
     }
   },
@@ -279,7 +416,38 @@ export const leadsApi = {
       throw error;
     }
   },
-  updateLeadStatus: async (leadId, { contact_status, interested, process_status, reason, project, country, comment }) => {
+
+  // Backend: GET /api/v1/icx/leads/followups/created_by/{created_by_member_id}
+  getICXFollowUpsCreatedBy: async (createdByMemberId) => {
+    try {
+      const effectiveId = createdByMemberId ?? Cookies.get('person_id') ?? null;
+      if (!effectiveId) return [];
+      const response = await api.get(`/icx/leads/followups/created_by/${effectiveId}`);
+      return response?.data || response;
+    } catch (error) {
+      console.error('Error fetching iCX follow-ups created by:', error);
+      throw error;
+    }
+  },
+  updateLeadStatus: async (
+    leadId,
+    {
+      // OGX/B2C fields
+      contact_status,
+      interested,
+      process_status,
+      reason,
+      project,
+      country,
+      comment,
+
+      // iCX fields
+      contacted,
+      interviewed,
+      expectations_email_status,
+      out_of_process,
+    }
+  ) => {
     try {
       const response = await api.patch(`/leads/${leadId}/status`, {
         contact_status,
@@ -289,6 +457,10 @@ export const leadsApi = {
         project,
         country,
         comment,
+        contacted,
+        interviewed,
+        expectations_email_status,
+        out_of_process,
       });
       return response?.data || response;
     } catch (error) {
@@ -302,6 +474,29 @@ export const leadsApi = {
       return response?.data || response;
     } catch (error) {
       console.error('Error fetching contact status:', error);
+      throw error;
+    }
+  },
+
+  // iCX status endpoints
+  // Backend: GET /api/v1/icx/leads/{application_id}/status
+  getICXLeadStatus: async (applicationId) => {
+    try {
+      const response = await api.get(`/icx/leads/${applicationId}/status`);
+      return response?.data || response;
+    } catch (error) {
+      console.error('Error fetching iCX lead status:', error);
+      throw error;
+    }
+  },
+
+  // Backend: PATCH /api/v1/icx/leads/{application_id}/status
+  patchICXLeadStatus: async (applicationId, payload) => {
+    try {
+      const response = await api.patch(`/icx/leads/${applicationId}/status`, payload);
+      return response?.data || response;
+    } catch (error) {
+      console.error('Error patching iCX lead status:', error);
       throw error;
     }
   },

@@ -13,6 +13,7 @@ export const AIESEC_STEPS = [
 export const CONTACT_STATUS_OPTIONS = ['Yes', 'No', 'No Answer', 'Busy', 'Out of Service'];
 export const INTERESTED_OPTIONS = ['Yes', 'No'];
 export const PROCESS_STATUS_OPTIONS = ['In Process', 'Out of Process'];
+export const EXPECTATIONS_EMAIL_STATUS_OPTIONS = ['Sent', 'Not Sent', 'Waiting for Response'];
 export const REASON_OPTIONS = [
   'Military Service',
   'Health Issues',

@@ -27,7 +27,7 @@ export function getMenuItems(crmType) {
       text: 'Leads',
       icon: <PeopleIcon />,
       path: '/leads',
-      show: crmType === 'oGX' || crmType === 'B2C',
+      show: crmType === 'oGX' || crmType === 'B2C' || crmType === 'iCX',
     },
     {
       text: 'Campaigns',

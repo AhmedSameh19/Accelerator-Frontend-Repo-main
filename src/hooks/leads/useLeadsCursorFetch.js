@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { leadsApi } from '../../api/services/leadsApi';
 
-export function useLeadsCursorFetch({ homeLcId }) {
+export function useLeadsCursorFetch({ homeLcId, hostLcId, mode } = {}) {
   const fetchSeqRef = useRef(0);
   const inFlightRef = useRef(false);
   const nextCursorRef = useRef(null);
@@ -12,21 +12,27 @@ export function useLeadsCursorFetch({ homeLcId }) {
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState(null);
 
+  const effectiveMode = mode === 'icx' ? 'icx' : 'default';
+  const effectiveLcId = effectiveMode === 'icx' ? hostLcId : homeLcId;
+
   const fetchNextPage = useCallback(
     async ({ reset } = { reset: false }) => {
-      if (!homeLcId) {
-        console.warn('⚠️ [useLeadsCursorFetch] homeLcId is missing:', {
+      if (!effectiveLcId) {
+        console.warn('⚠️ [useLeadsCursorFetch] office LC id is missing:', {
+          mode: effectiveMode,
           homeLcId,
-          type: typeof homeLcId,
-          value: homeLcId
+          hostLcId,
+          effectiveLcId,
+          type: typeof effectiveLcId,
+          value: effectiveLcId,
         });
-        console.warn('💡 [useLeadsCursorFetch] Cannot fetch leads without homeLcId. Check user LC configuration.');
+        console.warn('💡 [useLeadsCursorFetch] Cannot fetch leads without LC ID. Check user LC configuration.');
         nextCursorRef.current = null;
         pendingRef.current = null;
         setHasMore(false);
         setLeads([]);
         setLoading(false);
-        setError(new Error('LC ID (home_lc_id) is required to fetch leads. Please ensure your user account has an LC assigned.'));
+        setError(new Error('LC ID is required to fetch leads. Please ensure your user account has an LC assigned.'));
         return;
       }
 
@@ -52,12 +58,21 @@ export function useLeadsCursorFetch({ homeLcId }) {
         const limit = 10;
         let page;
         try {
-          console.log('🔍 [useLeadsCursorFetch] Fetching leads for homeLcId:', homeLcId);
-          page = await leadsApi.getLeads({
-            home_lc_id: homeLcId,
-            limit,
-            cursor: nextCursorRef.current,
-          });
+          if (effectiveMode === 'icx') {
+            console.log('🔍 [useLeadsCursorFetch] Fetching iCX leads for hostLcId:', effectiveLcId);
+            page = await leadsApi.getICXLeads({
+              host_lc_id: effectiveLcId,
+              limit,
+              cursor: nextCursorRef.current,
+            });
+          } else {
+            console.log('🔍 [useLeadsCursorFetch] Fetching leads for homeLcId:', effectiveLcId);
+            page = await leadsApi.getLeads({
+              home_lc_id: effectiveLcId,
+              limit,
+              cursor: nextCursorRef.current,
+            });
+          }
           console.log('🔍 [useLeadsCursorFetch] Received page:', page);
         } catch (e) {
           console.error('❌ [useLeadsCursorFetch] Error fetching leads:', e);
@@ -102,10 +117,10 @@ export function useLeadsCursorFetch({ homeLcId }) {
   }, [fetchNextPage]);
 
   const loadMore = useCallback(async () => {
-    if (!homeLcId) return;
+    if (!effectiveLcId) return;
     if (!nextCursorRef.current) return;
     await fetchNextPage({ reset: false });
-  }, [fetchNextPage, homeLcId]);
+  }, [fetchNextPage, effectiveLcId]);
 
   useEffect(() => {
     refresh();

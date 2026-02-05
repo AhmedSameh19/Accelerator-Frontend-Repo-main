@@ -13,24 +13,28 @@ function normalizeComments(payload) {
   return [];
 }
 
-export function useAddLeadComment({ leadId, onAdded } = {}) {
+export function useAddLeadComment({ leadId, icxApplicationId, isICX = false, onAdded } = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const addComment = useCallback(
     async (text) => {
       const trimmed = String(text ?? '').trim();
-      if (!leadId) return null;
+      const effectiveId = isICX ? icxApplicationId : leadId;
+
+      if (!effectiveId) return null;
       if (!trimmed) return null;
 
       setLoading(true);
       setError(null);
 
       try {
-        const payload = await leadsApi.addComment(leadId, trimmed);
+        const payload = isICX
+          ? await leadsApi.addICXComment(effectiveId, trimmed)
+          : await leadsApi.addComment(effectiveId, trimmed);
         const comments = normalizeComments(payload);
 
-        if (onAdded) onAdded({ leadId, text: trimmed, comments, raw: payload });
+        if (onAdded) onAdded({ leadId: effectiveId, text: trimmed, comments, raw: payload });
 
         // If backend returns comments list, return it so caller can update UI.
         return comments.length ? comments : null;
@@ -41,7 +45,7 @@ export function useAddLeadComment({ leadId, onAdded } = {}) {
         setLoading(false);
       }
     },
-    [leadId, onAdded],
+    [leadId, icxApplicationId, isICX, onAdded],
   );
 
   return { addComment, loading, error };

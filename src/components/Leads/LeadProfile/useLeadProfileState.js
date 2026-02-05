@@ -4,8 +4,18 @@ import b2cAPI from '../../../api/services/b2cAPI';
 import { fetchOpportunityApplications } from '../../../api/services/aiesecApi';
 import { useAddLeadComment } from '../../../hooks/leads/useAddLeadComment';
 
-export function useLeadProfileState({ lead, leadId, onStatusChange }) {
-  const { addComment: addLeadComment, loading: addingComment } = useAddLeadComment({ leadId });
+export function useLeadProfileState({ lead, leadId, icxApplicationId = null, onStatusChange, isICX = false }) {
+  const { addComment: addLeadComment, loading: addingComment } = useAddLeadComment({
+    leadId,
+    icxApplicationId,
+    isICX,
+  });
+
+  const normalizeYesNo = (value) => {
+    if (value === true) return 'Yes';
+    if (value === false) return 'No';
+    return value || '';
+  };
 
   // Regular lead status states
   const [contactStatus, setContactStatus] = useState('');
@@ -14,6 +24,13 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
   const [reason, setReason] = useState('');
   const [project, setProject] = useState('');
   const [country, setCountry] = useState('');
+
+  // iCX lead status states
+  const [icxContacted, setIcxContacted] = useState('');
+  const [icxInterviewed, setIcxInterviewed] = useState('');
+  const [icxExpectationsEmailStatus, setIcxExpectationsEmailStatus] = useState('');
+  const [icxOutOfProcess, setIcxOutOfProcess] = useState('');
+  const [icxReason, setIcxReason] = useState('');
 
   // Back to process status states
   const [backToProcessContactStatus, setBackToProcessContactStatus] = useState('');
@@ -56,6 +73,7 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
   // Load all data when leadId changes
   useEffect(() => {
     if (!leadId) return;
+    if (isICX && !icxApplicationId) return;
 
     // Reset all states
     setContactStatus('');
@@ -64,6 +82,12 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
     setReason('');
     setProject('');
     setCountry('');
+
+    setIcxContacted('');
+    setIcxInterviewed('');
+    setIcxExpectationsEmailStatus('');
+    setIcxOutOfProcess('');
+    setIcxReason('');
     setBackToProcessContactStatus('');
     setBackToProcessInterested('');
     setBackToProcessStatus('');
@@ -112,7 +136,9 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
     // Fetch from API
     const fetchComments = async () => {
       try {
-        const response = await leadsApi.getComments(leadId);
+        const response = isICX
+          ? await leadsApi.getICXComments(icxApplicationId)
+          : await leadsApi.getComments(leadId);
         setComments(response || []);
       } catch (error) {
         console.error('Error fetching comments:', error);
@@ -163,14 +189,24 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
 
     const fetchContactStatus = async () => {
       try {
-        const data = await leadsApi.getContactStatus(leadId);
+        const data = isICX
+          ? await leadsApi.getICXLeadStatus(icxApplicationId)
+          : await leadsApi.getContactStatus(leadId);
         if (data) {
-          setContactStatus(data.contact_status || '');
-          setInterested(data.interested || '');
-          setProcessStatus(data.process_status || '');
-          setReason(data.reason || '');
-          setProject(data.project || '');
-          setCountry(data.country || '');
+          if (isICX) {
+            setIcxContacted(normalizeYesNo(data.contacted));
+            setIcxInterviewed(normalizeYesNo(data.interviewed));
+            setIcxExpectationsEmailStatus(data.expectations_email_status || '');
+            setIcxOutOfProcess(normalizeYesNo(data.out_of_process));
+            setIcxReason(data.reason || '');
+          } else {
+            setContactStatus(data.contact_status || '');
+            setInterested(data.interested || '');
+            setProcessStatus(data.process_status || '');
+            setReason(data.reason || '');
+            setProject(data.project || '');
+            setCountry(data.country || '');
+          }
         }
       } catch (error) {
         console.error('Error fetching contact status:', error);
@@ -179,7 +215,9 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
 
     const fetchFollowUps = async () => {
       try {
-        const response = await leadsApi.getFollowUps(leadId);
+        const response = isICX
+          ? await leadsApi.getICXFollowUps(icxApplicationId)
+          : await leadsApi.getFollowUps(leadId);
         // Handle different response formats: array, { data: array }, or { data: { data: array } }
         let followUpsArray = [];
         if (Array.isArray(response)) {
@@ -198,7 +236,7 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
     fetchContactStatus();
     fetchFollowUps();
     fetchCustomerInterviewStatus();
-  }, [leadId]);
+  }, [leadId, icxApplicationId, isICX]);
 
   // Load opportunity applications
   useEffect(() => {
@@ -239,15 +277,26 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
   // Helper function to fetch and update status from backend
   const fetchAndUpdateStatus = async () => {
     if (!leadId) return;
+    if (isICX && !icxApplicationId) return;
     try {
-      const data = await leadsApi.getContactStatus(leadId);
+      const data = isICX
+        ? await leadsApi.getICXLeadStatus(icxApplicationId)
+        : await leadsApi.getContactStatus(leadId);
       if (data) {
-        setContactStatus(data.contact_status || '');
-        setInterested(data.interested || '');
-        setProcessStatus(data.process_status || '');
-        setReason(data.reason || '');
-        setProject(data.project || '');
-        setCountry(data.country || '');
+        if (isICX) {
+          setIcxContacted(normalizeYesNo(data.contacted));
+          setIcxInterviewed(normalizeYesNo(data.interviewed));
+          setIcxExpectationsEmailStatus(data.expectations_email_status || '');
+          setIcxOutOfProcess(normalizeYesNo(data.out_of_process));
+          setIcxReason(data.reason || '');
+        } else {
+          setContactStatus(data.contact_status || '');
+          setInterested(data.interested || '');
+          setProcessStatus(data.process_status || '');
+          setReason(data.reason || '');
+          setProject(data.project || '');
+          setCountry(data.country || '');
+        }
         console.log('✅ Status updated from backend:', data);
       }
     } catch (error) {
@@ -258,6 +307,7 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
   // Handlers for status changes
   const handleContactStatusChange = async (event) => {
     if (!leadId) return;
+    if (isICX) return;
     const value = event.target.value;
     setContactStatus(value);
     
@@ -275,6 +325,90 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
       await fetchAndUpdateStatus();
     } catch (error) {
       console.error('Error updating contact status:', error);
+    }
+  };
+
+  // iCX status handlers
+  const handleICXContactedChange = async (event) => {
+    if (!leadId) return;
+    if (!icxApplicationId) return;
+    const value = event.target.value;
+    setIcxContacted(value);
+
+    if (value !== 'Yes') {
+      setIcxInterviewed('');
+      setIcxExpectationsEmailStatus('');
+    }
+
+    try {
+      await leadsApi.patchICXLeadStatus(icxApplicationId, { contacted: value });
+      await fetchAndUpdateStatus();
+    } catch (error) {
+      console.error('Error updating iCX contacted status:', error);
+    }
+  };
+
+  const handleICXInterviewedChange = async (event) => {
+    if (!leadId) return;
+    if (!icxApplicationId) return;
+    const value = event.target.value;
+    setIcxInterviewed(value);
+
+    if (value !== 'Yes') {
+      setIcxExpectationsEmailStatus('');
+    }
+
+    try {
+      await leadsApi.patchICXLeadStatus(icxApplicationId, { interviewed: value });
+      await fetchAndUpdateStatus();
+    } catch (error) {
+      console.error('Error updating iCX interviewed status:', error);
+    }
+  };
+
+  const handleICXExpectationsEmailStatusChange = async (event) => {
+    if (!leadId) return;
+    if (!icxApplicationId) return;
+    const value = event.target.value;
+    setIcxExpectationsEmailStatus(value);
+
+    try {
+      await leadsApi.patchICXLeadStatus(icxApplicationId, { expectations_email_status: value });
+      await fetchAndUpdateStatus();
+    } catch (error) {
+      console.error('Error updating iCX expectations email status:', error);
+    }
+  };
+
+  const handleICXOutOfProcessChange = async (event) => {
+    if (!leadId) return;
+    if (!icxApplicationId) return;
+    const value = event.target.value;
+    setIcxOutOfProcess(value);
+
+    if (value !== 'Yes') {
+      setIcxReason('');
+    }
+
+    try {
+      await leadsApi.patchICXLeadStatus(icxApplicationId, { out_of_process: value });
+      await fetchAndUpdateStatus();
+    } catch (error) {
+      console.error('Error updating iCX out of process:', error);
+    }
+  };
+
+  const handleICXReasonChange = async (event) => {
+    if (!leadId) return;
+    if (!icxApplicationId) return;
+    const value = event.target.value;
+    setIcxReason(value);
+
+    try {
+      await leadsApi.patchICXLeadStatus(icxApplicationId, { reason: value });
+      await fetchAndUpdateStatus();
+    } catch (error) {
+      console.error('Error updating iCX reason:', error);
     }
   };
 
@@ -365,12 +499,15 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
 
   // Handler for adding comments
   const handleAddComment = async () => {
-    if (!leadId || !newComment.trim()) return;
+    const effectiveId = isICX ? icxApplicationId : leadId;
+    if (!effectiveId || !newComment.trim()) return;
     const text = newComment.trim();
     await addLeadComment(text);
     setNewComment('');
     try {
-      const fresh = await leadsApi.getComments(leadId);
+      const fresh = isICX
+        ? await leadsApi.getICXComments(icxApplicationId)
+        : await leadsApi.getComments(leadId);
       setComments(Array.isArray(fresh) ? fresh : []);
     } catch (e) {
       // keep existing comments if refresh fails
@@ -379,36 +516,61 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
 
   // Handler for adding follow-ups
   const handleAddFollowUp = async () => {
-    if (!leadId || !newFollowUp.trim() || !followUpDate) return;
+    const effectiveId = isICX ? icxApplicationId : leadId;
+    if (!effectiveId || !newFollowUp.trim() || !followUpDate) return;
     try {
+      const followUpAtDate = new Date(followUpDate);
+      if (Number.isNaN(followUpAtDate.getTime())) {
+        alert('Please select a valid follow-up date/time.');
+        return;
+      }
+
       const followUpData = {
         text: newFollowUp,
-        next_follow_up_date: followUpDate,
+        next_follow_up_date: followUpAtDate.toISOString(),
       };
-      const response = await leadsApi.createFollowUp(leadId, followUpData);
+      const response = isICX
+        ? await leadsApi.createICXFollowUp(icxApplicationId, followUpData)
+        : await leadsApi.createFollowUp(leadId, followUpData);
       // Handle different response formats
-      const newFollowUp = response?.data || response;
-      if (newFollowUp) {
-        setFollowUps((prev) => [newFollowUp, ...prev]);
+      const createdFollowUp = response?.data || response;
+      if (createdFollowUp) {
+        setFollowUps((prev) => [createdFollowUp, ...prev]);
       } else {
         // Refresh the list if response format is unexpected
-        const updatedFollowUps = await leadsApi.getFollowUps(leadId);
+        const updatedFollowUps = isICX
+          ? await leadsApi.getICXFollowUps(icxApplicationId)
+          : await leadsApi.getFollowUps(leadId);
         setFollowUps(updatedFollowUps || []);
       }
       setNewFollowUp('');
       setFollowUpDate('');
     } catch (error) {
       console.error('Failed to create follow-up:', error);
+
+      const backendMessage =
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to schedule follow-up.';
+      alert(backendMessage);
     }
   };
 
   // Handler for marking follow-up as completed
   const handleMarkFollowUpComplete = async (followUp) => {
-    if (!leadId || !followUp?.id) return;
+    const effectiveId = isICX ? icxApplicationId : leadId;
+    if (!effectiveId || !followUp?.id) return;
     try {
-      await leadsApi.updateFollowUp(leadId, followUp.id);
+      if (isICX) {
+        await leadsApi.updateICXFollowUpStatus(icxApplicationId, followUp.id);
+      } else {
+        await leadsApi.updateFollowUp(leadId, followUp.id);
+      }
       // Refresh follow-ups list
-      const response = await leadsApi.getFollowUps(leadId);
+      const response = isICX
+        ? await leadsApi.getICXFollowUps(icxApplicationId)
+        : await leadsApi.getFollowUps(leadId);
       // Handle different response formats
       let followUpsArray = [];
       if (Array.isArray(response)) {
@@ -770,6 +932,12 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
     reason,
     project,
     country,
+
+    icxContacted,
+    icxInterviewed,
+    icxExpectationsEmailStatus,
+    icxOutOfProcess,
+    icxReason,
     backToProcessContactStatus,
     backToProcessInterested,
     backToProcessStatus,
@@ -815,6 +983,12 @@ export function useLeadProfileState({ lead, leadId, onStatusChange }) {
     handleReasonChange,
     handleProjectChange,
     handleCountryChange,
+
+    handleICXContactedChange,
+    handleICXInterviewedChange,
+    handleICXExpectationsEmailStatusChange,
+    handleICXOutOfProcessChange,
+    handleICXReasonChange,
     handleAddComment,
     handleAddFollowUp,
     handleMarkFollowUpComplete,

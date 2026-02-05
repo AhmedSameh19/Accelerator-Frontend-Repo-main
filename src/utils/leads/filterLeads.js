@@ -83,6 +83,11 @@ export const filterLeads = ({
         return String(lead.expa_status).toLowerCase() === String(statusFilter).toLowerCase();
       }
 
+      // iCX leads backend shape (status)
+      if (lead.status) {
+        return String(lead.status).toLowerCase() === String(statusFilter).toLowerCase();
+      }
+
       const statusDateMapping = {
         applied: 'date_applied',
         accepted: 'date_matched',

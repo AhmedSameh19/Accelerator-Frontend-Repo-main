@@ -41,6 +41,7 @@ import { followUpStatusEmitter } from './MarketResearchPage';
 import Cookies from 'js-cookie';
 import leadsApi from '../api/services/leadsApi';
 import marketResearchAPI from '../api/services/marketResearchAPI';
+
 function FollowUpsPage() {
   const { crmType } = useCRMType();
   const [followUps, setFollowUps] = useState([]);
@@ -49,7 +50,6 @@ function FollowUpsPage() {
   const [followUpDate, setFollowUpDate] = useState('');
   const [followUpTitle, setFollowUpTitle] = useState('');
   const [selectedEntity, setSelectedEntity] = useState('');
-  const [leads, setLeads] = useState([]);
   const [companies, setCompanies] = useState([]);
   const theme = useTheme();
   const personId = Cookies.get('person_id') || null;
@@ -69,6 +69,21 @@ function FollowUpsPage() {
           allFollowUps = response;
         } catch (error) {
           console.error('Failed to fetch follow-ups:', error);
+        }
+      } else if (crmType === 'iCX') {
+        if (!personId) return;
+
+        try {
+          const response = await leadsApi.getICXFollowUpsCreatedBy(personId);
+          const list = Array.isArray(response) ? response : response?.data || [];
+
+          allFollowUps = (Array.isArray(list) ? list : []).map((fu) => ({
+            ...fu,
+            entityId: fu.application_id,
+            entityType: 'lead',
+          }));
+        } catch (error) {
+          console.error('Failed to fetch iCX follow-ups:', error);
         }
       } else {
         try {
@@ -102,6 +117,10 @@ function FollowUpsPage() {
   
     loadFollowUps();
   }, [crmType, personId]);
+
+  useEffect(() => {
+    setSelectedEntity('');
+  }, [crmType]);
   
 
   // Subscribe to follow-up status changes from other components
@@ -124,21 +143,19 @@ function FollowUpsPage() {
     if (!newFollowUp.trim() || !followUpDate || !selectedEntity ) return;
 
     if (crmType === 'oGX') {
-      const lead = leads.find(l => l.id === selectedEntity);
-      if (!lead?.id || !newFollowUp.trim() || !followUpDate) return;
       try {
         const followUpData = {
           text: newFollowUp,
           next_follow_up_date: followUpDate,
           status: 'pending', // new follow-ups are pending by default
-          created_by: lead.created_by // optional: your logged-in user
         };
     
         // Call backend API
-        const response = await leadsApi.createFollowUp(lead.id, followUpData);
+        const response = await leadsApi.createFollowUp(selectedEntity, followUpData);
     
         // Update local state to show the new follow-up immediately
-        setFollowUps((prev) => [response.data, ...prev]);
+        const created = response?.data || response;
+        if (created) setFollowUps((prev) => [created, ...prev]);
     
         // Reset the input fields
         setNewFollowUp('');
@@ -146,6 +163,31 @@ function FollowUpsPage() {
     
       } catch (error) {
         console.error('Failed to create follow-up:', error);
+      }
+    } else if (crmType === 'iCX') {
+      try {
+        const followUpAt = new Date(followUpDate);
+        if (Number.isNaN(followUpAt.getTime())) return;
+
+        const response = await leadsApi.createICXFollowUp(selectedEntity, {
+          text: newFollowUp,
+          next_follow_up_date: followUpAt.toISOString(),
+          created_by: personId,
+        });
+
+        const created = response?.data || response;
+        if (created) {
+          setFollowUps((prev) => [
+            {
+              ...created,
+              entityId: created.application_id || selectedEntity,
+              entityType: 'lead',
+            },
+            ...prev,
+          ]);
+        }
+      } catch (error) {
+        console.error('Failed to create iCX follow-up:', error);
       }
     } else {
       const company = companies.find(c => c.id === selectedEntity);
@@ -235,17 +277,29 @@ function FollowUpsPage() {
     //   });
     // }
   // };
-  const handleStatusChange = async (followUp) => {
+  const handleStatusChange = async (followUp, newStatus) => {
     if (!followUp?.id) return;
     if(crmType=='oGX'){
       try {
         // Call the backend to update status
-        const updatedFollowUp = await leadsApi.updateFollowUp(followUp.expa_person_id, followUp.id);
+        const updatedFollowUp = await leadsApi.updateFollowUp(followUp.expa_person_id, followUp.id, {
+          status: newStatus,
+        });
     
         // Optionally update local state if you maintain followUps array
         setFollowUps(prev => prev.map(f => f.id === followUp.id ? { ...f, ...updatedFollowUp} : f));
       } catch (error) {
         console.error('Error updating follow-up status:', error);
+      }
+    }
+    else if(crmType=='iCX'){
+      try {
+        const applicationId = followUp.application_id || followUp.entityId;
+        if (!applicationId) return;
+        const updated = await leadsApi.updateICXFollowUpStatus(applicationId, followUp.id, newStatus);
+        setFollowUps(prev => prev.map(f => f.id === followUp.id ? { ...f, ...updated, status: newStatus } : f));
+      } catch (error) {
+        console.error('Error updating iCX follow-up status:', error);
       }
     }
     else{
@@ -299,7 +353,7 @@ function FollowUpsPage() {
   return (
     <Box sx={{ p: { xs: 1, sm: 3 } }}>
       <Typography variant="h4" sx={{ mb: { xs: 2, sm: 3 }, fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-        {crmType === 'oGX' ? 'Lead Follow-ups' : 'Company Follow-ups'}
+        {crmType === 'oGX' || crmType === 'iCX' ? 'Lead Follow-ups' : 'Company Follow-ups'}
       </Typography>
 
       <Card elevation={0} sx={{ mb: { xs: 2, sm: 3 } }}>
@@ -422,29 +476,38 @@ function FollowUpsPage() {
 
       <Card elevation={0} sx={{ mb: { xs: 2, sm: 3 } }}>
         <CardHeader 
-          title={`Add New ${crmType === 'oGX' ? 'Lead' : 'Company'} Follow-up`} 
+          title={`Add New ${crmType === 'oGX' || crmType === 'iCX' ? 'Lead' : 'Company'} Follow-up`} 
           sx={{ px: { xs: 1, sm: 2 }, py: { xs: 1, sm: 2 } }}
         />
         <CardContent sx={{ px: { xs: 1, sm: 2 }, py: { xs: 1, sm: 2 } }}>
           <Stack spacing={{ xs: 1.5, sm: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel id="entity-select-label">
-                Select {crmType === 'oGX' ? 'Lead' : 'Company'}
-              </InputLabel>
-              <Select
-                labelId="entity-select-label"
+            {crmType === 'oGX' || crmType === 'iCX' ? (
+              <TextField
+                fullWidth
+                variant="outlined"
+                label={crmType === 'iCX' ? 'Application ID' : 'Lead ID'}
                 value={selectedEntity}
-                label={`Select ${crmType === 'oGX' ? 'Lead' : 'Company'}`}
                 onChange={(e) => setSelectedEntity(e.target.value)}
                 sx={{ fontSize: { xs: '0.8rem', sm: '1rem' } }}
-              >
-                {(crmType === 'oGX' ? leads : companies).map((entity) => (
-                  <MenuItem key={entity.id} value={entity.id}>
-                    {crmType === 'oGX' ? (entity.name || entity.full_name) : entity.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+              />
+            ) : (
+              <FormControl fullWidth>
+                <InputLabel id="entity-select-label">Select Company</InputLabel>
+                <Select
+                  labelId="entity-select-label"
+                  value={selectedEntity}
+                  label="Select Company"
+                  onChange={(e) => setSelectedEntity(e.target.value)}
+                  sx={{ fontSize: { xs: '0.8rem', sm: '1rem' } }}
+                >
+                  {companies.map((entity) => (
+                    <MenuItem key={entity.id} value={entity.id}>
+                      {entity.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
             {/* <TextField
               fullWidth
               variant="outlined"

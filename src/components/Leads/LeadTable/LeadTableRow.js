@@ -8,17 +8,21 @@ export default function LeadTableRow({
   isSelected, 
   onSelect, 
   onProfileClick,
-  theme 
+  theme,
+  isICX = false,
+  selectionId,
 }) {
-  const leadId = lead.expa_person_id;
+  const effectiveSelectionId = selectionId ?? (isICX ? lead.application_id : lead.expa_person_id);
+  const displayId = isICX ? (lead.application_id ?? lead.expa_person_id) : lead.expa_person_id;
   const leadName = lead.full_name;
-  const leadLcName = lead.home_lc_name;
-  const leadStatus = lead.expa_status || '-';
+  const leadLcName = isICX ? (lead.home_lc_name || lead.host_lc_name) : (lead.host_lc_name || lead.home_lc_name);
+  const homeMcName = lead.home_mc_name || lead.home_mc;
+  const leadStatus = lead.expa_status || lead.status || '-';
   const assignedMember = lead.assigned_member_name || '-';
 
   return (
     <TableRow 
-      key={leadId}
+      key={effectiveSelectionId}
       hover
       selected={isSelected}
       sx={{ 
@@ -30,7 +34,7 @@ export default function LeadTableRow({
       <TableCell padding="checkbox">
         <Checkbox
           checked={isSelected}
-          onChange={() => onSelect(leadId)}
+          onChange={() => onSelect(effectiveSelectionId)}
         />
       </TableCell>
       <TableCell>
@@ -62,12 +66,13 @@ export default function LeadTableRow({
               {leadName || '-'}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              ID: {leadId}
+              ID: {displayId}
             </Typography>
           </Box>
         </Box>
       </TableCell>
       <TableCell>{leadLcName || '-'}</TableCell>
+      {isICX ? <TableCell>{homeMcName || '-'}</TableCell> : null}
       <TableCell>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {lead.phone || '-'}
