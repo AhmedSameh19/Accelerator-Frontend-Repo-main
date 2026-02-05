@@ -24,10 +24,16 @@ import {
   InsertDriveFile as InsertDriveFileIcon,
   AttachMoney as AttachMoneyIcon,
 } from '@mui/icons-material';
-import { updateStandards } from '../api/services/realizationsService';
+import { updateStandards as defaultUpdateStandards } from '../api/services/realizationsService';
 
-const PreparationStepsTab = ({ selectedLead, fileToBase64, prepState, setPrepState }) => {
-  const leadId = selectedLead?.expa_person_id || selectedLead?.id;
+const PreparationStepsTab = ({
+  selectedLead,
+  fileToBase64,
+  prepState,
+  setPrepState,
+  updateStandardsFn = defaultUpdateStandards,
+}) => {
+  const leadId = selectedLead?.application_id || selectedLead?.id || selectedLead?.expa_person_id;
   const leadPrep = useMemo(() => (leadId ? prepState[leadId] || {} : {}), [leadId, prepState]);
 
   const handleToggle = async (standardKey, checked) => {
@@ -69,7 +75,7 @@ const PreparationStepsTab = ({ selectedLead, fileToBase64, prepState, setPrepSta
     if (!persistKeys.has(standardKey)) return;
   
     try {
-      const response = await updateStandards(leadId, {
+      const response = await updateStandardsFn(leadId, {
         standardName: standardKey,
         value: checked
       });

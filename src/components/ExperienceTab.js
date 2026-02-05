@@ -24,10 +24,17 @@ import {
   EventNote as EventNoteIcon,
   RateReview as RateReviewIcon,
 } from '@mui/icons-material';
-import { updateStandards } from '../api/services/realizationsService';
-const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64, prepState, setPrepState }) => {
+import { updateStandards as defaultUpdateStandards } from '../api/services/realizationsService';
+const ExperienceTab = ({
+  selectedLead,
+  formatDateTime,
+  fileToBase64,
+  prepState,
+  setPrepState,
+  updateStandardsFn = defaultUpdateStandards,
+}) => {
   if (!selectedLead) return null;
-  const leadId = selectedLead?.expa_person_id || selectedLead?.id;
+  const leadId = selectedLead?.application_id || selectedLead?.id || selectedLead?.expa_person_id;
   if (!selectedLead) return null;
   const handleToggle = async (standardKey, checked) => {
     const persistKeys = new Set([
@@ -66,7 +73,7 @@ const ExperienceTab = ({ selectedLead, formatDateTime, fileToBase64, prepState, 
     if (!persistKeys.has(standardKey)) return;
   
     try {
-      const response = await updateStandards(leadId, {
+      const response = await updateStandardsFn(leadId, {
         standardName: standardKey,
         value: checked,
       });

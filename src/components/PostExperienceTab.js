@@ -12,11 +12,16 @@ import {
   Checkbox,
 } from '@mui/material';
 import { Chat as ChatIcon } from '@mui/icons-material';
-import { updateStandards } from '../api/services/realizationsService';
+import { updateStandards as defaultUpdateStandards } from '../api/services/realizationsService';
 
-const PostExperienceTab = ({ selectedLead, prepState, setPrepState }) => {
+const PostExperienceTab = ({
+  selectedLead,
+  prepState,
+  setPrepState,
+  updateStandardsFn = defaultUpdateStandards,
+}) => {
   if (!selectedLead) return null;
-  const leadId = selectedLead?.expa_person_id || selectedLead?.id;
+  const leadId = selectedLead?.application_id || selectedLead?.id || selectedLead?.expa_person_id;
 
   const handleToggle = async (standardKey, checked) => {
     setPrepState(prev => ({
@@ -28,7 +33,7 @@ const PostExperienceTab = ({ selectedLead, prepState, setPrepState }) => {
     }));
   
     try {
-      const response = await updateStandards(leadId, {
+      const response = await updateStandardsFn(leadId, {
         standardName: standardKey,
         value: checked
       });

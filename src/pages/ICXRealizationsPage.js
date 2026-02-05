@@ -75,8 +75,15 @@ import {
   PersonAdd as PersonAddIcon,
 } from '@mui/icons-material';
 import { useCRMType } from '../context/CRMTypeContext';
-import { getRealizations, bulkAssignLeads, getLeadAssignments } from '../api/services/realizationsService';
+import {
+  bulkAssignICXRealizations,
+  getICXRealizations,
+  getICXRealizationsStandards,
+  patchICXRealizationsStandards,
+} from '../api/services/realizationsService';
 import ExperienceTab from '../components/ExperienceTab';
+import PreparationStepsTab from '../components/PreparationStepsTab';
+import PostExperienceTab from '../components/PostExperienceTab';
 import DateRangeFilter from '../components/DateRangeFilter';
 import { LC_CODES, MC_EGYPT_CODE } from '../lcCodes';
 import { fetchActiveMembers } from '../api/services/membersAPI';
@@ -309,7 +316,6 @@ function ICXRealizationsPage() {
   const [tab, setTab] = useState(0);
   // Preparation state for each lead (by id)
   const [prepState, setPrepState] = useState({});
-  const [prepStateLoaded, setPrepStateLoaded] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -319,39 +325,65 @@ function ICXRealizationsPage() {
   const [orderBy, setOrderBy] = useState('id');
   const [uniqueHostLCs, setUniqueHostLCs] = useState([]);
   const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
-  const [assignedMembers, setAssignedMembers] = useState({});
-  const [openAssignmentDialog, setOpenAssignmentDialog] = useState(false);
-  const [selectedLeadForAssignment, setSelectedLeadForAssignment] = useState(null);
   const [selectedMember, setSelectedMember] = useState('');
   const [bulkAssignDialogOpen, setBulkAssignDialogOpen] = useState(false);
   const [selectedLeadsSet, setSelectedLeadsSet] = useState(new Set());
   const membersFetched = useRef(false);
   const [members, setActiveMembers] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   // Move fetchLeads outside useEffect so it can be called from the button
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
     try {
       setLoading(true);
-      console.log('Fetching ICX leads...');
-      const data = await getRealizations();
-      console.log('ICX leads data:', data);
-      if (data && data.icx) {
-        console.log('ICX leads:', data.icx);
-        setLeads(data.icx);
-        setOriginalLeads(data.icx);
-        // Show success notification with count
-        setSnackbar({
-          open: true,
-          message: `Successfully loaded ${data.icx.length} Expected Realizations from AIESEC API`,
-          severity: 'success'
-        });
-      } else {
-        console.error('Invalid data format received');
+      const hostLcId = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
+      if (!hostLcId) {
         setLeads([]);
         setOriginalLeads([]);
+        setError('No office assigned to your account. Cannot fetch realizations.');
+        return;
       }
+
+      console.log('Fetching ICX realizations...');
+      const items = await getICXRealizations(hostLcId);
+
+      const normalized = (items || []).map((r) => ({
+        ...r,
+
+        // Canonical identifier for iCX realizations is application_id
+        id: r.application_id ?? r.id,
+
+        // Common UI fields (camelCase) expected by this page
+        fullName: r.full_name ?? r.fullName,
+        email: r.email ?? r.email,
+        phone: r.contact_number ?? r.phone,
+
+        homeLC: r.home_lc_name ?? r.homeLC,
+        homeMC: r.home_mc_name ?? r.homeMC,
+        hostLC: r.host_lc_name ?? r.hostLC,
+        hostMC: r.host_mc_name ?? r.hostMC ?? 'Egypt',
+
+        programme: r.programme ?? r.product ?? r.programme,
+        title: r.opp_title ?? r.title,
+        opportunityLink: r.opp_id ? `https://aiesec.org/opportunity/${r.opp_id}` : r.opportunityLink,
+
+        apdDate: r.date_approved ?? r.apdDate,
+        slotStartDate: r.slot_start_date ?? r.slotStartDate,
+        slotEndDate: r.slot_end_date ?? r.slotEndDate,
+        realizedDate: r.date_realized ?? r.realizedDate,
+        finishDate: r.experience_end_date ?? r.finishDate,
+
+        assignedMember: r.assigned_member_name ?? r.assignedMember,
+      }));
+
+      setLeads(normalized);
+      setOriginalLeads(normalized);
+
+      setSnackbar({
+        open: true,
+        message: `Successfully loaded ${normalized.length} Expected Realizations`,
+        severity: 'success'
+      });
+
       setError(null);
     } catch (err) {
       console.error('Error fetching leads:', err);
@@ -373,26 +405,13 @@ function ICXRealizationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser, isAdmin]);
 
   // useEffect for initial load
   useEffect(() => {
+    if (!currentUser && !isAdmin) return;
     fetchLeads();
-  }, []);
-
-  // Load prepState from localStorage on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('prepState');
-      if (saved) {
-        setPrepState(JSON.parse(saved));
-        console.log('Loaded prepState from localStorage:', JSON.parse(saved));
-      }
-    } catch (e) {
-      setPrepState({});
-    }
-    setPrepStateLoaded(true);
-  }, []);
+  }, [currentUser, isAdmin, fetchLeads]);
 
     useEffect(() => {
       const lcCode = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
@@ -421,15 +440,8 @@ function ICXRealizationsPage() {
         }
       }
     }, [dateRange, currentUser, isAdmin]);
-  // Save prepState to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('prepState', JSON.stringify(prepState));
-    console.log('Saved prepState to localStorage:', prepState);
-  }, [prepState]);
-
   // Filter prepState to only keep entries for current leads, but only after prepState is loaded
   useEffect(() => {
-    if (!prepStateLoaded) return;
     setPrepState(prev => {
       const validIds = new Set(leads.map(l => l.id));
       const filtered = {};
@@ -440,21 +452,42 @@ function ICXRealizationsPage() {
       }
       return filtered;
     });
-  }, [leads, prepStateLoaded]);
+  }, [leads]);
 
   // Add useEffect to trigger search when filters change
   useEffect(() => {
     handleSearch();
   }, [searchTerm, selectedCountry, selectedLanguage, selectedExchangeType, selectedStatus]);
 
-  // Save prepState for a specific lead to localStorage whenever it changes
   useEffect(() => {
-    if (!selectedLead || !selectedLead.id) return;
-    if (prepState[selectedLead.id]) {
-      localStorage.setItem(`prepState_${selectedLead.id}`, JSON.stringify(prepState[selectedLead.id]));
-      console.log(`Saved prepState for EP ${selectedLead.id} to localStorage:`, prepState[selectedLead.id]);
-    }
-  }, [prepState, selectedLead]);
+    const leadId = selectedLead?.id;
+    if (!openProfileDialog || !leadId) return;
+    if (prepState?.[leadId]) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await getICXRealizationsStandards(leadId);
+        if (cancelled) return;
+        setPrepState((prev) => ({
+          ...(prev || {}),
+          [leadId]: data || {},
+        }));
+      } catch (error) {
+        console.error('Failed to fetch ICX standards:', error);
+        if (cancelled) return;
+        setPrepState((prev) => ({
+          ...(prev || {}),
+          [leadId]: {},
+        }));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [openProfileDialog, selectedLead, prepState, setPrepState]);
 
   // Add useEffect to update uniqueHostLCs when leads change
   useEffect(() => {
@@ -706,15 +739,7 @@ const getTeamUnderCurrentUser = (members) => {
   const handleOpenProfile = (lead) => {
     setSelectedLead(lead);
     setOpenProfileDialog(true);
-    // Load prepState for this lead from localStorage
-    const saved = localStorage.getItem(`prepState_${lead.id}`);
-    if (saved) {
-      setPrepState(prev => ({
-        ...prev,
-        [lead.id]: JSON.parse(saved)
-      }));
-      console.log(`Loaded prepState for EP ${lead.id} from localStorage:`, JSON.parse(saved));
-    }
+    setTab(0);
   };
 
   const handleCloseProfile = () => {
@@ -972,7 +997,7 @@ const getTeamUnderCurrentUser = (members) => {
             <td>${calculateDaysTillRealization(lead.apdDate, lead.slotStartDate)}</td>
             <td>${formatDate(lead.apdDate)}</td>
             <td>${formatDate(lead.slotStartDate)}</td>
-            <td>${assignedMembers[lead.id] || '-'}</td>
+            <td>${lead.assignedMember || lead.assigned_member_name || '-'}</td>
           </tr>
           `;
           tbody.appendChild(row);
@@ -989,70 +1014,33 @@ const getTeamUnderCurrentUser = (members) => {
     }, 250);
   };
 
-  const handleOpenAssignmentDialog = (lead) => {
-    setSelectedLeadForAssignment(lead);
-    setOpenAssignmentDialog(true);
-  };
-
-  const handleCloseAssignmentDialog = () => {
-    setOpenAssignmentDialog(false);
-    setSelectedLeadForAssignment(null);
-  };
-
   const handleAssignMember = async (member) => {
-    if (selectedLeads.length > 0) {
-      try {
-        // Send one request for all selected leads at once
-        await bulkAssignLeads({
-          leadIds: selectedLeads,
-          assigned_to: member.id
-        });
+    if (selectedLeads.length === 0) return;
 
-        // Refresh UI after success
-        setRefreshKey(prev => prev + 1);
+    try {
+      await bulkAssignICXRealizations({
+        application_ids: selectedLeads,
+        member_id: member.id,
+      });
 
-        // ✅ Refetch assignments to get updated values
-        const updatedAssignments = await getLeadAssignments();
-        setAssignments(updatedAssignments);
+      await fetchLeads();
 
-        // Show success message
-        setSnackbar({
-          open: true,
-          message: `Successfully assigned ${selectedLeads.length} realizations to member`,
-          severity: 'success'
-        });
+      setSnackbar({
+        open: true,
+        message: `Successfully assigned ${selectedLeads.length} realizations to member`,
+        severity: 'success'
+      });
 
-        setSelectedLeadsSet(new Set());
-        handleCloseAssignmentDialog();
-      } catch (error) {
-        console.error('Error bulk assigning leads:', error);
-        setSnackbar({
-          open: true,
-          message: 'Failed to assign realizations',
-          severity: 'error'
-        });
-      }
+      setSelectedLeadsSet(new Set());
+    } catch (error) {
+      console.error('Error bulk assigning realizations:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to assign realizations',
+        severity: 'error'
+      });
     }
   };
-
-  const getAssignedMember = (leadId) => {
-    if(assignments.length === 0) return null;
-    for (const assignment of assignments) {
-      if(parseInt(assignment.id) === parseInt(leadId)) {
-        const member = members.find(m => m.id === assignment.assigned_to);
-        return member?.person || null;
-      }
-    }
-    return null;
-  };
-  
-  useEffect(() => {
-    const fetchData = async () => {
-      const assignments = await getLeadAssignments();
-      setAssignments(assignments);
-    };
-    fetchData();
-  }, [refreshKey]);
 
   return (
     <Box>
@@ -1716,9 +1704,9 @@ const getTeamUnderCurrentUser = (members) => {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        {getAssignedMember(lead.id) ? (
+                        {lead.assignedMember || lead.assigned_member_name ? (
                           <Chip
-                            label={getAssignedMember(lead.id) || 'Unknown'}
+                            label={lead.assignedMember || lead.assigned_member_name || 'Unknown'}
                             sx={{
                               bgcolor: '#1976d2',
                               color: '#fff',
@@ -2158,6 +2146,15 @@ const getTeamUnderCurrentUser = (members) => {
               </Stack>
             )}
             {tab === 1 && (
+              <>
+                <PreparationStepsTab
+                  selectedLead={selectedLead}
+                  fileToBase64={fileToBase64}
+                  prepState={prepState}
+                  setPrepState={setPrepState}
+                  updateStandardsFn={patchICXRealizationsStandards}
+                />
+                {false && (
               <Box sx={{ p: 4, color: 'text.secondary' }}>
                 <Typography variant="h6" color="primary" sx={{ mb: 3, fontWeight: 700 }}>Preparation Steps</Typography>
                 <Stack spacing={3}>
@@ -2720,6 +2717,8 @@ const getTeamUnderCurrentUser = (members) => {
                   </Card>
                 </Stack>
               </Box>
+                )}
+              </>
             )}
             {tab === 2 && (
               <ExperienceTab
@@ -2728,9 +2727,18 @@ const getTeamUnderCurrentUser = (members) => {
                 setPrepState={setPrepState}
                 formatDateTime={formatDateTime}
                 fileToBase64={fileToBase64}
+                updateStandardsFn={patchICXRealizationsStandards}
               />
             )}
             {tab === 3 && (
+              <>
+                <PostExperienceTab
+                  selectedLead={selectedLead}
+                  prepState={prepState}
+                  setPrepState={setPrepState}
+                  updateStandardsFn={patchICXRealizationsStandards}
+                />
+                {false && (
               <Box sx={{ p: 4, color: 'text.secondary' }}>
                 <Typography variant="h6" color="primary" sx={{ mb: 3, fontWeight: 700 }}>Post Experience</Typography>
                 <Stack spacing={3}>
@@ -2764,6 +2772,8 @@ const getTeamUnderCurrentUser = (members) => {
                   </Card>
                 </Stack>
               </Box>
+                )}
+              </>
             )}
           </DialogContent>
 

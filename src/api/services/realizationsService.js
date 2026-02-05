@@ -463,4 +463,158 @@ async function getLeadAssignments() {
   }
 }
 
-export { getRealizations, updateStandards, getStandards, bulkAssignLeads, getLeadAssignments };
+// ---------------------------------------------------------------------------
+// iCX Realizations (DB-backed)
+// Backend:
+//   GET   /api/v1/icx/realizations?host_lc_id=...
+//   PATCH /api/v1/icx/realizations/assign/bulk   { application_ids, member_id }
+// ---------------------------------------------------------------------------
+
+async function getICXRealizations(hostLcId) {
+  if (hostLcId == null) throw new Error('host_lc_id is required');
+
+  try {
+    const response = await axios.get(`${API_BASE_URL}/icx/realizations`, {
+      params: { host_lc_id: String(hostLcId) },
+    });
+
+    const items = response?.data?.items ?? response?.data ?? [];
+    return Array.isArray(items) ? items : [];
+  } catch (error) {
+    console.error('Error fetching iCX realizations:', error);
+    throw error;
+  }
+}
+
+async function bulkAssignICXRealizations({ application_ids, member_id } = {}) {
+  try {
+    const payload = {
+      application_ids: Array.isArray(application_ids) ? application_ids : [],
+      member_id,
+    };
+
+    const response = await axios.patch(`${API_BASE_URL}/icx/realizations/assign/bulk`, payload);
+    return response?.data || response;
+  } catch (error) {
+    console.error('Error bulk assigning iCX realizations:', error);
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// iCX Realizations Standards (DB-backed)
+// Backend:
+//   GET   /api/v1/icx/realizations/standards/{application_id}
+//   PATCH /api/v1/icx/realizations/standards/{application_id}
+// ---------------------------------------------------------------------------
+
+async function getICXRealizationsStandards(applicationId) {
+  if (!applicationId) throw new Error('application_id is required');
+
+  try {
+    const response = await axios.get(`${API_BASE_URL}/icx/realizations/standards/${applicationId}`);
+    return response?.data || {};
+  } catch (error) {
+    console.error('Error fetching iCX realization standards:', error);
+    throw error;
+  }
+}
+
+async function patchICXRealizationsStandards(applicationId, standards) {
+  if (!applicationId) throw new Error('application_id is required');
+
+  try {
+    const allowedKeys = new Set([
+      'health_insurance',
+      'expectation_settings',
+      'visa_and_work_permit',
+      'communication_10_days_before',
+      'arrival_pickup',
+      'accommodation',
+      'ips',
+      'ops',
+      'pgs',
+      'alignment_space',
+      'first_day_of_work',
+      'job_description',
+      'working_hours',
+      'duration',
+      'opportunity_benefits',
+      'value_driven_leadership_education',
+      'communication_first_10_days',
+      'communication_second_10_days',
+      'communication_third_10_days',
+      'communication_fourth_10_days',
+      'departure_support',
+      'debrief',
+    ]);
+
+    const legacyToApiKey = {
+      healthinsurancecompleted: 'health_insurance',
+      expectationsettingscompleted: 'expectation_settings',
+      communicationcompleted: 'communication_10_days_before',
+      accommodationcompleted: 'accommodation',
+      psgcompleted: 'pgs',
+      opscompleted: 'ops',
+      ipscompleted: 'ips',
+
+      alignmentspacesdone: 'alignment_space',
+      firstdayofworkdone: 'first_day_of_work',
+      jobdescriptiondone: 'job_description',
+      workinghoursmatchopp: 'working_hours',
+      minimumdurationreached: 'duration',
+      benefitsdelivered: 'opportunity_benefits',
+      valuedriveneducationdelivered: 'value_driven_leadership_education',
+      firsttendayscommunication: 'communication_first_10_days',
+      secondtendayscommunication: 'communication_second_10_days',
+      thirdtendayscommunication: 'communication_third_10_days',
+      fourthtendayscommunication: 'communication_fourth_10_days',
+      departuredone: 'departure_support',
+      debreif: 'debrief',
+    };
+
+    const normalizePatch = (input) => {
+      if (!input || typeof input !== 'object') return {};
+
+      if ('standardName' in input && 'value' in input) {
+        const mappedKey = legacyToApiKey[input.standardName] || input.standardName;
+        return allowedKeys.has(mappedKey) ? { [mappedKey]: input.value } : {};
+      }
+
+      const patch = {};
+      for (const [key, value] of Object.entries(input)) {
+        if (key === 'standardName' || key === 'value' || key === 'standardKey') continue;
+        const mappedKey = legacyToApiKey[key] || key;
+        if (!allowedKeys.has(mappedKey)) continue;
+        patch[mappedKey] = value;
+      }
+      return patch;
+    };
+
+    const patch = normalizePatch(standards);
+    if (!Object.keys(patch).length) {
+      throw new Error('No valid iCX standards fields to update');
+    }
+
+    const response = await axios.patch(
+      `${API_BASE_URL}/icx/realizations/standards/${applicationId}`,
+      patch,
+    );
+    return response?.data || response;
+  } catch (error) {
+    console.error('Error patching iCX realization standards:', error);
+    throw error;
+  }
+}
+
+export {
+  getRealizations,
+  updateStandards,
+  getStandards,
+  bulkAssignLeads,
+  getLeadAssignments,
+  getICXRealizations,
+  bulkAssignICXRealizations,
+  getICXRealizationsStandards,
+  patchICXRealizationsStandards,
+};
