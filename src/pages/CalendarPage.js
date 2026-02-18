@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Grid, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, MenuItem, IconButton, Tooltip,
-  FormControl, InputLabel, Select, Chip
+  FormControl, InputLabel, Select, Chip, Snackbar, Alert
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -10,11 +10,13 @@ import {
   ChevronRight as ChevronRightIcon,
   Today as TodayIcon,
   Event as EventIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  CalendarMonth as CalendarMonthIcon
 } from '@mui/icons-material';
 import { followUpStatusEmitter } from './MarketResearchPage';
 import leadsApi from '../api/services/leadsApi';
 import marketResearchAPI from '../api/services/marketResearchAPI';
+import calendarApi from '../api/services/calendarApi';
 // Create a simple event emitter if the import fails
 const createEventEmitter = () => {
   const listeners = {};
@@ -166,25 +168,21 @@ function EventForm({ open, initial, onSave, onClose }) {
     //     console.error('Error updating follow-up status:', err);
     //   }
     // }
-    
-    // onSave(form);
-    const id = initial.id.split('-')[1];
-    if (!initial?.entityId) return;
-    try {
-      // Call the backend to update status
-      const updatedFollowUp = await leadsApi.updateFollowUp(initial.entityId, id, {
-        status: 'completed',
-        completed_at: new Date().toISOString(), // optional, if your table has this column
-        updated_at: new Date().toISOString()
-      });
-  
-      // Optionally update local state if you maintain followUps array
-      // setEvents(prev => prev.map(f => f.id === id ? { ...f, ...updatedFollowUp} : f));
-      console.log("updatedFollowUp--------------------------------", updatedFollowUp);
-      console.log('Follow-up status updated successfully', updatedFollowUp);
-    } catch (error) {
-      console.error('Error updating follow-up status:', error);
+
+    if (initial?.id?.startsWith('followup-') && initial?.entityId) {
+      const id = initial.id.split('-')[1];
+      try {
+        const updatedFollowUp = await leadsApi.updateFollowUp(initial.entityId, id, {
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+        console.log('Follow-up status updated successfully', updatedFollowUp);
+      } catch (error) {
+        console.error('Error updating follow-up status:', error);
+      }
     }
+    onSave(form);
   };
   
   return (
@@ -519,12 +517,30 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+const CALENDAR_PUSHED_VISITS_KEY = 'calendar_pushed_google_visit_ids';
+
 function CalendarPage() {
   const [events, setEvents] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState(null);
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleMessage, setGoogleMessage] = useState(null);
+
+  // Handle Google OAuth callback from URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const googleParam = params.get('google');
+    if (googleParam === 'connected') {
+      setGoogleConnected(true);
+      setGoogleMessage('Google Calendar connected');
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (googleParam === 'error') {
+      setGoogleMessage(params.get('message') || 'Google Calendar connection failed');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   // Load events from localStorage
   useEffect(() => {
@@ -679,9 +695,26 @@ function CalendarPage() {
     }
   };
 
-  const handleFormSave = (formData) => {
+  const handleFormSave = async (formData) => {
+    // Push new events to Google Calendar when connected so they sync (e.g. to mobile)
+    if (googleConnected && !editing && formData.title && formData.date && formData.time) {
+      try {
+        const timeStr = formData.time.length === 5 ? formData.time + ':00' : formData.time;
+        const start = new Date(formData.date + 'T' + timeStr);
+        const end = new Date(start.getTime() + (Number(formData.duration) || 60) * 60 * 1000);
+        await calendarApi.createGoogleEvent(
+          formData.title,
+          start.toISOString(),
+          end.toISOString(),
+          formData.description || ''
+        );
+      } catch (err) {
+        console.error('Failed to sync event to Google Calendar:', err);
+        setGoogleMessage('Event saved locally but failed to sync to Google Calendar');
+      }
+    }
     if (editing) {
-      setEvents(prev => prev.map(event => 
+      setEvents(prev => prev.map(event =>
         event.id === editing.id ? { ...event, ...formData } : event
       ));
     } else {
@@ -696,88 +729,185 @@ function CalendarPage() {
   };
   useEffect(() => {
     const loadAllEvents = async () => {
+      const month = currentDate.getMonth();
+      const year = currentDate.getFullYear();
       try {
-        // Load both lead follow-ups and companies
-        const [followUpsResponse, companiesResponse] = await Promise.all([
-          leadsApi.getFollowUpsCreatedBy(),
-          marketResearchAPI.getCompanies()
-        ]);
-  
-        // Format lead follow-ups
-        const formattedLeadFollowUps = (followUpsResponse.data || followUpsResponse)
-          .filter(fu => fu.next_follow_up_date) // Only keep follow-ups with dates
-          .map(fu => {
-            const dateObj = new Date(fu.next_follow_up_date);
-            return {
-              id: `lead-followup-${fu.id}`,
-              title: 'Follow-up',
-              description: fu.comment,
-              date: dateObj.toISOString().split('T')[0],
-              time: dateObj.toTimeString().split(' ')[0].substring(0, 5),
-              duration: 60,
-              assignedTo: [fu.created_by || 'You'],
-              entityId: fu.ep_id,
-              entityType: 'lead',
-              status: fu.status || 'pending'
-            };
-          });
-  
-        // Format company visits
-        const formattedCompanyVisits = companiesResponse
-          .filter(company => company.visitactualdate) // Only companies with scheduled visits
-          .map(company => {
-            const dateObj = new Date(company.visitactualdate);
-            return {
-              id: `visit-${company.id}`,
-              title: 'Visit',
-              description: company.visitnotes || 'Visit scheduled',
-              date: dateObj.toISOString().split('T')[0],
-              time: dateObj.toTimeString().split(' ')[0].substring(0, 5),
-              duration: 60,
-              assignedTo: [company.created_by || 'You'],
-              entityId: company.id,
-              entityType: 'company',
-              status: company.visit || 'pending'
-            };
-          });
-  
-        // Format nested follow-ups inside companies
-        const formattedCompanyFollowUps = companiesResponse.flatMap(company => {
-          if (!company.followups || company.followups.length === 0) return [];
-        
-          return company.followups.map(fu => {
-            const dateObj = new Date(fu.date);
-            return {
-              id: `company-followup-${fu.followUpID}`, // unique for React keys
-              title: fu.title || 'Follow-up',
-              description: fu.text || '',
-              date: dateObj.toISOString().split('T')[0],
-              time: dateObj.toTimeString().split(' ')[0].substring(0, 5),
-              duration: 60,
-              assignedTo: [fu.author || 'You'],
-              entityId: company.id,
-              entityType: 'company',
-              status: fu.status || 'pending',
-              companyName: company.name,
-              entityPhone: fu.entityPhone || company.personContact || '-'
-            };
-          });
+        // Google Calendar connection status (FastAPI)
+        let gcalConnected = false;
+        try {
+          const statusRes = await calendarApi.getGoogleStatus();
+          gcalConnected = statusRes?.connected === true;
+          setGoogleConnected(gcalConnected);
+        } catch (_) {}
+
+        // Google Calendar events for visible month (Option A: fetch by view to reduce latency)
+        let formattedGoogleEvents = [];
+        if (gcalConnected) {
+          try {
+            const timeMin = new Date(year, month, 1);
+            const timeMax = new Date(year, month + 1, 0, 23, 59, 59, 999);
+            const raw = await calendarApi.getGoogleEvents(timeMin.toISOString(), timeMax.toISOString());
+            const googleItems = Array.isArray(raw) ? raw : [];
+            formattedGoogleEvents = googleItems.map((item) => {
+              const startObj = item.start || {};
+              const endObj = item.end || {};
+              const startRaw = startObj.dateTime ?? startObj.date_time ?? startObj.date;
+              const endRaw = endObj.dateTime ?? endObj.date_time ?? endObj.date;
+              const startDate = startRaw ? new Date(startRaw) : null;
+              const endDate = endRaw ? new Date(endRaw) : null;
+              if (!startDate || isNaN(startDate.getTime())) return null;
+              const y = startDate.getFullYear();
+              const m = String(startDate.getMonth() + 1).padStart(2, '0');
+              const d = String(startDate.getDate()).padStart(2, '0');
+              const dateStr = `${y}-${m}-${d}`;
+              const hasTime = !!(startObj.dateTime ?? startObj.date_time);
+              const timeStr = hasTime
+                ? startDate.toTimeString().split(' ')[0].substring(0, 5)
+                : '00:00';
+              const durationMins = (endDate && !isNaN(endDate.getTime()) && hasTime)
+                ? Math.max(1, Math.round((endDate - startDate) / 60000))
+                : 60;
+              return {
+                id: `google-${item.id || Math.random().toString(36).slice(2)}`,
+                title: item.summary || '(No title)',
+                description: item.description || '',
+                date: dateStr,
+                time: timeStr,
+                duration: durationMins,
+                type: 'other',
+                assignedTo: ['You'],
+                source: 'google',
+              };
+            }).filter(Boolean);
+          } catch (err) {
+            console.error('Failed to fetch Google Calendar events:', err);
+            formattedGoogleEvents = [];
+          }
+        }
+
+        // Scheduled visits from FastAPI (IGV/B2B with visit_date)
+        let scheduledVisits = [];
+        try {
+          scheduledVisits = await calendarApi.getScheduledVisits();
+        } catch (_) {}
+
+        const formattedScheduledVisits = (scheduledVisits || []).map(v => {
+          const dateObj = new Date(v.visit_date);
+          return {
+            id: `visit-${v.source}-${v.id}`,
+            title: v.company_name ? `Company visit: ${v.company_name}` : 'Company visit',
+            description: '',
+            date: dateObj.toISOString().split('T')[0],
+            time: dateObj.toTimeString().split(' ')[0].substring(0, 5),
+            duration: 60,
+            type: 'visit',
+            assignedTo: ['You'],
+            entityId: v.id,
+            entityType: 'company',
+            source: v.source,
+            visitDate: v.visit_date
+          };
         });
-  
-        // Combine all events
-        setEvents([
+
+        // Load lead follow-ups and companies (existing sources)
+        let formattedLeadFollowUps = [];
+        let formattedCompanyVisits = [];
+        let formattedCompanyFollowUps = [];
+        try {
+          const [followUpsResponse, companiesResponse] = await Promise.all([
+            leadsApi.getFollowUpsCreatedBy(),
+            marketResearchAPI.getCompanies()
+          ]);
+
+          formattedLeadFollowUps = (followUpsResponse.data || followUpsResponse)
+            .filter(fu => fu.next_follow_up_date)
+            .map(fu => {
+              const dateObj = new Date(fu.next_follow_up_date);
+              return {
+                id: `lead-followup-${fu.id}`,
+                title: 'Follow-up',
+                description: fu.comment,
+                date: dateObj.toISOString().split('T')[0],
+                time: dateObj.toTimeString().split(' ')[0].substring(0, 5),
+                duration: 60,
+                assignedTo: [fu.created_by || 'You'],
+                entityId: fu.ep_id,
+                entityType: 'lead',
+                status: fu.status || 'pending'
+              };
+            });
+
+          formattedCompanyVisits = (companiesResponse || [])
+            .filter(company => company.visitactualdate)
+            .map(company => {
+              const dateObj = new Date(company.visitactualdate);
+              return {
+                id: `visit-${company.id}`,
+                title: 'Visit',
+                description: company.visitnotes || 'Visit scheduled',
+                date: dateObj.toISOString().split('T')[0],
+                time: dateObj.toTimeString().split(' ')[0].substring(0, 5),
+                duration: 60,
+                assignedTo: [company.created_by || 'You'],
+                entityId: company.id,
+                entityType: 'company',
+                status: company.visit || 'pending'
+              };
+            });
+
+          formattedCompanyFollowUps = (companiesResponse || []).flatMap(company => {
+            if (!company.followups || company.followups.length === 0) return [];
+            return company.followups.map(fu => {
+              const dateObj = new Date(fu.date);
+              return {
+                id: `company-followup-${fu.followUpID}`,
+                title: fu.title || 'Follow-up',
+                description: fu.text || '',
+                date: dateObj.toISOString().split('T')[0],
+                time: dateObj.toTimeString().split(' ')[0].substring(0, 5),
+                duration: 60,
+                assignedTo: [fu.author || 'You'],
+                entityId: company.id,
+                entityType: 'company',
+                status: fu.status || 'pending',
+                companyName: company.name,
+                entityPhone: fu.entityPhone || company.personContact || '-'
+              };
+            });
+          });
+        } catch (err) {
+          console.error('Error loading follow-ups/companies:', err);
+        }
+
+        const allEvents = [
           ...formattedLeadFollowUps,
           ...formattedCompanyVisits,
+          ...formattedScheduledVisits,
           ...formattedCompanyFollowUps
-        ]);
-  
+        ];
+        setEvents(allEvents);
+
+        // Push scheduled visits to Google Calendar when connected (once per visit)
+        if (gcalConnected && formattedScheduledVisits.length > 0) {
+          const pushed = JSON.parse(localStorage.getItem(CALENDAR_PUSHED_VISITS_KEY) || '[]');
+          const toPush = formattedScheduledVisits.filter(ev => !pushed.includes(ev.id));
+          for (const ev of toPush) {
+            try {
+              const start = new Date(ev.date + 'T' + ev.time + ':00');
+              const end = new Date(start.getTime() + (ev.duration || 60) * 60 * 1000);
+              await calendarApi.createGoogleEvent(ev.title, start.toISOString(), end.toISOString(), ev.description || '');
+              pushed.push(ev.id);
+            } catch (_) {}
+          }
+          if (toPush.length > 0) localStorage.setItem(CALENDAR_PUSHED_VISITS_KEY, JSON.stringify(pushed));
+        }
       } catch (err) {
         console.error('Error loading calendar events:', err);
       }
     };
-  
+
     loadAllEvents();
-  }, []);
+  }, [currentDate]);
   
   if (error) {
     return (
@@ -792,6 +922,10 @@ function CalendarPage() {
     );
   }
 
+  const handleConnectGoogle = () => {
+    window.location.href = calendarApi.getConnectGoogleUrl();
+  };
+
   return (
     <ErrorBoundary>
       <Box sx={{ p: { xs: 1, sm: 3 } }}>
@@ -799,14 +933,29 @@ function CalendarPage() {
           <Typography variant="h5" sx={{ fontWeight: 600, fontSize: { xs: '1.3rem', sm: '1.5rem' } }}>
             Team Calendar
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleAddClick}
-            sx={{ width: { xs: '100%', sm: 'auto' } }}
-          >
-            Add Event
-          </Button>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'flex-end', sm: 'flex-end' } }}>
+            {!googleConnected && (
+              <Button
+                variant="outlined"
+                size="medium"
+                onClick={handleConnectGoogle}
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+              >
+                Connect Google Calendar
+              </Button>
+            )}
+            {googleConnected && (
+              <Chip label="Google Calendar connected" color="success" size="small" />
+            )}
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleAddClick}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
+              Add Event
+            </Button>
+          </Box>
         </Box>
 
         <Paper sx={{ p: { xs: 1, sm: 2 }, mb: { xs: 2, sm: 3 } }}>
@@ -852,6 +1001,17 @@ function CalendarPage() {
             setEditing(null);
           }}
         />
+
+        <Snackbar
+          open={!!googleMessage}
+          autoHideDuration={5000}
+          onClose={() => setGoogleMessage(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert onClose={() => setGoogleMessage(null)} severity={googleMessage?.includes('failed') ? 'error' : 'success'} sx={{ width: '100%' }}>
+            {googleMessage}
+          </Alert>
+        </Snackbar>
       </Box>
     </ErrorBoundary>
   );
