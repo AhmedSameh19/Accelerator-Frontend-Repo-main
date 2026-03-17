@@ -518,6 +518,7 @@ class ErrorBoundary extends React.Component {
 }
 
 const CALENDAR_PUSHED_VISITS_KEY = 'calendar_pushed_google_visit_ids';
+const CALENDAR_PUSHED_FOLLOWUPS_KEY = 'calendar_pushed_google_followup_ids';
 
 function CalendarPage() {
   const [events, setEvents] = useState([]);
@@ -860,7 +861,7 @@ function CalendarPage() {
             return company.followups.map(fu => {
               const dateObj = new Date(fu.date);
               return {
-                id: `company-followup-${fu.followUpID}`,
+                id: `company-followup-${fu.followUpID || fu.id}`,
                 title: fu.title || 'Follow-up',
                 description: fu.text || '',
                 date: dateObj.toISOString().split('T')[0],
@@ -875,6 +876,38 @@ function CalendarPage() {
               };
             });
           });
+
+          // Merge company follow-ups from localStorage (e.g. from Market Research company cards / Podio)
+          const seenIds = new Set(formattedCompanyFollowUps.map(e => e.id));
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (!key || !key.startsWith('company_followups_')) continue;
+            const companyId = key.replace('company_followups_', '');
+            try {
+              const list = JSON.parse(localStorage.getItem(key) || '[]');
+              if (!Array.isArray(list)) continue;
+              for (const fu of list) {
+                const id = `company-followup-${fu.followUpID || fu.id}`;
+                if (seenIds.has(id)) continue;
+                seenIds.add(id);
+                const dateObj = new Date(fu.date);
+                formattedCompanyFollowUps.push({
+                  id,
+                  title: fu.title || 'Follow-up',
+                  description: fu.text || '',
+                  date: dateObj.toISOString().split('T')[0],
+                  time: dateObj.toTimeString().split(' ')[0].substring(0, 5),
+                  duration: 60,
+                  assignedTo: [fu.author || 'You'],
+                  entityId: fu.entityId || companyId,
+                  entityType: 'company',
+                  status: fu.status || 'pending',
+                  companyName: fu.companyName || '',
+                  entityPhone: fu.entityPhone || '-'
+                });
+              }
+            } catch (_) {}
+          }
         } catch (err) {
           console.error('Error loading follow-ups/companies:', err);
         }
@@ -900,6 +933,21 @@ function CalendarPage() {
             } catch (_) {}
           }
           if (toPush.length > 0) localStorage.setItem(CALENDAR_PUSHED_VISITS_KEY, JSON.stringify(pushed));
+        }
+
+        // Push company follow-up events to Google Calendar when connected (once per follow-up)
+        if (gcalConnected && formattedCompanyFollowUps.length > 0) {
+          const pushedFu = JSON.parse(localStorage.getItem(CALENDAR_PUSHED_FOLLOWUPS_KEY) || '[]');
+          const toPushFu = formattedCompanyFollowUps.filter(ev => !pushedFu.includes(ev.id));
+          for (const ev of toPushFu) {
+            try {
+              const start = new Date(ev.date + 'T' + (ev.time || '09:00') + ':00');
+              const end = new Date(start.getTime() + (ev.duration || 60) * 60 * 1000);
+              await calendarApi.createGoogleEvent(ev.title, start.toISOString(), end.toISOString(), ev.description || '');
+              pushedFu.push(ev.id);
+            } catch (_) {}
+          }
+          if (toPushFu.length > 0) localStorage.setItem(CALENDAR_PUSHED_FOLLOWUPS_KEY, JSON.stringify(pushedFu));
         }
       } catch (err) {
         console.error('Error loading calendar events:', err);

@@ -4,13 +4,23 @@ import { getCrmAccessToken } from '../../utils/crmToken';
 
 const API_BASE_URL = 'http://localhost:5002/api';
 
-// Create axios instance
+// FastAPI backend base URL for market research endpoints
+const FASTAPI_BASE = process.env.REACT_APP_FASTAPI_BASE || 'http://localhost:8000/api/v1';
+
+// Create axios instance for legacy API
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
   withCredentials: true, // Send cookies with requests
+});
+
+// Create axios instance for FastAPI backend (market research)
+const backendApi = axios.create({
+  baseURL: FASTAPI_BASE,
+  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
 // Add request interceptor to include auth token only if valid
@@ -29,6 +39,19 @@ api.interceptors.request.use(
   (error) => {
     return Promise.reject(error);
   }
+);
+
+backendApi.interceptors.request.use(
+  (config) => {
+    const token = getCrmAccessToken();
+    if (token && token.trim() !== '') {
+      config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      delete config.headers.Authorization;
+    }
+    return config;
+  },
+  (err) => Promise.reject(err)
 );
 
 const marketResearchAPI = {
@@ -74,6 +97,22 @@ const marketResearchAPI = {
       return response.data;
     } catch (error) {
       console.error('Error updating company:', error);
+      throw error;
+    }
+  },
+  /**
+   * Assign a market research company (Podio item) to a member.
+   * Uses FastAPI backend; member is resolved from EXPA-backed members (same as Leads page).
+   */
+  assignCompany: async (itemId, memberId) => {
+    try {
+      const response = await backendApi.patch(
+        `/market-research/companies/${itemId}/assign`,
+        { member_id: memberId }
+      );
+      return response?.data ?? response;
+    } catch (error) {
+      console.error('Error assigning company:', error);
       throw error;
     }
   },
@@ -189,6 +228,165 @@ const marketResearchAPI = {
       console.error('Error updating Market Research item:', error);
       throw error;
     }
-  }
+  },
+
+  // ========== FastAPI Backend Market Research Endpoints ==========
+
+  /**
+   * Fetch market research list from Podio via backend
+   * @param {Object} params - limit, offset
+   */
+  /**
+   * @param {Object} params - limit, offset, lc_id (optional; filter by LC id so backend returns only that LC's companies)
+   */
+  getFromBackend: async (params = {}) => {
+    try {
+      const requestParams = { limit: params.limit ?? 500, offset: params.offset ?? 0 };
+      if (params.lc_id != null) requestParams.lc_id = params.lc_id;
+      const response = await backendApi.get('/market-research', { params: requestParams, timeout: 45000 });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching market research from backend:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get scheduled visits (IGV + B2B + Podio with visit_date) for calendar
+   */
+  getScheduledVisits: async () => {
+    try {
+      const response = await backendApi.get('/market-research/scheduled-visits');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching scheduled visits:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get scheduled visit date for a Podio item (for company card)
+   */
+  getPodioScheduledVisit: async (podioItemId) => {
+    try {
+      const response = await backendApi.get(`/market-research/scheduled-visits/podio/${podioItemId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching Podio scheduled visit:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create or update scheduled visit for a Podio item (shows in calendar and syncs to Google)
+   */
+  createOrUpdatePodioScheduledVisit: async (payload) => {
+    try {
+      const response = await backendApi.post('/market-research/scheduled-visits', payload);
+      return response.data;
+    } catch (error) {
+      console.error('Error saving Podio scheduled visit:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get Podio webform URL (for redirect button; open in same tab so Podio redirect after submit returns here)
+   */
+  getPodioFormUrl: async () => {
+    try {
+      const response = await backendApi.get('/market-research/podio-form-url');
+      return response.data?.url || null;
+    } catch (error) {
+      console.error('Error fetching Podio form URL:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create IGV market research in database
+   * @param {Object} payload - IGVMarketResearchCreate fields
+   */
+  createIGV: async (payload) => {
+    try {
+      const response = await backendApi.post('/market-research/igv', payload);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating IGV market research:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create B2B market research in database
+   * @param {Object} payload - B2BMarketResearchCreate fields
+   */
+  createB2B: async (payload) => {
+    try {
+      const response = await backendApi.post('/market-research/b2b', payload);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating B2B market research:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Submit IGV to Podio
+   * @param {Object} payload - company_name, product, sub_project, home_lc_id
+   */
+  submitIGVToPodio: async (payload) => {
+    try {
+      const response = await backendApi.post('/market-research/igv/submit', payload);
+      return response.data;
+    } catch (error) {
+      console.error('Error submitting IGV to Podio:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Submit B2B to Podio
+   * @param {Object} payload - company_name, product, reason_for_approach, home_lc_id
+   */
+  submitB2BToPodio: async (payload) => {
+    try {
+      const response = await backendApi.post('/market-research/b2b/submit', payload);
+      return response.data;
+    } catch (error) {
+      console.error('Error submitting B2B to Podio:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update IGV status/visit_date
+   * @param {number} id - IGV record id
+   * @param {Object} payload - { status?, visit_date? }
+   */
+  updateIGV: async (id, payload) => {
+    try {
+      const response = await backendApi.patch(`/market-research/igv/${id}`, payload);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating IGV:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update B2B status/visit_date
+   * @param {number} id - B2B record id
+   * @param {Object} payload - { status?, visit_date? }
+   */
+  updateB2B: async (id, payload) => {
+    try {
+      const response = await backendApi.patch(`/market-research/b2b/${id}`, payload);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating B2B:', error);
+      throw error;
+    }
+  },
 };
 export default marketResearchAPI;

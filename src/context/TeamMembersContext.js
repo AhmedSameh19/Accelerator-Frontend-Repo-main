@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import Cookies from 'js-cookie';
-import { fetchActiveMembersRecursive } from '../api/services/membersAPI';
+import { fetchActiveMembersRecursive, getSyncPersonId } from '../api/services/membersAPI';
 import { LC_CODES, MC_EGYPT_CODE } from '../lcCodes';
 
 const TeamMembersContext = createContext();
@@ -92,7 +92,12 @@ export function TeamMembersProvider({ children }) {
 
     try {
       console.log('🔄 [TeamMembersContext] Fetching members from API...');
-      const teamMembers = await fetchActiveMembersRecursive(lcCode, personId);
+      let altPersonId = null;
+      if (currentUser?.token) {
+        altPersonId = await getSyncPersonId(currentUser.token);
+      }
+      const effectivePersonId = altPersonId || personId;
+      const teamMembers = await fetchActiveMembersRecursive(lcCode, effectivePersonId);
 
       // Store in localStorage with timestamp
       localStorage.setItem(STORAGE_KEY, JSON.stringify(teamMembers));
@@ -102,7 +107,6 @@ export function TeamMembersProvider({ children }) {
       setHasFetched(true);
       setLoading(false);
       fetchingRef.current = false;
-
       console.log('✅ [TeamMembersContext] Fetched and cached members:', teamMembers.length);
       return teamMembers;
     } catch (e) {
