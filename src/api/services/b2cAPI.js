@@ -2,7 +2,7 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { getCrmAccessToken } from '../../utils/crmToken';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = 'https://api-accelerator.aiesec.org.eg/api/v1';
 
 // Create axios instance
 const api = axios.create({

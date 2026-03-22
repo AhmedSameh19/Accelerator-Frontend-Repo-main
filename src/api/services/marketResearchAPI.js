@@ -2,10 +2,10 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 import { getCrmAccessToken } from '../../utils/crmToken';
 
-const API_BASE_URL = 'http://localhost:5002/api';
+const API_BASE_URL = 'https://api-accelerator.aiesec.org.eg/api/v1';
 
 // FastAPI backend base URL for market research endpoints
-const FASTAPI_BASE = process.env.REACT_APP_FASTAPI_BASE || 'http://localhost:8000/api/v1';
+const FASTAPI_BASE = process.env.REACT_APP_FASTAPI_BASE || 'https://api-accelerator.aiesec.org.eg/api/v1';
 
 // Create axios instance for legacy API
 const api = axios.create({

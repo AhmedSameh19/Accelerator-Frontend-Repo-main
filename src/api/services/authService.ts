@@ -14,7 +14,7 @@ const normalizeBaseUrl = (input?: string) => {
 };
 const API_BASE_URL = normalizeBaseUrl(process.env.REACT_APP_API_BASE)
     || normalizeBaseUrl(process.env.REACT_APP_API_BASE_URL)
-    || 'http://localhost:5002';
+    || 'https://api-accelerator.aiesec.org.eg';
 const AIESEC_API_URL = process.env.REACT_APP_AIESEC_API_URL as string;
 const CLIENT_ID = '0Bwg6JeTDUb6h0O9SHNkOwepr3W34gcwVjj_VsLr9vs';
 const REDIRECT_URI = process.env.REACT_APP_REDIRECT_URI as string;

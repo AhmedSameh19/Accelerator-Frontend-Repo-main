@@ -4,7 +4,7 @@ import { CRM_ACCESS_TOKEN_KEY } from '../../utils/tokenKeys';
 
 // Remove the hardcoded API key - we'll use the user's access token
 const API_URL = "https://gis-api.aiesec.org/graphql";
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.REACT_APP_FASTAPI_BASE || 'https://api-accelerator.aiesec.org.eg/api/v1';
 const SERVER_URL = API_BASE_URL;
 
 
