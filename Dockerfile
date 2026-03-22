@@ -1,52 +1,14 @@
-# syntax=docker/dockerfile:1.5
-# Multi-stage build: compile React app, then serve static build
+# Coolify-optimized (avoids build timeouts): serve prebuilt CRA `build/`.
+# IMPORTANT: run `npm run build` locally/CI and commit the `build/` folder.
 
-FROM node:18-alpine AS builder
-WORKDIR /app
-
-COPY package.json package-lock.json* ./
-RUN --mount=type=cache,target=/root/.npm \
-	npm ci --no-audit --fund=false
-
-COPY . .
-
-# Speed up CRA builds and reduce output size
-ENV GENERATE_SOURCEMAP=false
-
-# # CRA reads REACT_APP_* at build time
-# ARG REACT_APP_API_BASE_URL
-# ARG REACT_APP_API_BASE
-# ARG REACT_APP_AIESEC_API_URL
-# ARG REACT_APP_GIS_AUTH_ENDPOINT
-# ARG REACT_APP_AUTH_REDIRECT_URI
-# ARG REACT_APP_REDIRECT_URI
-# ARG REACT_APP_AUTH_CLIENT_ID
-# ARG REACT_APP_CLIENT_ID
-# ARG REACT_APP_AUTH_CLIENT_SECRET
-# ARG REACT_APP_CLIENT_SECRET
-
-# ENV REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL \
-#     REACT_APP_API_BASE=$REACT_APP_API_BASE \
-#     REACT_APP_AIESEC_API_URL=$REACT_APP_AIESEC_API_URL \
-#     REACT_APP_GIS_AUTH_ENDPOINT=$REACT_APP_GIS_AUTH_ENDPOINT \
-#     REACT_APP_AUTH_REDIRECT_URI=$REACT_APP_AUTH_REDIRECT_URI \
-#     REACT_APP_REDIRECT_URI=$REACT_APP_REDIRECT_URI \
-#     REACT_APP_AUTH_CLIENT_ID=$REACT_APP_AUTH_CLIENT_ID \
-#     REACT_APP_CLIENT_ID=$REACT_APP_CLIENT_ID \
-#     REACT_APP_AUTH_CLIENT_SECRET=$REACT_APP_AUTH_CLIENT_SECRET \
-#     REACT_APP_CLIENT_SECRET=$REACT_APP_CLIENT_SECRET
-
-RUN npm run build
-
-
-FROM node:18-alpine AS runner
+FROM node:18-alpine
 WORKDIR /app
 
 RUN npm install -g serve
 
-COPY --from=builder /app/build ./build
+COPY build ./build
+RUN test -f ./build/index.html
 
-# Coolify commonly sets PORT; default to 80
 ENV PORT=80
 EXPOSE 80
-CMD ["sh", "-c", "serve -s build -l ${PORT:-80}"]
+CMD ["sh", "-c", "serve -s build -l tcp://0.0.0.0:${PORT:-80}"]
