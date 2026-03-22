@@ -63,7 +63,7 @@ const LoginPage = () => {
     console.log("🔍 [LoginPage] Current origin:", window.location.origin);
 
     // Use the static EXPA auth URL as it was working before
-    const authUrl = "https://auth.aiesec.org/oauth/authorize?client_id=0Bwg6JeTDUb6h0O9SHNkOwepr3W34gcwVjj_VsLr9vs&redirect_uri=http://localhost:3000/auth/callback&response_type=code";
+    const authUrl = "https://auth.aiesec.org/oauth/authorize?client_id=0Bwg6JeTDUb6h0O9SHNkOwepr3W34gcwVjj_VsLr9vs&redirect_uri=https://accelerator.aiesec.org.eg/auth/callback&response_type=code";
 
     console.log("🔍 [LoginPage] Auth URL:", authUrl);
     console.log("🔍 [LoginPage] Redirecting to auth URL...");

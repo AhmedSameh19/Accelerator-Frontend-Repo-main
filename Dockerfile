@@ -1,12 +1,17 @@
+# syntax=docker/dockerfile:1.5
 # Multi-stage build: compile React app, then serve static build
 
 FROM node:18-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+	npm ci --no-audit --fund=false
 
 COPY . .
+
+# Speed up CRA builds and reduce output size
+ENV GENERATE_SOURCEMAP=false
 
 # # CRA reads REACT_APP_* at build time
 # ARG REACT_APP_API_BASE_URL
