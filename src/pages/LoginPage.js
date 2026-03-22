@@ -186,7 +186,7 @@ const LoginPage = () => {
             Manage your EPs, track performance, and drive impact in AIESEC in Egypt
           </Typography>
 
-          {!loading && !isLoggedIn && (
+          {!isLoggedIn && (
             <Button
               onClick={loginWithExpa}
               variant="contained"
