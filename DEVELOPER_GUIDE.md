@@ -28,6 +28,10 @@ Quick reference for common development tasks in the AIESEC CRM project.
 | TeamMembers | `src/context/TeamMembersContext.js` | Cached team members |
 | CRMType | `src/context/CRMTypeContext.js` | OGX/ICX/Leads mode |
 
+### Environment variables
+See `.env.example` for optional vars. Example:
+- **REACT_APP_FASTAPI_BASE** – FastAPI backend base URL (Calendar, scheduled visits, Google Calendar). Default: `http://localhost:8000/api/v1`.
+
 ---
 
 ## 🎣 Hooks Quick Reference

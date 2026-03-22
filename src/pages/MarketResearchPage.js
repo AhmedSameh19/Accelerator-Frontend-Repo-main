@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -34,6 +34,7 @@ import {
   Avatar,
   Stack,
   Snackbar,
+  Alert,
   Tab,
   Tabs,
   Timeline,
@@ -46,6 +47,8 @@ import {
   ButtonGroup,
   Checkbox,
   TablePagination,
+  Tooltip,
+  InputAdornment,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -72,16 +75,21 @@ import {
   EventBusy as EventBusyIcon,
   Filter as FilterIcon,
   Refresh as RefreshIcon,
+  CalendarToday as CalendarTodayIcon,
 } from '@mui/icons-material';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { useCRMType } from '../context/CRMTypeContext';
 import { EventEmitter } from 'events';
 import { useAuth } from '../context/AuthContext';
 import { LC_CODES, MC_EGYPT_CODE } from '../lcCodes';
 import marketResearchAPI from '../api/services/marketResearchAPI';
 import podioAPI from '../api/services/podioAPI';
-import { fetchActiveMembers } from '../api/services/membersAPI';
+import { fetchActiveMembersRecursive, fetchMembersByLc, getSyncPersonId } from '../api/services/membersAPI';
 import Cookies from 'js-cookie';
 import { getCrmAccessToken } from '../utils/crmToken';
+import { getLCNameById, getLCIdByName } from '../utils/officeUtils';
 const industries = [
   'Technology',
   'Healthcare',
@@ -102,11 +110,6 @@ const companySizes = [
   '201-500 employees',
   '501-1000 employees',
   '1000+ employees'
-];
-
-const accountTypes = [
-  'iCX',
-  'B2B'
 ];
 
 // Move companySteps outside the component to ensure it's always defined
@@ -134,6 +137,46 @@ function getOfficeId(currentUser) {
   return null;
 }
 
+/** Get logged-in user's LC name for filtering. Prefer same sources as sidebar: currentUser.lc, then current_offices[0].name, then userLC storage, then resolve from office id. */
+function getUserLCName(currentUser) {
+  const fromOfficeName = currentUser?.current_offices?.[0]?.name && String(currentUser.current_offices[0].name).trim();
+  const name = currentUser?.lc || currentUser?.userLC || fromOfficeName || localStorage.getItem('userLC') || Cookies.get('userLC');
+  if (name && String(name).trim()) {
+    const trimmed = String(name).trim();
+    const asNum = parseInt(trimmed, 10);
+    if (!Number.isNaN(asNum) && LC_CODES && LC_CODES.some(lc => lc.id === asNum)) {
+      const resolved = getLCNameById(asNum);
+      if (resolved) return resolved;
+    }
+    return trimmed;
+  }
+  const officeId = getOfficeId(currentUser);
+  if (officeId != null) return getLCNameById(officeId) || null;
+  return null;
+}
+
+/** Normalize value for display: show category "text" instead of raw JSON/object. */
+function displayText(val, fallback = '-') {
+  if (val == null || val === '') return fallback;
+  if (typeof val === 'object' && val !== null) {
+    if (typeof val.text === 'string' && val.text) return val.text;
+    if (typeof val.name === 'string' && val.name) return val.name;
+    return fallback;
+  }
+  const s = String(val).trim();
+  if (!s) return fallback;
+  if ((s.startsWith('{') && s.includes('"text"')) || (s.startsWith('{') && s.includes("'text'"))) {
+    try {
+      const parsed = JSON.parse(s.replace(/'/g, '"'));
+      if (parsed && (parsed.text || parsed.name)) return parsed.text || parsed.name;
+    } catch (_) {
+      const m = s.match(/"text"\s*:\s*"([^"]+)"/) || s.match(/'text'\s*:\s*'([^']+)'/);
+      if (m) return m[1];
+    }
+  }
+  return s;
+}
+
 function MarketResearchPage() {
   const { crmType } = useCRMType();
   const theme = useTheme();
@@ -147,6 +190,7 @@ function MarketResearchPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [openProfileDialog, setOpenProfileDialog] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
+  const [scheduledVisitDate, setScheduledVisitDate] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
   const [comment, setComment] = useState('');
   const [followup, setFollowup] = useState({
@@ -164,6 +208,8 @@ function MarketResearchPage() {
   const initialCompanyState = {
     name: '',
     industry: '',
+    submittedByLc: '',
+    submittedByLcId: null,
     size: '',
     type: '',
     personName: '',
@@ -191,8 +237,24 @@ function MarketResearchPage() {
   const [selectedCompanyData, setSelectedCompanyData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [usePodioData, setUsePodioData] = useState(true); // Toggle between Podio and local data
+  const [showAllLCs, setShowAllLCs] = useState(false); // When true, fetch without lc_id to show all companies
+  const [lastFetchPageSize, setLastFetchPageSize] = useState(0); // For "Load more": when >= page size there may be more
   const membersFetched = useRef(false);
+  const [opportunityRaisedSlots, setOpportunityRaisedSlots] = useState('');
+  const [opportunityRaisedNotes, setOpportunityRaisedNotes] = useState('');
   const [members, setActiveMembers] = useState([]);
+  const accountTypes = useMemo(() => {
+    // Derive distinct account types from loaded companies so the dropdown only shows real values
+    const set = new Set();
+    for (const c of allCompanies) {
+      const raw =
+        displayText(c.accountType, '') ||
+        displayText(c.type, '');
+      const value = (raw || '').trim();
+      if (value) set.add(value);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [allCompanies]);
   const steps = [
     {
       label: 'Company Information',
@@ -212,6 +274,30 @@ function MarketResearchPage() {
       console.log("selectedCompanyData synced with selectedCompany:", selectedCompany);
     }
   }, [selectedCompany]);
+
+  // Sync opportunity-raised form when opening a company at step 3
+  useEffect(() => {
+    if (selectedCompanyData?.currentStep === 3) {
+      setOpportunityRaisedSlots(selectedCompanyData.visitNumberOfSlots || '');
+      setOpportunityRaisedNotes(selectedCompanyData.visitOutcomeNotes || '');
+    }
+  }, [selectedCompanyData?.id, selectedCompanyData?.currentStep]);
+
+  // Load scheduled visit date when company card opens (Podio only)
+  useEffect(() => {
+    if (!openProfileDialog || !selectedCompany?.id || !usePodioData) {
+      setScheduledVisitDate(null);
+      return;
+    }
+    let cancelled = false;
+    marketResearchAPI.getPodioScheduledVisit(selectedCompany.id)
+      .then((data) => {
+        if (!cancelled && data?.visit_date) setScheduledVisitDate(new Date(data.visit_date));
+        else if (!cancelled) setScheduledVisitDate(null);
+      })
+      .catch(() => { if (!cancelled) setScheduledVisitDate(null); });
+    return () => { cancelled = true; };
+  }, [openProfileDialog, selectedCompany?.id, usePodioData]);
 
 const getTeamUnderCurrentUser = (members) => {
   const currentUserId = Cookies.get("person_id");
@@ -294,35 +380,44 @@ const getTeamUnderCurrentUser = (members) => {
  
 
 
-const currentMembers = async (lcCode, token) => {
+// Fetch TLs, TMs, LCVPs that report to the logged-in user. Uses by-lc/reports-to (no EXPA) first
+  // so assign works when EXPA returns 502; only uses token for resolving person id.
+  const currentMembers = useCallback(async (lcCode, token) => {
+    if (!lcCode) {
+      setActiveMembers([]);
+      return;
+    }
     try {
-      const members = await fetchActiveMembers(lcCode, token);
-      console.log("Fetched Active Members: ", members);
-      const filteredMembers = members.filter(member => {
-      const position = member.role;
-      const parentTitle = member.function.toUpperCase();
-
-      const isLCVP = position === 'LCVP' ;
-      const isUnderOG = parentTitle?.includes('ICX') || parentTitle?.includes('IGV') || parentTitle?.includes('IGTA')|| parentTitle?.includes('IGTE') || parentTitle?.includes('BD') || parentTitle?.includes('B2B') ;
-
-      return isLCVP && isUnderOG;
-    });
-    const teamMembers = getTeamUnderCurrentUser(filteredMembers);
-    setActiveMembers(teamMembers);
+      const personId = Cookies.get('person_id') || (token ? await getSyncPersonId(token) : null) || null;
+      let members = [];
+      if (personId) {
+        members = await fetchActiveMembersRecursive(lcCode, personId);
+      }
+      // Fallback: if no one reports to you in EXPA (e.g. org structure not set), show all LC members
+      if (!members || members.length === 0) {
+        members = await fetchMembersByLc(lcCode);
+      }
+      const mapped = (members || []).map((m) => ({
+        id: m.expa_person_id ?? m.member_id,
+        person: m.full_name ?? m.person,
+        role: m.role ?? '',
+      }));
+      setActiveMembers(mapped);
     } catch (error) {
       console.error('Error fetching active members:', error);
+      setActiveMembers([]);
       setSnackbar({
         open: true,
-        message: 'Failed to fetch active members',
+        message: 'Failed to fetch members',
         severity: 'error',
       });
     }
-  };
+  }, []);
   // Update fetchLeads to accept lcCode as a parameter
  
 useEffect(() => {
   const lcCode = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
-  const token = getCrmAccessToken();
+  const token = currentUser?.token || getCrmAccessToken();
 
   if (!isAdmin && !lcCode) {
     setSnackbar({
@@ -333,92 +428,200 @@ useEffect(() => {
     return;
   }
 
-  // Fetch active members
-
+  // Fetch members that report to the logged-in user (TLs, TMs, LCVPs) on page load
   if (lcCode) {
     if (!membersFetched.current) {
-      currentMembers(lcCode, token); // 👈 only once
+      currentMembers(lcCode, token);
       membersFetched.current = true;
     }
   }
-}, [ currentUser, isAdmin]);
+}, [currentUser, isAdmin, currentMembers]);
 
-  // Fetch companies from Podio or local database
-  const fetchCompanies = useCallback(async (filters = {}) => {
+  // When opening assign dialog, refetch members
+  useEffect(() => {
+    if (!assignDialogOpen || !currentUser) return;
+    const lcCode = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
+    const token = currentUser?.token || getCrmAccessToken();
+    if (lcCode) {
+      currentMembers(lcCode, token);
+    }
+  }, [assignDialogOpen, currentUser, isAdmin, currentMembers]);
+
+  // Map backend Podio response item to component company format
+  const mapBackendItemToCompany = (item) => ({
+    ...initialCompanyState,
+    id: item.item_id || item.itemId,
+    name: item.company_name || item.companyName || '-',
+    companyName: item.company_name || item.companyName || '-',
+    industry: item.industry || '',  // only from Podio industry field; leave blank if not present
+    submittedByLc: item.local_committee || '',  // LC that submitted the company (display name)
+    submittedByLcId: item.local_committee_id ?? null,  // Podio LC option id for filtering by id
+    size: item.size || '-',
+    type: item.type_of_pr_deal || '-',
+    accountType: item.type_of_pr_deal || '-',
+    address: item.address || '-',
+    location: item.local_committee || item.address || '-',
+    personName: item.contact_person_name || '-',
+    contact_person: item.contact_person_name || '-',
+    email: item.contact_email || '',
+    phone: item.contact_phone || '',
+    personContact: item.contact_phone || '',
+    linkedin: item.contact_linkedin || '',
+    position: item.contact_position || '',
+    website: item.website || '',
+    interested: null,
+    status: 'Active',
+    podio: 'Yes',
+    podioItemId: item.item_id || item.itemId,
+    assignedTo: '-',
+    currentStep: 0,
+    comments: [],
+    followups: [],
+    statusHistory: [],
+    visitOutcome: '',
+    visitNumberOfSlots: '',
+    visitOutcomeNotes: '',
+    contacted: null,
+    visitStatus: null,
+    product: item.product,
+    sub_project_igv: item.sub_project_igv,
+    reason_of_approach: item.reason_of_approach,
+  });
+
+  // Map legacy ICX Podio response to component format
+  const mapLegacyPodioToCompany = (comp) => ({
+    ...initialCompanyState,
+    id: comp.podioItemId || comp.podioDealId,
+    name: comp.companyName || comp.name,
+    companyName: comp.companyName || comp.name,
+    industry: comp.industry || '',
+    submittedByLc: comp.submittedByLc || comp.localCommittee || comp.local_committee || '',
+    submittedByLcId: comp.submittedByLcId ?? comp.local_committee_id ?? null,
+    size: comp.size || '-',
+    type: comp.accountType || comp.type || '-',
+    accountType: comp.accountType || comp.type || '-',
+    address: comp.location || comp.address || '-',
+    location: comp.location || comp.address || '-',
+    personName: comp.contactPerson || comp.personName || '-',
+    contact_person: comp.contactPerson || comp.personName || '-',
+    interested: comp.interested || null,
+    status: comp.status || 'Active',
+    podio: comp.podio || 'Yes',
+    podioLink: comp.podioLink,
+    podioItemId: comp.podioItemId,
+    assignedTo: comp.assignedTo || '-',
+    currentStep: comp.status === 'Market Research' ? 0 :
+                 comp.status === 'Contacted' ? 1 :
+                 comp.status === 'Visit Scheduled' ? 2 :
+                 comp.status === 'Visit Completed' ? 3 :
+                 comp.status === 'Raised' ? 4 : 0,
+    comments: [],
+    followups: [],
+    statusHistory: [],
+    visitOutcome: '',
+    visitNumberOfSlots: '',
+    visitOutcomeNotes: '',
+    contacted: null,
+    visitStatus: null,
+  });
+
+  // Page size for Podio requests (smaller = faster, less timeout risk)
+  const PODIO_PAGE_SIZE = 100;
+  const MARKET_RESEARCH_ASSIGNMENTS_KEY = 'market_research_assignments';
+
+  const getStoredAssignments = () => {
+    try {
+      const raw = localStorage.getItem(MARKET_RESEARCH_ASSIGNMENTS_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
+  };
+  const setStoredAssignment = (companyId, memberId, memberName) => {
+    const next = { ...getStoredAssignments(), [String(companyId)]: { member_id: memberId, member_name: memberName } };
+    localStorage.setItem(MARKET_RESEARCH_ASSIGNMENTS_KEY, JSON.stringify(next));
+  };
+  const mergeAssignmentsIntoCompanies = (companyList) => {
+    const assignments = getStoredAssignments();
+    if (!companyList || Object.keys(assignments).length === 0) return companyList;
+    return companyList.map((c) => {
+      const a = assignments[String(c.id)];
+      if (!a) return c;
+      return { ...c, assigned_to: a.member_id, assignedTo: a.member_name || c.assignedTo };
+    });
+  };
+
+  // Fetch companies from Podio or local database.
+  // Pass filters.showAllLCs to override state. Pass options.append and options.offset for "Load more".
+  const fetchCompanies = useCallback(async (filters = {}, options = {}) => {
+    const useShowAll = filters.showAllLCs !== undefined ? filters.showAllLCs : showAllLCs;
+    const lcId = useShowAll ? null : getOfficeId(currentUser);
+    const append = options.append === true;
+    const offset = options.offset ?? 0;
     setLoading(true);
     try {
-      let response;
-      
+      let parsedCompanies = [];
+
       if (usePodioData) {
-        // Fetch from Podio API
-        response = await marketResearchAPI.getMarketResearchFromPodio(filters);
-        
-        console.log('[MarketResearch] Podio response received:', {
-          isArray: Array.isArray(response),
-          length: Array.isArray(response) ? response.length : 'not an array',
-          firstItem: Array.isArray(response) && response.length > 0 ? response[0] : 'no items',
-          responseType: typeof response
-        });
-        
-        // Ensure response is an array
-        if (!Array.isArray(response)) {
-          console.error('[MarketResearch] Podio response is not an array:', response);
+        // Use FastAPI backend with pagination (limit 100 per request to avoid timeout)
+        try {
+          const backendResponse = await marketResearchAPI.getFromBackend({
+            limit: PODIO_PAGE_SIZE,
+            offset,
+            ...(lcId != null && { lc_id: lcId }),
+          });
+          const rawItems = backendResponse?.items ?? backendResponse?.data?.items ?? backendResponse?.data ?? [];
+          const items = Array.isArray(rawItems) ? rawItems : [];
+          parsedCompanies = items.map(mapBackendItemToCompany);
+          // Merge saved interaction status and funnel from localStorage so list shows correct step/status
+          parsedCompanies = parsedCompanies.map(c => {
+            try {
+              const stored = localStorage.getItem(`company_profile_${c.id}`);
+              if (stored) {
+                const p = JSON.parse(stored);
+                if (p && typeof p === 'object') return { ...c, ...p };
+              }
+            } catch (e) {}
+            return c;
+          });
+          parsedCompanies = mergeAssignmentsIntoCompanies(parsedCompanies);
+          setLastFetchPageSize(parsedCompanies.length);
+          if (append) {
+            setAllCompanies(prev => [...prev, ...parsedCompanies]);
+            // companies will be updated by the search/filter effect that depends on allCompanies
+          } else {
+            setAllCompanies(parsedCompanies);
+            setCompanies(parsedCompanies);
+          }
+          if (parsedCompanies.length > 0 && !append) {
+            setSnackbar({
+              open: true,
+              message: useShowAll ? `Loaded ${parsedCompanies.length} companies (all LCs).` : `Loaded ${parsedCompanies.length} companies from Market Research.`,
+              severity: 'success',
+            });
+          } else if (parsedCompanies.length === 0 && !append && lcId != null) {
+            setSnackbar({
+              open: true,
+              message: `No companies submitted by your LC (${getUserLCName(currentUser) || lcId}) in Podio. Use "Show all LCs" to see all companies.`,
+              severity: 'info',
+            });
+          }
+          return;
+        } catch (backendErr) {
+          console.warn('[MarketResearch] FastAPI backend fetch failed:', backendErr?.message);
+          setSnackbar({
+            open: true,
+            message: 'Could not load companies. Ensure the FastAPI backend is running (port 8000) and Podio is configured.',
+            severity: 'warning',
+          });
           setAllCompanies([]);
           setCompanies([]);
-          return;
+          setLastFetchPageSize(0);
         }
-        
-        // Map Podio data format to component format
-        const parsedCompanies = response.map(comp => ({
-          ...initialCompanyState,
-          id: comp.podioItemId || comp.podioDealId, // Use Podio ID as identifier
-          name: comp.companyName || comp.name,
-          companyName: comp.companyName || comp.name,
-          industry: comp.industry || '-',
-          size: comp.size || '-',
-          type: comp.accountType || comp.type || '-',
-          accountType: comp.accountType || comp.type || '-',
-          address: comp.location || comp.address || '-',
-          location: comp.location || comp.address || '-',
-          personName: comp.contactPerson || comp.personName || '-',
-          contact_person: comp.contactPerson || comp.personName || '-',
-          interested: comp.interested || null,
-          status: comp.status || 'Active',
-          podio: comp.podio || 'Yes',
-          podioLink: comp.podioLink,
-          podioItemId: comp.podioItemId,
-          assignedTo: comp.assignedTo || '-',
-          // Map status to currentStep for compatibility
-          currentStep: comp.status === 'Market Research' ? 0 :
-                       comp.status === 'Contacted' ? 1 :
-                       comp.status === 'Visit Scheduled' ? 2 :
-                       comp.status === 'Visit Completed' ? 3 :
-                       comp.status === 'Raised' ? 4 : 0,
-          comments: [],
-          followups: [],
-          statusHistory: [],
-          visitOutcome: '',
-          visitNumberOfSlots: '',
-          visitOutcomeNotes: '',
-          contacted: null,
-          visitStatus: null
-        }));
-        
-        console.log('[MarketResearch] Parsed companies:', {
-          count: parsedCompanies.length,
-          firstCompany: parsedCompanies.length > 0 ? {
-            id: parsedCompanies[0].id,
-            companyName: parsedCompanies[0].companyName,
-            name: parsedCompanies[0].name
-          } : 'no companies'
-        });
-        
-        setAllCompanies(parsedCompanies);
-        setCompanies(parsedCompanies);
       } else {
         // Fetch from local database (existing behavior)
-        response = await marketResearchAPI.getCompanies();
-        const parsedCompanies = response.map(comp => ({
+        const response = await marketResearchAPI.getCompanies();
+        let parsedCompanies = response.map(comp => ({
           ...initialCompanyState,
           ...comp,
           comments: Array.isArray(comp.comments) ? comp.comments : [],
@@ -434,6 +637,7 @@ useEffect(() => {
           interested: comp.interested || null,
           visitStatus: comp.visitStatus || null
         }));
+        parsedCompanies = mergeAssignmentsIntoCompanies(parsedCompanies);
         setAllCompanies(parsedCompanies);
         setCompanies(parsedCompanies);
       }
@@ -444,7 +648,7 @@ useEffect(() => {
         console.warn("Podio fetch failed, falling back to local data");
         try {
           const response = await marketResearchAPI.getCompanies();
-          const parsedCompanies = response.map(comp => ({
+          let parsedCompanies = response.map(comp => ({
             ...initialCompanyState,
             ...comp,
             comments: Array.isArray(comp.comments) ? comp.comments : [],
@@ -460,52 +664,87 @@ useEffect(() => {
             interested: comp.interested || null,
             visitStatus: comp.visitStatus || null
           }));
+          parsedCompanies = mergeAssignmentsIntoCompanies(parsedCompanies);
           setAllCompanies(parsedCompanies);
           setCompanies(parsedCompanies);
         } catch (fallbackError) {
           console.error("Fallback fetch also failed:", fallbackError);
           setAllCompanies([]);
           setCompanies([]);
+          setLastFetchPageSize(0);
         }
       } else {
         setAllCompanies([]);
         setCompanies([]);
       }
+      setLastFetchPageSize(0);
     } finally {
       setLoading(false);
     }
-  }, [usePodioData]);
+  }, [usePodioData, currentUser, showAllLCs]);
 
-  // Local search function for non-Podio data
+  // Local search function (Podio and non-Podio): filter by logged-in user's LC unless showAllLCs, plus search/filters
   const handleLocalSearch = useCallback(() => {
     const searchTermLower = searchTerm.toLowerCase();
     const userOfficeId = getOfficeId(currentUser);
+    const userLCName = getUserLCName(currentUser);
     const filteredCompanies = allCompanies.filter(company => {
-      // Only show companies created by the user's LC (if applicable)
-      if (company.created_by_lc && company.created_by_lc !== userOfficeId) return false;
-      
-      // Search term filter
+      // When "Show all LCs" is on, skip LC filter
+      if (!showAllLCs) {
+        const companyLcId = company.submittedByLcId != null ? company.submittedByLcId : (() => {
+          const raw = displayText(company.submittedByLc, '').trim();
+          if (/^\d+$/.test(raw)) return parseInt(raw, 10);
+          return getLCIdByName(raw);
+        })();
+        if (userOfficeId != null) {
+          if (companyLcId != null && companyLcId === userOfficeId) {
+            // Match by LC id
+          } else if (companyLcId != null) {
+            return false;
+          } else {
+            const companyLcRaw = displayText(company.submittedByLc, '').trim();
+            const companyLcForMatch = companyLcRaw.toLowerCase();
+            const matchName = userLCName ? userLCName.trim().toLowerCase() : '';
+            if (!matchName || !companyLcForMatch) return false;
+            const allowedNames = matchName === 'alexandria' ? ['alexandria', 'alex'] : [matchName];
+            if (!allowedNames.includes(companyLcForMatch)) return false;
+          }
+        } else if (userLCName) {
+          const companyLcRaw = displayText(company.submittedByLc, '').trim();
+          const companyLcForMatch = companyLcRaw.toLowerCase();
+          const matchName = userLCName.trim().toLowerCase();
+          if (!companyLcForMatch) return false;
+          const allowedNames = matchName === 'alexandria' ? ['alexandria', 'alex'] : [matchName];
+          if (!allowedNames.includes(companyLcForMatch)) return false;
+        } else if (company.created_by_lc != null && company.created_by_lc !== '' && userOfficeId != null && company.created_by_lc !== userOfficeId) {
+          return false;
+        }
+      }
+
+      // Search term filter (use displayText so object/JSON values are searchable)
+      const industryStr = displayText(company.industry, '');
+      const submittedByLcStr = displayText(company.submittedByLc, '');
+      const accountTypeStr = displayText(company.accountType, '') || displayText(company.type, '');
       const matchesSearch = searchTerm === '' || 
         company.name?.toLowerCase().includes(searchTermLower) ||
         company.companyName?.toLowerCase().includes(searchTermLower) ||
-        company.industry?.toLowerCase().includes(searchTermLower) ||
-        company.accountType?.toLowerCase().includes(searchTermLower) ||
-        company.type?.toLowerCase().includes(searchTermLower) ||
+        industryStr?.toLowerCase().includes(searchTermLower) ||
+        submittedByLcStr?.toLowerCase().includes(searchTermLower) ||
+        accountTypeStr?.toLowerCase().includes(searchTermLower) ||
         company.personName?.toLowerCase().includes(searchTermLower) ||
         company.contact_person?.toLowerCase().includes(searchTermLower) ||
         company.address?.toLowerCase().includes(searchTermLower) ||
         company.location?.toLowerCase().includes(searchTermLower);
 
       // Industry filter
-      const matchesIndustry = selectedIndustry === '' || company.industry === selectedIndustry;
+      const matchesIndustry = selectedIndustry === '' || industryStr === selectedIndustry;
 
       // Company size filter
-      const matchesSize = selectedSize === '' || company.size === selectedSize;
+      const matchesSize = selectedSize === '' || displayText(company.size, '') === selectedSize;
 
       // Account type filter
       const matchesAccountType = selectedAccountType === '' || 
-        company.accountType === selectedAccountType ||
-        company.type === selectedAccountType;
+        accountTypeStr === selectedAccountType;
 
       // Status filter
       const matchesStatus = selectedStatus === '' || 
@@ -521,72 +760,60 @@ useEffect(() => {
     });
 
     setCompanies(filteredCompanies);
-  }, [searchTerm, selectedIndustry, selectedSize, selectedAccountType, selectedStatus, allCompanies, currentUser]);
-
-  // Check Podio auth status and load companies on component mount
+  }, [searchTerm, selectedIndustry, selectedSize, selectedAccountType, selectedStatus, allCompanies, currentUser, showAllLCs]);
+  // When Podio data loads, apply same LC + filters via handleLocalSearch
   useEffect(() => {
-    const checkAuthAndLoad = async () => {
-      try {
-        // Check for Podio error in URL (from OAuth callback)
-        const urlParams = new URLSearchParams(window.location.search);
-        const podioError = urlParams.get('podio_error');
-        
-        if (podioError) {
-          console.error('[MarketResearch] Podio OAuth error:', podioError);
-          // Remove error from URL
-          window.history.replaceState({}, '', window.location.pathname);
-          // Fall back to local data
-          setUsePodioData(false);
-          fetchCompanies();
-          return;
-        }
+    if (usePodioData && allCompanies.length > 0) {
+      handleLocalSearch();
+    }
+  }, [usePodioData, allCompanies, handleLocalSearch]);
 
-        // Check if user is authenticated with Podio
-        const status = await podioAPI.getStatus();
-        
-        // Handle both 'authorized' and 'authenticated' fields for backwards compatibility
-        const isAuthenticated = status.authenticated || status.authorized;
-        
-        if (!isAuthenticated && usePodioData) {
-          // User not authenticated, get auth URL and redirect
-          try {
-            const { authUrl } = await podioAPI.getAuthUrl();
-            console.log('[MarketResearch] Redirecting to Podio OAuth:', authUrl);
-            window.location.href = authUrl;
-            return; // Don't load data yet, user will be redirected
-          } catch (authError) {
-            console.error('Error getting Podio auth URL:', authError);
-            // Fall back to local data
-            setUsePodioData(false);
-          }
-        }
-        
-        // Load companies if authenticated or using local data
-        fetchCompanies();
-      } catch (error) {
-        console.error('Error checking Podio auth:', error);
-        // Fall back to local data
-        if (usePodioData) {
-          setUsePodioData(false);
-          fetchCompanies();
-        }
-      }
-    };
-
-    checkAuthAndLoad();
-  }, [usePodioData, fetchCompanies]);
+  // Load companies on mount. In "my LC" mode wait for user context so we send lc_id (fix: avoid fetch without lc_id then filter to 0).
+  const initialLoadDone = useRef(false);
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const podioError = urlParams.get('podio_error');
+    if (podioError) {
+      window.history.replaceState({}, '', window.location.pathname);
+      setUsePodioData(false);
+    }
+    initialLoadDone.current = false;
+  }, [usePodioData]);
+  useEffect(() => {
+    const officeId = getOfficeId(currentUser);
+    if (initialLoadDone.current) return;
+    if (!usePodioData) {
+      initialLoadDone.current = true;
+      fetchCompanies();
+      return;
+    }
+    if (!showAllLCs && officeId == null) return;
+    initialLoadDone.current = true;
+    fetchCompanies();
+    Promise.race([
+      podioAPI.getStatus().catch(() => ({ authenticated: false })),
+      new Promise((resolve) => setTimeout(() => resolve({ authenticated: false }), 8000)),
+    ]).then((status) => {
+      if (status?.authenticated || status?.authorized) return;
+      if (!usePodioData) return;
+      podioAPI.getAuthUrl().then(({ authUrl }) => { if (authUrl) window.location.href = authUrl; }).catch(() => {});
+    });
+  }, [usePodioData, currentUser, showAllLCs]);
+  useEffect(() => {
+    const officeId = getOfficeId(currentUser);
+    if (initialLoadDone.current || !usePodioData || showAllLCs) return;
+    if (officeId == null) return;
+    initialLoadDone.current = true;
+    fetchCompanies();
+  }, [currentUser]);
   
 
-  // Debounced search effect - only applies local filtering, no automatic API calls
-  // Refresh is now manual-only via the refresh button
+  // Keep table in sync with loaded Podio data (we do not filter Podio data in the debounced effect)
+
+  // Debounced search effect - applies local filtering (including LC filter) for both Podio and non-Podio data
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (!usePodioData) {
-        // Only apply local filtering for non-Podio data (no API call)
-        handleLocalSearch();
-      }
-      // For Podio data, filters are applied when user clicks refresh button
-      // No automatic fetching on filter changes
+      handleLocalSearch();
     }, 300); // 300ms debounce
 
     return () => clearTimeout(timeoutId);
@@ -747,23 +974,48 @@ useEffect(() => {
   };
 
   const handleOpenProfile = async (company) => {
-    console.log("Opening profile for company:", company);
-    
+    const mergeStoredFollowups = (data) => {
+      if (!data || !data.id) return data;
+      try {
+        const stored = localStorage.getItem(`company_followups_${data.id}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return { ...data, followups: parsed };
+          }
+        }
+      } catch (e) {}
+      return data;
+    };
+
+    const mergeStoredProfile = (data) => {
+      if (!data || !data.id) return data;
+      try {
+        const stored = localStorage.getItem(`company_profile_${data.id}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && typeof parsed === 'object') {
+            return { ...data, ...parsed };
+          }
+        }
+      } catch (e) {}
+      return data;
+    };
+
     try {
-      // Fetch full company data from API when profile is first opened
       const response = await marketResearchAPI.getCompany(company.id);
-      const fullCompanyData = response[0]; // Get the full company data
-      
-      console.log("Fetched full company data:", fullCompanyData);
-      
-      setSelectedCompany(fullCompanyData);
-      setSelectedCompanyData(fullCompanyData);
+      const fullCompanyData = response[0];
+      let merged = mergeStoredFollowups(fullCompanyData || company);
+      merged = mergeStoredProfile(merged);
+      setSelectedCompany(merged);
+      setSelectedCompanyData(merged);
       setOpenProfileDialog(true);
     } catch (err) {
       console.error("Error fetching company data:", err);
-      // Fallback to the basic company data if API call fails
-      setSelectedCompany(company);
-      setSelectedCompanyData(company);
+      let merged = mergeStoredFollowups(company);
+      merged = mergeStoredProfile(merged);
+      setSelectedCompany(merged);
+      setSelectedCompanyData(merged);
       setOpenProfileDialog(true);
     }
   };
@@ -831,6 +1083,21 @@ useEffect(() => {
           updatedFields.currentStep = 2;
           statusUpdateNote = `Status updated to ${companySteps[2].label} via profile interaction.`;
         }
+        if (value === 'Completed' && (selectedCompany.currentStep == null || selectedCompany.currentStep < 3)) {
+          updatedFields.currentStep = 3;
+          statusUpdateNote = `Status updated to ${companySteps[3].label} via profile interaction.`;
+        }
+        break;
+
+      case 'visitCompleted':
+        if (value === 'Yes') {
+          updatedFields.visitStatus = 'Completed';
+          updatedFields.visit = 'Completed';
+          if (selectedCompany.currentStep == null || selectedCompany.currentStep < 3) {
+            updatedFields.currentStep = 3;
+            statusUpdateNote = `Status updated to ${companySteps[3].label} via profile interaction.`;
+          }
+        }
         break;
   
       default:
@@ -860,22 +1127,39 @@ useEffect(() => {
       ];
     }
   
-     // Update local state immediately
-     setSelectedCompany(updatedCompany);
-    // setSelectedCompanyData(updatedCompany); // Also update selectedCompanyData for immediate UI update
-     //console.log("selectedCompanyData2:",selectedCompanyData)
-     console.log("Updated selectedCompany with:", updatedCompany);
-     try {
-      // Call backend API
+    setSelectedCompany(updatedCompany);
+    console.log("Updated selectedCompany with:", updatedCompany);
+
+    // Persist interaction status and funnel so they survive refresh (e.g. for Podio-sourced companies)
+    try {
+      const profileSlice = {
+        podio: updatedCompany.podio,
+        contacted: updatedCompany.contacted,
+        interested: updatedCompany.interested,
+        visitStatus: updatedCompany.visitStatus,
+        visit: updatedCompany.visit,
+        currentStep: updatedCompany.currentStep,
+        statusHistory: updatedCompany.statusHistory,
+        visitOutcome: updatedCompany.visitOutcome,
+        visitNumberOfSlots: updatedCompany.visitNumberOfSlots,
+        visitOutcomeNotes: updatedCompany.visitOutcomeNotes
+      };
+      localStorage.setItem(`company_profile_${selectedCompany.id}`, JSON.stringify(profileSlice));
+    } catch (e) {
+      console.warn('Failed to persist company profile to localStorage', e);
+    }
+
+    try {
       const response = await marketResearchAPI.updateCompany(selectedCompany.id, updatedCompany);
-  
-      // Update the global companies list
+      const result = response && (typeof response === 'object' && response.id !== undefined) ? response : updatedCompany;
       setAllCompanies(prev =>
-        prev.map(comp => (comp.id === selectedCompany.id ? response.data : comp))
+        prev.map(comp => (comp.id === selectedCompany.id ? result : comp))
       );
     } catch (error) {
       console.error('Error updating company:', error);
-      // Optionally, show a notification to the user
+      setAllCompanies(prev =>
+        prev.map(comp => (comp.id === selectedCompany.id ? updatedCompany : comp))
+      );
     }
   };
   
@@ -923,10 +1207,10 @@ useEffect(() => {
   const handleAddFollowup = async() => {
     if (!followup.title || !followup.date || !followup.description || !selectedCompany) return;
     const name = Cookies.get('user_name');
-    const id = Cookies.get('person_id');
+    const followUpID = Date.now();
     const newFollowup = {
-      followUpID: Date.now(),
-      id: id, // Generate unique ID for the followup
+      followUpID,
+      id: followUpID, // Unique ID for the follow-up (used by Calendar and status updates)
       title: followup.title,
       text: followup.description,
       date: followup.date,
@@ -935,8 +1219,9 @@ useEffect(() => {
       status: 'pending',
       entityPhone: selectedCompany.phone || '-',
       entityType: 'company',
-      companyName: selectedCompany.name, // Add this explicitly
-      companyId: selectedCompany.id      // Add this explicitly
+      companyName: selectedCompany.name,
+      companyId: selectedCompany.id,
+      entityId: selectedCompany.id, // For Calendar event source
     };
 
     // Update company state
@@ -946,23 +1231,28 @@ useEffect(() => {
       lastUpdated: new Date().toISOString()
     };
 
-    // Save to localStorage for company profile
+    // Persist to localStorage so Calendar shows follow-ups by date and can sync to Google
+    try {
+      localStorage.setItem(
+        `company_followups_${selectedCompany.id}`,
+        JSON.stringify(updatedCompany.followups)
+      );
+    } catch (e) {
+      console.warn('Failed to persist follow-ups to localStorage', e);
+    }
+
     const updatedCompanies = allCompanies.map(company =>
       company.id === selectedCompany.id ? updatedCompany : company
     );
     setAllCompanies(updatedCompanies);
     setSelectedCompany(updatedCompany);
     try {
-      // Call backend API
       const response = await marketResearchAPI.updateCompany(selectedCompany.id, updatedCompany);
-      
-      // Update the global companies list
       setAllCompanies(prev =>
         prev.map(comp => (comp.id === selectedCompany.id ? response.data : comp))
       );
     } catch (error) {
       console.error('Error updating company:', error);
-      // Optionally, show a notification to the user
     }
 
     setFollowup({ title: '', date: '', description: '' });
@@ -981,7 +1271,9 @@ useEffect(() => {
         };
 
         setSelectedCompany(updatedCompany);
-
+        try {
+          localStorage.setItem(`company_followups_${companyId}`, JSON.stringify(updatedCompany.followups));
+        } catch (e) {}
         const updatedCompanies = allCompanies.map(company =>
           company.id === companyId ? updatedCompany : company
         );
@@ -1005,17 +1297,14 @@ useEffect(() => {
       lastUpdated: new Date().toISOString()
     };
 
-    // Update companies in localStorage
     const updatedCompanies = allCompanies.map(company =>
       company.id === selectedCompany.id ? updatedCompany : company
     );
     setAllCompanies(updatedCompanies);
     setSelectedCompany(updatedCompany);
-
-    // Update follow-ups page storage
-    const updatedFollowUps = existingFollowUps.map(f =>
-      f.id === followupId ? { ...f, status: newStatus } : f
-    );
+    try {
+      localStorage.setItem(`company_followups_${selectedCompany.id}`, JSON.stringify(updatedCompany.followups));
+    } catch (e) {}
 
     // Emit event for real-time sync
     followUpStatusEmitter.emit('statusChange', {
@@ -1028,37 +1317,89 @@ useEffect(() => {
   const handleStepChange = async (companyId, newStep) => {
     if (!selectedCompany || selectedCompany.id !== companyId) return;
     const now = new Date().toISOString();
+    const updatedCompany = {
+      ...selectedCompany,
+      currentStep: newStep,
+      lastUpdated: now
+    };
+
+    setSelectedCompany(updatedCompany);
+    setAllCompanies(prev =>
+      prev.map(comp => (comp.id === companyId ? updatedCompany : comp))
+    );
+
+    // Persist funnel step so it survives refresh (e.g. for Podio-sourced companies)
+    try {
+      const existing = localStorage.getItem(`company_profile_${companyId}`);
+      const profile = existing ? { ...JSON.parse(existing), currentStep: newStep } : { currentStep: newStep };
+      localStorage.setItem(`company_profile_${companyId}`, JSON.stringify(profile));
+    } catch (e) {
+      console.warn('Failed to persist funnel step to localStorage', e);
+    }
+
     try {
       const response = await marketResearchAPI.updateCompany(companyId, {
         currentStep: newStep,
         updated_at: now
       });
-  
-      setSelectedCompany(response.data);
+      const result = response && (typeof response === 'object' && response.id !== undefined) ? response : updatedCompany;
+      setSelectedCompany(result);
       setAllCompanies(prev =>
-        prev.map(comp => (comp.id === companyId ? response.data : comp))
+        prev.map(comp => (comp.id === companyId ? result : comp))
       );
     } catch (err) {
       console.error("Failed to update company step:", err);
     }
-  
+  };
 
-    // If moving to Visit Completed stage (index 3), check visitStatus
-    // Note: Existing logic for visitStatus/visitDate might need review based on workflow
-    if (newStep === 3 && selectedCompany.currentStep !== 3) { 
-      // If visitStatus wasn't set to 'Scheduled' before, maybe default it now?
-      // Or perhaps this logic is no longer needed if handled by the dropdowns.
-      // For now, just log that we reached this step.
-      console.log(`Company ${companyId} moved to Visit Completed stage.`);
-      // Example: if (!updatedCompany.visitStatus) updatedCompany.visitStatus = 'Completed'; 
-    }
-
-    const updatedCompanies = allCompanies.map(company =>
-      company.id === companyId ? updatedCompany : company
+  const handleMarkOpportunityRaised = async (slots = '', notes = '') => {
+    if (!selectedCompany) return;
+    const now = new Date().toISOString();
+    const updatedCompany = {
+      ...selectedCompany,
+      visitOutcome: 'Positive - Opportunity Raised',
+      visitNumberOfSlots: slots || selectedCompany.visitNumberOfSlots || '',
+      visitOutcomeNotes: notes || selectedCompany.visitOutcomeNotes || '',
+      currentStep: 4,
+      lastUpdated: now,
+      statusHistory: [
+        ...(selectedCompany.statusHistory || []),
+        { step: 4, date: now, note: 'Opportunity raised – end of funnel!' }
+      ]
+    };
+    setSelectedCompany(updatedCompany);
+    setSelectedCompanyData(updatedCompany);
+    setAllCompanies(prev =>
+      prev.map(c => (c.id === selectedCompany.id ? updatedCompany : c))
     );
-
-    setAllCompanies(updatedCompanies);
-    setSelectedCompany(response);
+    setCompanies(prev =>
+      prev.map(c => (c.id === selectedCompany.id ? updatedCompany : c))
+    );
+    try {
+      const profile = {
+        ...(JSON.parse(localStorage.getItem(`company_profile_${selectedCompany.id}`) || '{}')),
+        visitOutcome: updatedCompany.visitOutcome,
+        visitNumberOfSlots: updatedCompany.visitNumberOfSlots,
+        visitOutcomeNotes: updatedCompany.visitOutcomeNotes,
+        currentStep: 4,
+        statusHistory: updatedCompany.statusHistory
+      };
+      localStorage.setItem(`company_profile_${selectedCompany.id}`, JSON.stringify(profile));
+    } catch (e) {}
+    try {
+      const response = await marketResearchAPI.updateCompany(selectedCompany.id, updatedCompany);
+      const result = response && (typeof response === 'object' && response.id !== undefined) ? response : updatedCompany;
+      setSelectedCompany(result);
+      setAllCompanies(prev => prev.map(c => (c.id === selectedCompany.id ? result : c)));
+      setCompanies(prev => prev.map(c => (c.id === selectedCompany.id ? result : c)));
+    } catch (err) {
+      console.error('Error updating company:', err);
+    }
+    setSnackbar({
+      open: true,
+      message: 'Congratulations! Opportunity raised – end of funnel! 🎉',
+      severity: 'success'
+    });
   };
 
   const renderCompanyForm = () => (
@@ -1330,7 +1671,7 @@ useEffect(() => {
                   }}
                 >
                   <BusinessIcon fontSize="small" />
-                  {company.industry || 'No Industry'} • {company.size || 'No Size'}
+                  {[displayText(company.submittedByLc, ''), displayText(company.industry, ''), displayText(company.size, 'No Size')].filter(Boolean).join(' • ') || '—'}
                 </Typography>
                 {/* Display the LC name if available */}
                 {company.created_by_lc && (
@@ -1446,6 +1787,8 @@ useEffect(() => {
                       (index === 0 && company.podio === 'Yes') || // Market Research completed if approved on Podio
                       (index === 1 && company.contacted === 'Yes') || // Contacted completed if contacted is Yes
                       (index < company.currentStep) || // Previous steps are completed
+                      (index === 2 && !!scheduledVisitDate) || // Visit Scheduled completed when user has set a visit date
+                      (index === 3 && (company.visitStatus === 'Completed' || company.visit === 'Completed')) || // Visit Completed when marked in Interaction Status
                       (company.visitoutcome === 'Negative - Partner Rejected' && (index === 2 || index === 3)) || // Mark Visit Scheduled and Visit Completed as complete when rejected
                       (index === 5 && company.visitoutcome === 'Negative - Partner Rejected') || // Rejected completed if visit outcome is rejected
                       (company.visitoutcome === 'Positive - Opportunity Raised' && index === 4); // Opportunity Raised completed if visit outcome is raised
@@ -1538,6 +1881,67 @@ useEffect(() => {
                 </Stepper>
               </Box>
               </Card>
+
+            {/* Schedule visit – mini calendar date picker (Podio only); appears in Calendar page and syncs to Google */}
+            {usePodioData && company?.id != null && (
+              <Card elevation={0} sx={{ bgcolor: 'background.paper', p: 3, borderRadius: 2 }}>
+                <Typography variant="h6" gutterBottom sx={{ color: 'primary.main', display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                  <EventAvailableIcon /> Schedule visit
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Pick a date from the calendar below. The visit will appear on the Calendar page and sync to Google Calendar when connected.
+                </Typography>
+                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                  <DateTimePicker
+                    label="Visit date & time"
+                    value={scheduledVisitDate}
+                    onChange={async (date) => {
+                      if (!date || company?.id == null) return;
+                      setScheduledVisitDate(date);
+                      const podioItemId = Number(company.id);
+                      if (Number.isNaN(podioItemId)) return;
+                      try {
+                        await marketResearchAPI.createOrUpdatePodioScheduledVisit({
+                          podio_item_id: podioItemId,
+                          company_name: company.name || company.companyName || 'Company',
+                          visit_date: date.toISOString(),
+                        });
+                        setSnackbar({ open: true, message: 'Visit date and time saved. It will appear on the Calendar page and sync to Google Calendar when connected.', severity: 'success' });
+                        const newStep = Math.max(company.currentStep || 0, 2);
+                        const updated = { ...company, currentStep: newStep };
+                        setSelectedCompany(updated);
+                        setSelectedCompanyData(updated);
+                        setAllCompanies(prev => prev.map(c => c.id === company.id ? { ...c, currentStep: newStep } : c));
+                        setCompanies(prev => prev.map(c => c.id === company.id ? { ...c, currentStep: newStep } : c));
+                        try {
+                          const existing = localStorage.getItem(`company_profile_${company.id}`);
+                          const profile = existing ? { ...JSON.parse(existing), currentStep: newStep } : { currentStep: newStep };
+                          localStorage.setItem(`company_profile_${company.id}`, JSON.stringify(profile));
+                        } catch (e) {}
+                      } catch (e) {
+                        setSnackbar({ open: true, message: 'Failed to save visit date.', severity: 'error' });
+                      }
+                    }}
+                    ampm
+                    minutesStep={5}
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        size: 'small',
+                        InputProps: {
+                          startAdornment: (
+                            <InputAdornment position="start" sx={{ mr: 0 }}>
+                              <CalendarTodayIcon color="action" fontSize="small" />
+                            </InputAdornment>
+                          ),
+                        },
+                      },
+                      openPickerButton: { size: 'small' },
+                    }}
+                  />
+                </LocalizationProvider>
+              </Card>
+            )}
 
             {/* Company Details & Contact Person */}
             <Card 
@@ -1634,7 +2038,28 @@ useEffect(() => {
                               transform: 'skew(-2deg)'
                             }}
                           >
-                          {company?.industry || 'Not specified'}
+                          {displayText(company?.industry, '')}
+                        </Typography>
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                          <Typography 
+                            variant="subtitle2" 
+                            color="text.secondary" 
+                            sx={{ 
+                              mb: 0.5,
+                              transform: 'skew(-2deg)'
+                            }}
+                          >
+                            Submitted by LC
+                          </Typography>
+                          <Typography 
+                            variant="body1" 
+                            sx={{ 
+                              fontWeight: 500,
+                              transform: 'skew(-2deg)'
+                            }}
+                          >
+                          {displayText(company?.submittedByLc, '')}
                         </Typography>
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -1655,7 +2080,7 @@ useEffect(() => {
                               transform: 'skew(-2deg)'
                             }}
                           >
-                          {company?.size || 'Not specified'}
+                          {displayText(company?.size, 'Not specified')}
                         </Typography>
                     </Grid>
                     <Grid item xs={12} md={6}>
@@ -1676,7 +2101,7 @@ useEffect(() => {
                               transform: 'skew(-2deg)'
                             }}
                           >
-                          {company?.type || 'Not specified'}
+                          {displayText(company?.type, 'Not specified')}
                         </Typography>
                     </Grid>
                     <Grid item xs={12}>
@@ -1697,7 +2122,7 @@ useEffect(() => {
                               transform: 'skew(-2deg)'
                             }}
                           >
-                          {company?.address || 'Not specified'}
+                          {displayText(company?.address, 'Not specified')}
                         </Typography>
                     </Grid>
                   </Grid>
@@ -2073,6 +2498,41 @@ useEffect(() => {
                               }}
                             >
                               <MenuItem value="Scheduled">Scheduled</MenuItem>
+                              <MenuItem value="Completed">Completed</MenuItem>
+                              <MenuItem value="No">No</MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Grid>
+                      )}
+
+                      {/* Visit completed? – show after a visit is scheduled (date picker or Visit? = Scheduled) */}
+                      {(scheduledVisitDate || company?.visitStatus === 'Scheduled' || company?.visit === 'Scheduled') && (
+                        <Grid item xs={12} sm={6}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel id="profile-visit-completed-label">Visit completed?</InputLabel>
+                            <Select
+                              labelId="profile-visit-completed-label"
+                              label="Visit completed?"
+                              name="visitCompleted"
+                              value={company?.visitStatus === 'Completed' || company?.visit === 'Completed' ? 'Yes' : 'No'}
+                              onChange={handleProfileInputChange('visitCompleted')}
+                              MenuProps={{
+                                PaperProps: {
+                                  sx: {
+                                    maxHeight: 300,
+                                    minWidth: '270px !important',
+                                    '& .MuiMenuItem-root': { padding: '10px 16px', fontSize: '0.95rem' },
+                                  },
+                                },
+                              }}
+                              sx={{
+                                minWidth: '270px',
+                                '& .MuiSelect-select': { padding: '10px 16px', fontSize: '0.95rem' },
+                                transform: 'skew(-2deg)',
+                                '& .MuiSelect-select': { transform: 'skew(2deg)' },
+                              }}
+                            >
+                              <MenuItem value="Yes">Yes</MenuItem>
                               <MenuItem value="No">No</MenuItem>
                             </Select>
                           </FormControl>
@@ -2081,6 +2541,93 @@ useEffect(() => {
                     </Grid>
               </Box>
                  </Card>
+
+            {/* Opportunity Raised – special celebratory card when at Visit Completed (step 3) */}
+            {company.currentStep === 3 && (
+              <Card
+                elevation={3}
+                sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  background: 'linear-gradient(135deg, rgba(46, 125, 50, 0.12) 0%, rgba(56, 142, 60, 0.06) 50%, rgba(46, 125, 50, 0.08) 100%)',
+                  border: '2px solid',
+                  borderColor: 'success.main',
+                  boxShadow: '0 8px 32px rgba(46, 125, 50, 0.2)',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'radial-gradient(circle at 20% 80%, rgba(46, 125, 50, 0.08) 0%, transparent 50%)',
+                    pointerEvents: 'none'
+                  }
+                }}
+              >
+                <Box sx={{ position: 'relative' }}>
+                  <Typography variant="h5" sx={{ color: 'success.dark', fontWeight: 700, mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    🎉 Opportunity Raised – Last step of the funnel
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                    Mark this company as opportunity raised to complete the funnel and celebrate the win.
+                  </Typography>
+                  <Grid container spacing={2} sx={{ mb: 2 }}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Number of slots (optional)"
+                        value={opportunityRaisedSlots}
+                        onChange={(e) => setOpportunityRaisedSlots(e.target.value)}
+                        placeholder={company.visitNumberOfSlots || ''}
+                        sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.paper' } }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        multiline
+                        rows={2}
+                        label="Outcome notes (optional)"
+                        value={opportunityRaisedNotes}
+                        onChange={(e) => setOpportunityRaisedNotes(e.target.value)}
+                        placeholder={company.visitOutcomeNotes || ''}
+                        sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.paper' } }}
+                      />
+                    </Grid>
+                  </Grid>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    onClick={() => {
+                      handleMarkOpportunityRaised(opportunityRaisedSlots, opportunityRaisedNotes);
+                    }}
+                    sx={{
+                      py: 1.5,
+                      fontSize: '1.1rem',
+                      fontWeight: 700,
+                      bgcolor: 'success.main',
+                      color: 'white',
+                      boxShadow: '0 4px 14px rgba(46, 125, 50, 0.4)',
+                      '&:hover': {
+                        bgcolor: 'success.dark',
+                        boxShadow: '0 6px 20px rgba(46, 125, 50, 0.5)',
+                        transform: 'translateY(-1px)'
+                      },
+                      transition: 'all 0.2s ease'
+                    }}
+                    startIcon={<TrendingUpIcon sx={{ fontSize: 28 }} />}
+                  >
+                    Mark as Opportunity Raised 🎉
+                  </Button>
+                </Box>
+              </Card>
+            )}
 
             {/* Visit Outcome Section - Only show if company is in Raised state */}
             {company.currentStep === 4 && (
@@ -2828,6 +3375,28 @@ useEffect(() => {
           >
             Edit Company
           </Button>
+          <Tooltip title={!members || members.length === 0 ? 'No team members available' : 'Assign company to a team member'}>
+            <span>
+              <Button
+                startIcon={<AssignmentIcon />}
+                disabled={!members || members.length === 0}
+                onClick={() => {
+                  if (members && members.length > 0) handleAssignClick(company);
+                }}
+                sx={{
+                  transform: 'skew(-2deg)',
+                  '& .MuiButton-startIcon': {
+                    transform: 'skew(2deg)'
+                  },
+                  '& .MuiButton-label': {
+                    transform: 'skew(2deg)'
+                  }
+                }}
+              >
+                Assign
+              </Button>
+            </span>
+          </Tooltip>
           <Button
             color="error"
             startIcon={<DeleteIcon />}
@@ -2865,6 +3434,43 @@ useEffect(() => {
     setSelectedCompany(null);
   };
 
+  const handleAssign = async () => {
+    if (!selectedCompany || !selectedMember) return;
+    const memberName = members.find((m) => m.id === selectedMember)?.person || 'member';
+    try {
+      const itemId = Number(selectedCompany.id) || selectedCompany.podioItemId || selectedCompany.id;
+      await marketResearchAPI.assignCompany(itemId, String(selectedMember));
+      setStoredAssignment(selectedCompany.id, selectedMember, memberName);
+      setCompanies((prev) =>
+        prev.map((c) =>
+          c.id === selectedCompany.id
+            ? { ...c, assigned_to: selectedMember, assignedTo: memberName }
+            : c
+        )
+      );
+      setAllCompanies((prev) =>
+        prev.map((c) =>
+          c.id === selectedCompany.id
+            ? { ...c, assigned_to: selectedMember, assignedTo: memberName }
+            : c
+        )
+      );
+      setSnackbar({
+        open: true,
+        message: `Company assigned to ${memberName}`,
+        severity: 'success',
+      });
+      handleAssignClose();
+    } catch (error) {
+      console.error('Error assigning company:', error);
+      setSnackbar({
+        open: true,
+        message: error?.response?.data?.detail || error?.message || 'Failed to assign company',
+        severity: 'error',
+      });
+    }
+  };
+
  
 
   const handleBulkAssignClick = () => {
@@ -2877,31 +3483,46 @@ useEffect(() => {
     setSelectedCompanies([]);
   };
 
-  const handleBulkAssign =async () => {
+  const handleBulkAssign = async () => {
     if (!selectedMember || selectedCompanies.length === 0) return;
-
+    const memberName = members.find((m) => m.id === selectedMember)?.person || 'member';
     try {
       await Promise.all(
-        selectedCompanies.map(async (companyId) => {
-          // Find the full company object from local state (fallback to id-only object)
-          const x = companies.find(c => c.id === companyId);
-          const payload = {
-            ...x,
-            assigned_to: selectedMember,
-          };
-          console.log("Bulk assigning company payload:", payload);
-          await marketResearchAPI.updateCompany(companyId, payload);
-          setCompanies(prevCompanies => prevCompanies.map(c => 
-            c.id === companyId ? { ...c, assigned_to: selectedMember } : c
-          ));
-        })
+        selectedCompanies.map((companyId) =>
+          marketResearchAPI.assignCompany(companyId, selectedMember)
+        )
       );
-
-      // Clear selections and close the bulk assign dialog
+      selectedCompanies.forEach((companyId) =>
+        setStoredAssignment(companyId, selectedMember, memberName)
+      );
+      setCompanies((prevCompanies) =>
+        prevCompanies.map((c) =>
+          selectedCompanies.includes(c.id)
+            ? { ...c, assigned_to: selectedMember, assignedTo: memberName }
+            : c
+        )
+      );
+      setAllCompanies((prev) =>
+        prev.map((c) =>
+          selectedCompanies.includes(c.id)
+            ? { ...c, assigned_to: selectedMember, assignedTo: memberName }
+            : c
+        )
+      );
       setSelectedCompanies([]);
       handleBulkAssignClose();
+      setSnackbar({
+        open: true,
+        message: `Assigned ${selectedCompanies.length} companies to ${memberName}`,
+        severity: 'success',
+      });
     } catch (error) {
       console.error('Error assigning companies:', error);
+      setSnackbar({
+        open: true,
+        message: error?.response?.data?.detail || error?.message || 'Failed to assign companies',
+        severity: 'error',
+      });
     }
   };
 
@@ -2943,6 +3564,36 @@ useEffect(() => {
       <Typography variant="h4" gutterBottom>
         Market Research
       </Typography>
+
+      {/* Embedded Podio form section - uses backend proxy to bypass X-Frame-Options */}
+      {usePodioData && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Submit via Podio Form
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Open the Podio form to submit new market research entries. After submitting, set the form&apos;s redirect URL in Podio to this page so you return here automatically.
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={async () => {
+                try {
+                  const url = await marketResearchAPI.getPodioFormUrl();
+                  if (url) window.location.href = url;
+                  else setSnackbar({ open: true, message: 'Could not get Podio form URL.', severity: 'warning' });
+                } catch (e) {
+                  setSnackbar({ open: true, message: 'Could not open Podio form. Ensure the backend is running.', severity: 'warning' });
+                }
+              }}
+            >
+              Open Podio form
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -3318,6 +3969,26 @@ useEffect(() => {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Typography variant="h6">Companies List</Typography>
+              {showAllLCs && usePodioData && (
+                <Chip
+                  label="Showing all LCs"
+                  size="small"
+                  onDelete={() => { setShowAllLCs(false); fetchCompanies({ showAllLCs: false }); }}
+                  color="info"
+                  variant="outlined"
+                />
+              )}
+              {usePodioData && !showAllLCs && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => { setShowAllLCs(true); fetchCompanies({ showAllLCs: true }); }}
+                  disabled={loading}
+                  title="Show companies from all LCs"
+                >
+                  View all LCs
+                </Button>
+              )}
               <IconButton
                 onClick={handleRefresh}
                 disabled={loading}
@@ -3366,6 +4037,7 @@ useEffect(() => {
                   </TableCell>
                   <TableCell>Company Name</TableCell>
                   <TableCell>Industry</TableCell>
+                  <TableCell>Submitted by LC</TableCell>
                   <TableCell>Size</TableCell>
                   <TableCell>Account Type</TableCell>
                   <TableCell>Location</TableCell>
@@ -3379,10 +4051,31 @@ useEffect(() => {
               <TableBody>
                 {companies.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} align="center">
+                    <TableCell colSpan={12} align="center" sx={{ py: 4 }}>
                       <Typography variant="body2" color="text.secondary">
                         No companies found. Start by adding a new company or adjust your search criteria.
                       </Typography>
+                      {allCompanies.length > 0 && (getUserLCName(currentUser) || getOfficeId(currentUser)) && (
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          Showing only companies from your LC ({getUserLCName(currentUser) || `ID ${getOfficeId(currentUser)}`}). None of the {allCompanies.length} loaded match.
+                        </Typography>
+                      )}
+                      {companies.length === 0 && usePodioData && getOfficeId(currentUser) != null && !showAllLCs && (
+                        <Box sx={{ mt: 2 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            {allCompanies.length === 0
+                              ? `No companies submitted by your LC (${getUserLCName(currentUser) || getOfficeId(currentUser)}) in Podio yet.`
+                              : `None of the ${allCompanies.length} loaded companies match your LC.`}
+                          </Typography>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => { setShowAllLCs(true); fetchCompanies({ showAllLCs: true }); }}
+                          >
+                            Show all LCs
+                          </Button>
+                        </Box>
+                      )}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -3395,8 +4088,13 @@ useEffect(() => {
                       onClick={() => handleOpenProfile(company)}
                       sx={{ 
                         cursor: 'pointer',
+                        bgcolor: (company.currentStep === 4 || company.visitOutcome === 'Positive - Opportunity Raised')
+                          ? 'rgba(46, 125, 50, 0.12)'
+                          : 'inherit',
                         '&:hover': {
-                          bgcolor: theme.palette.action.hover
+                          bgcolor: (company.currentStep === 4 || company.visitOutcome === 'Positive - Opportunity Raised')
+                            ? 'rgba(46, 125, 50, 0.2)'
+                            : theme.palette.action.hover
                         }
                       }}
                     >
@@ -3407,11 +4105,12 @@ useEffect(() => {
                         />
                       </TableCell>
                       <TableCell>{company.name}</TableCell>
-                      <TableCell>{company.industry}</TableCell>
-                      <TableCell>{company.size}</TableCell>
-                      <TableCell>{company.accountType}</TableCell>
-                      <TableCell>{company.address}</TableCell>
-                      <TableCell>{company.personName}</TableCell>
+                      <TableCell>{displayText(company.industry, '')}</TableCell>
+                      <TableCell>{displayText(company.submittedByLc, '')}</TableCell>
+                      <TableCell>{displayText(company.size)}</TableCell>
+                      <TableCell>{displayText(company.accountType)}</TableCell>
+                      <TableCell>{displayText(company.address)}</TableCell>
+                      <TableCell>{displayText(company.personName)}</TableCell>
                       <TableCell>
                         <Chip
                           label={company.interested || 'Not Set'}
@@ -3467,6 +4166,23 @@ useEffect(() => {
                         >
                           <EditIcon />
                         </IconButton>
+                        <Tooltip title={!members || members.length === 0 ? 'No team members available' : 'Assign company to a team member'}>
+                          <span>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<AssignmentIcon />}
+                              disabled={!members || members.length === 0}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (members && members.length > 0) handleAssignClick(company);
+                              }}
+                              sx={{ ml: 0.5, minWidth: 'auto', px: 1 }}
+                            >
+                              Assign
+                            </Button>
+                          </span>
+                        </Tooltip>
                         <IconButton 
                           size="small" 
                           color="error"
@@ -3484,7 +4200,7 @@ useEffect(() => {
               </TableBody>
             </Table>
             <TablePagination
-              rowsPerPageOptions={[5, 10, 25]}
+              rowsPerPageOptions={[5, 10, 25, 50]}
               component="div"
               count={companies.length}
               rowsPerPage={rowsPerPage}
@@ -3492,6 +4208,17 @@ useEffect(() => {
               onPageChange={handleChangePage}
               onRowsPerPageChange={handleChangeRowsPerPage}
             />
+            {usePodioData && lastFetchPageSize >= PODIO_PAGE_SIZE && !loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => fetchCompanies({}, { append: true, offset: allCompanies.length })}
+                  startIcon={<RefreshIcon />}
+                >
+                  Load more companies
+                </Button>
+              </Box>
+            )}
           </TableContainer>
         </CardContent>
       </Card>
@@ -3609,6 +4336,20 @@ useEffect(() => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );};
 export default MarketResearchPage; 
