@@ -132,13 +132,15 @@ export const leadsApi = {
 
     try {
       console.log('🔍 [leadsApi] Fetching leads with params:', params);
-      console.log('🔍 [leadsApi] API URL:', `${API_BASE_URL}/leads`);
+      console.log('🔍 [leadsApi] API URL:', `${API_BASE_URL}/leads/`);
       const token = getCrmAccessToken();
       console.log('🔍 [leadsApi] Has token:', !!token);
       console.log('🔍 [leadsApi] Token preview:', token ? `${token.substring(0, 20)}...` : 'none');
       
       // Add cache-busting and ensure fresh request
-      const { data } = await api.get('/leads', { 
+      // NOTE: Backend redirects `/leads` -> `/leads/` with a 307 that may downgrade to http
+      // if proxy headers aren't set correctly. Call `/leads/` directly to avoid redirect.
+      const { data } = await api.get('/leads/', { 
         params: {
           ...params,
           _t: Date.now() // Cache busting parameter
@@ -199,9 +201,10 @@ export const leadsApi = {
 
     try {
       console.log('🔍 [leadsApi] Fetching iCX leads with params:', params);
-      console.log('🔍 [leadsApi] API URL:', `${API_BASE_URL}/icx/leads`);
+      console.log('🔍 [leadsApi] API URL:', `${API_BASE_URL}/icx/leads/`);
 
-      const { data } = await api.get('/icx/leads', {
+      // Same redirect caveat as `/leads`.
+      const { data } = await api.get('/icx/leads/', {
         params: {
           ...params,
           _t: Date.now(),
