@@ -327,7 +327,9 @@ function processApplicationData(data) {
 // }
 async function getRealizations(lcCode) {
   try {
-    const response = await axios.get(`${API_BASE_URL}/realizations`, {
+    // NOTE: Backend redirects `/realizations` -> `/realizations/` with a 307 that may downgrade to http
+    // if proxy headers aren't set correctly. Call `/realizations/` directly to avoid redirect.
+    const response = await axios.get(`${API_BASE_URL}/realizations/`, {
       params: { home_lc_id: lcCode }
     });
     console.log('Realizations fetched successfully:', response.data);
@@ -442,7 +444,7 @@ async function updateStandards(epId, standards) {
 async function bulkAssignLeads(data) {
   try {
     console.log("Lead IDs: ", data);
-    const response = await axios.patch(`${API_BASE_URL}/realizations/assign/bulk`, data);
+    const response = await axios.patch(`${API_BASE_URL}/realizations/assign/bulk/`, data);
     console.log('Bulk assign response:', response.data);
     return response.data;
   }
@@ -454,7 +456,7 @@ async function bulkAssignLeads(data) {
 
 async function getLeadAssignments() {
   try {
-    const response = await axios.get(`${API_BASE_URL}/realizations/assignments`);
+    const response = await axios.get(`${API_BASE_URL}/realizations/assignments/`);
     return response.data;
   }
   catch (error) {
@@ -474,7 +476,7 @@ async function getICXRealizations(hostLcId) {
   if (hostLcId == null) throw new Error('host_lc_id is required');
 
   try {
-    const response = await axios.get(`${API_BASE_URL}/icx/realizations`, {
+    const response = await axios.get(`${API_BASE_URL}/icx/realizations/`, {
       params: { host_lc_id: String(hostLcId) },
     });
 
@@ -493,7 +495,7 @@ async function bulkAssignICXRealizations({ application_ids, member_id } = {}) {
       member_id,
     };
 
-    const response = await axios.patch(`${API_BASE_URL}/icx/realizations/assign/bulk`, payload);
+    const response = await axios.patch(`${API_BASE_URL}/icx/realizations/assign/bulk/`, payload);
     return response?.data || response;
   } catch (error) {
     console.error('Error bulk assigning iCX realizations:', error);

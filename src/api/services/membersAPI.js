@@ -47,10 +47,11 @@ export const fetchMyReports = async (accessToken) => {
 
 export const fetchActiveMembers = async (home_lc_id, reports_to_expa_person_id, options = {}) => {
   try {
+    const personId = Cookies.get('person_id')
     const params = {};
     if (options.alt_person_id) params.alt_person_id = options.alt_person_id;
     const response = await api.get(
-      `members/by-lc/${home_lc_id}/reports-to/${reports_to_expa_person_id}`,
+      `members/by-lc/${home_lc_id}/reports-to/${personId}`,
       { params }
     );
     return response.data;
