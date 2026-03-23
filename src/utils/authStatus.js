@@ -6,7 +6,7 @@ export async function isAuthenticated() {
   
   try {
     // Use API_BASE from apiBase.js, append /api if not already included
-    const apiBaseUrl = API_BASE ? `${API_BASE}/api` : 'http://localhost:5002/api';
+    const apiBaseUrl = API_BASE ? `${API_BASE}/api` : 'https://api-accelerator.aiesec.org.eg/api/v1';
     const checkUrl = `${apiBaseUrl}/auth/check`;
     console.log('🔍 [authStatus] Making request to', checkUrl);
     

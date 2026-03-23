@@ -4,7 +4,7 @@ module.exports = function(app) {
   app.use(
     '/api',
     createProxyMiddleware({
-      target: 'http://localhost:5002', // Local backend
+      target: 'https://api-accelerator.aiesec.org.eg/api/v1', // Local backend
       changeOrigin: true,
       secure: false, // No SSL for localhost
       logLevel: 'debug',
@@ -17,7 +17,7 @@ module.exports = function(app) {
         console.log('🔄 [Proxy] Proxying request:', {
           originalUrl: req.url,
           proxiedUrl: proxyReq.path,
-          target: 'http://localhost:5002',
+          target: 'https://api-accelerator.aiesec.org.eg/api/v1',
           method: req.method
         });
       },

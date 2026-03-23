@@ -124,7 +124,7 @@ const AuthCallbackPage = () => {
         
         // Send tokens to backend for sync service
         try {
-          const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_BASE || 'http://localhost:5002/api';
+          const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_BASE || 'https://api-accelerator.aiesec.org.eg/api/v1';
           console.log('🔍 [AuthCallbackPage] Sending tokens to backend for sync service...');
           const backendResponse = await fetch(`${apiBaseUrl}/auth/expa-tokens`, {
             method: 'POST',
