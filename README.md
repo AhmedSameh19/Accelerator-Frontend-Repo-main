@@ -340,6 +340,13 @@ import { getOfficeId, sortData, printSelectedLeads } from '../utils';
    - Check setupProxy.js configuration
    - Verify API URL in environment variables
 
+4. **Blank white page after deploy**
+   - In browser DevTools → Network, confirm `/static/js/*.js` loads (200) and has `Content-Type: application/javascript`.
+   - If the app is served under a path prefix (e.g. `https://domain.com/accelerator`), rebuild with that prefix:
+     - Option A: set `"homepage": "/accelerator"` in `package.json`, then run `npm run build`.
+     - Option B: run `PUBLIC_URL=/accelerator npm run build`.
+   - Ensure your reverse proxy routes the prefix (and its `/static/*`) to this container.
+
 ### Debug Logging
 
 The app includes extensive console logging:

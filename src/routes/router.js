@@ -171,6 +171,8 @@ export const router = createBrowserRouter(
       v7_startTransition: true,
       v7_relativeSplatPath: true,
     },
-    basename: '/',
+    // CRA sets `PUBLIC_URL` at build time based on `homepage` or env.
+    // Using it here allows serving the app at domain-root or a path prefix.
+    basename: process.env.PUBLIC_URL || '/',
   },
 );
