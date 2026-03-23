@@ -418,8 +418,7 @@ function ICXRealizationsPage() {
       const startDate = dateRange.startDate
         ? dateRange.startDate.toISOString().split("T")[0]
         : "2025-08-01";
-      const token = getCrmAccessToken();
-    
+      const personId = Cookies.get("person_id");
       if (!isAdmin && !lcCode) {
         setLeads([]);
         setSnackbar({
@@ -435,7 +434,7 @@ function ICXRealizationsPage() {
     
       if (lcCode) {
         if (!membersFetched.current) {
-          currentMembers(lcCode, token); // 👈 only once
+          currentMembers(lcCode, personId); // 👈 only once
           membersFetched.current = true;
         }
       }
