@@ -5,9 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Box, Typography, CircularProgress } from '@mui/material';
 
 // Get redirect URI from environment or use default
-const REDIRECT_URI = process.env.REACT_APP_AUTH_REDIRECT_URI || 
-                     process.env.REACT_APP_REDIRECT_URI || 
-                     `${window.location.origin}/auth/callback`;
+const REDIRECT_URI = 'https://accelerator.aiesec.org.eg/auth/callback'; // Must match the one registered in the auth provider
 
 const CLIENT_ID = process.env.REACT_APP_AUTH_CLIENT_ID || 
                   process.env.REACT_APP_CLIENT_ID || 
