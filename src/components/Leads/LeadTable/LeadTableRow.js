@@ -78,7 +78,14 @@ export default function LeadTableRow({
             <Typography
               variant="subtitle2"
               fontWeight="medium"
-              sx={{ color: theme.palette.primary.main }}
+              title={leadName || '-'}
+              sx={{ 
+                color: theme.palette.primary.main,
+                maxWidth: { xs: '120px', sm: '200px' },
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}
             >
               {leadName || '-'}
             </Typography>

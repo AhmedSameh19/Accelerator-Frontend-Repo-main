@@ -64,7 +64,20 @@ export default function TopDemandReport(){
                   <TableBody>
                     {countries.map((c, idx) => (
                       <TableRow key={`${c.country}-${idx}`}>
-                        <TableCell>{c.country || '—'}</TableCell>
+                        <TableCell>
+                          <Typography 
+                            variant="body2" 
+                            title={c.country}
+                            sx={{
+                              maxWidth: { xs: '150px', sm: '300px' },
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {c.country || '—'}
+                          </Typography>
+                        </TableCell>
                         <TableCell align="right">{c.demand ?? 0}</TableCell>
                       </TableRow>
                     ))}
@@ -91,7 +104,20 @@ export default function TopDemandReport(){
                   <TableBody>
                     {projects.map((p, idx) => (
                       <TableRow key={`${p.project_id}-${idx}`}>
-                        <TableCell>{p.project_title || '—'}</TableCell>
+                        <TableCell>
+                          <Typography 
+                            variant="body2" 
+                            title={p.project_title}
+                            sx={{
+                              maxWidth: { xs: '150px', sm: '300px' },
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {p.project_title || '—'}
+                          </Typography>
+                        </TableCell>
                         <TableCell align="right">{p.demand ?? 0}</TableCell>
                       </TableRow>
                     ))}

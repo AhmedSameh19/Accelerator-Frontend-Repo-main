@@ -112,8 +112,12 @@ export const appTheme = createTheme({
         },
         head: {
           fontWeight: 600,
-          backgroundColor: '#F8FAFC',
-          color: '#475569',
+          backgroundColor: '#F4F6F9',
+          color: '#1A1D23',
+          fontSize: '0.75rem',
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+          borderBottom: '2px solid #037EF3',
         }
       },
     },

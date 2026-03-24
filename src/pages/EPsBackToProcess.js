@@ -50,24 +50,24 @@ function EPsBackToProcess() {
     // Try multiple sources for LC/office information
     let officeId = null;
     let lcName = null;
-    
+
     // 1. Try current_offices from user object
     if (currentUser?.current_offices?.[0]?.id) {
       officeId = currentUser.current_offices[0].id;
       return officeId;
     }
-    
+
     // 2. Try LC name from various sources
-    lcName = currentUser?.lc || 
-             currentUser?.userLC || 
-             localStorage.getItem('userLC') ||
-             Cookies.get('userLC') ||
-             null;
-    
+    lcName = currentUser?.lc ||
+      currentUser?.userLC ||
+      localStorage.getItem('userLC') ||
+      Cookies.get('userLC') ||
+      null;
+
     // 3. Try to find LC ID from LC_CODES
     if (lcName && Array.isArray(LC_CODES)) {
-      const found = LC_CODES.find((lc) => 
-        lc.name === lcName || 
+      const found = LC_CODES.find((lc) =>
+        lc.name === lcName ||
         lc.name?.toLowerCase() === lcName?.toLowerCase() ||
         lc.id?.toString() === lcName?.toString()
       );
@@ -75,7 +75,7 @@ function EPsBackToProcess() {
         return found.id;
       }
     }
-    
+
     return null;
   }, [currentUser]);
 
@@ -86,10 +86,10 @@ function EPsBackToProcess() {
 
     setLoading(true);
     setError(null);
-    
+
     try {
       let epsData = [];
-      
+
       if (isAdmin) {
         // For admins, fetch from all LCs to get all EPs
         const allLcIds = LC_CODES.map(lc => lc.id);
@@ -104,7 +104,7 @@ function EPsBackToProcess() {
       } else {
         throw new Error('LC ID (home_lc_id) is required. Please ensure your user account has an LC assigned.');
       }
-      
+
       // Ensure eps is an array
       setEps(Array.isArray(epsData) ? epsData : []);
       console.log('✅ [EPsBackToProcess] Loaded EPs:', epsData.length);
@@ -121,12 +121,12 @@ function EPsBackToProcess() {
   useEffect(() => {
     // Don't load data if CRM type is iCX
     if (crmType !== 'iCX') {
-      loadEPsBackToProcess(); 
+      loadEPsBackToProcess();
     } else {
       setLoading(false);
       setEps([]);
     }
-  }, [loadEPsBackToProcess, crmType]);  
+  }, [loadEPsBackToProcess, crmType]);
   const handleSearch = (event) => {
     setSearchQuery(event.target.value);
   };
@@ -163,7 +163,7 @@ function EPsBackToProcess() {
   const handleExpandClick = async (epId) => {
     const newExpandedState = expandedEP === epId ? null : epId;
     setExpandedEP(newExpandedState);
-    
+
     // If expanding and comments not yet loaded, fetch them
     if (newExpandedState && !epComments[epId]) {
       setLoadingComments(prev => ({ ...prev, [epId]: true }));
@@ -171,7 +171,7 @@ function EPsBackToProcess() {
         console.log(`🔍 [EPsBackToProcess] Fetching comments for EP: ${epId}`);
         const comments = await b2cAPI.getComments(epId);
         console.log(`✅ [EPsBackToProcess] Fetched ${comments.length} comments for EP: ${epId}`);
-        
+
         // Normalize comments to expected format
         const normalizedComments = Array.isArray(comments) ? comments.map(comment => ({
           id: comment.id || comment._id,
@@ -179,7 +179,7 @@ function EPsBackToProcess() {
           created_at: comment.created_at || comment.createdAt || comment.timestamp || comment.date,
           author: comment.author || comment.author_name || comment.created_by_name || comment.creator_name || 'Unknown'
         })) : [];
-        
+
         setEpComments(prev => ({ ...prev, [epId]: normalizedComments }));
       } catch (error) {
         console.error(`❌ [EPsBackToProcess] Error fetching comments for EP ${epId}:`, error);
@@ -242,25 +242,23 @@ function EPsBackToProcess() {
       <TableContainer component={Paper} elevation={2} sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         <Table sx={{ minWidth: { xs: 800, sm: 1000 }, whiteSpace: 'nowrap' }}>
           <TableHead>
-            <TableRow sx={{ bgcolor: 'primary.main' }}>
-              <TableCell 
-                sx={{ 
-                  color: 'white', 
-                  fontWeight: 600,
+            <TableRow>
+              <TableCell
+                sx={{
                   position: 'sticky',
                   left: 0,
-                  bgcolor: 'primary.main',
+                  bgcolor: '#F4F6F9',
                   zIndex: 3,
-                  borderRight: '1px solid rgba(255, 255, 255, 0.2)'
+                  borderRight: '1px solid rgba(0, 0, 0, 0.12)'
                 }}
               >
                 Name
               </TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 600 }}>Contact Info</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 600 }}>LC</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 600 }}>Program</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 600 }}>Status</TableCell>
-              <TableCell sx={{ color: 'white', fontWeight: 600 }}>Comments</TableCell>
+              <TableCell>Contact Info</TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>LC</TableCell>
+              <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Program</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Comments</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -271,7 +269,7 @@ function EPsBackToProcess() {
                   onClick={() => handleRowClick(ep)}
                   sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
                 >
-                   <TableCell
+                  <TableCell
                     sx={{
                       position: 'sticky',
                       left: 0,
@@ -282,7 +280,17 @@ function EPsBackToProcess() {
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <PersonIcon color="primary" />
-                      <Typography>{ep.name || ep.full_name}</Typography>
+                      <Typography
+                        title={ep.name || ep.full_name}
+                        sx={{
+                          maxWidth: { xs: '150px', sm: '250px' },
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {ep.name || ep.full_name}
+                      </Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
@@ -297,7 +305,7 @@ function EPsBackToProcess() {
                       </Box>
                     </Box>
                   </TableCell>
-                  <TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     <Chip
                       label={ep.home_lc_name || ep.lc || ep.home_lc || '-'}
                       size="small"
@@ -305,14 +313,14 @@ function EPsBackToProcess() {
                       sx={{ fontWeight: 500 }}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                     <Chip
                       label={ep.selected_programmes || ep.product || '-'}
                       size="small"
                       sx={{
                         bgcolor: (ep.selected_programmes || ep.product)?.toLowerCase().includes('gv') ? '#F85A40' :
-                                (ep.selected_programmes || ep.product)?.toLowerCase().includes('gta') ? '#0CB9C1' :
-                                (ep.selected_programmes || ep.product)?.toLowerCase().includes('gte') ? '#F48924' : '#e0e0e0',
+                          (ep.selected_programmes || ep.product)?.toLowerCase().includes('gta') ? '#0CB9C1' :
+                            (ep.selected_programmes || ep.product)?.toLowerCase().includes('gte') ? '#F48924' : '#e0e0e0',
                         color: '#fff',
                         fontWeight: 600
                       }}
@@ -340,7 +348,7 @@ function EPsBackToProcess() {
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+                  <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={10}>
                     <Collapse in={expandedEP === (ep.expa_person_id || ep.id)} timeout="auto" unmountOnExit>
                       <Box sx={{ margin: 2 }}>
                         <Typography variant="h6" gutterBottom component="div" sx={{ color: 'primary.main', fontWeight: 600, mb: 2 }}>
@@ -375,7 +383,7 @@ function EPsBackToProcess() {
                                     formattedDate = comment.created_at;
                                   }
                                 }
-                                
+
                                 return (
                                   <Paper
                                     key={comment.id || `comment-${index}`}

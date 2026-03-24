@@ -1373,7 +1373,7 @@ const getTeamUnderCurrentUser = (members) => {
                     sx={{ 
                       position: 'sticky', 
                       left: 0, 
-                      bgcolor: 'background.paper', 
+                      bgcolor: '#F4F6F9', 
                       zIndex: 3,
                       borderRight: '1px solid rgba(224, 224, 224, 1)'
                     }}
@@ -1386,7 +1386,7 @@ const getTeamUnderCurrentUser = (members) => {
                     py: { xs: 1, sm: 2 },
                     position: 'sticky', 
                     left: 48, 
-                    bgcolor: 'background.paper', 
+                    bgcolor: '#F4F6F9', 
                     zIndex: 3,
                     borderRight: '1px solid rgba(224, 224, 224, 1)'
                   }}>
@@ -1404,7 +1404,7 @@ const getTeamUnderCurrentUser = (members) => {
                     py: { xs: 1, sm: 2 },
                     position: 'sticky', 
                     left: 140, 
-                    bgcolor: 'background.paper', 
+                    bgcolor: '#F4F6F9', 
                     zIndex: 3,
                     borderRight: '1px solid rgba(224, 224, 224, 1)'
                   }}>
@@ -1595,9 +1595,19 @@ const getTeamUnderCurrentUser = (members) => {
                         zIndex: 1,
                         borderRight: '1px solid rgba(224, 224, 224, 1)'
                       }}>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {lead.fullName}
-                          </Typography>
+                        <Typography 
+                          variant="body2" 
+                          title={lead.fullName}
+                          sx={{ 
+                            fontWeight: 600,
+                            maxWidth: { xs: '120px', sm: '220px' },
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {lead.fullName}
+                        </Typography>
                       </TableCell>
                       <TableCell sx={{ 
                         fontSize: { xs: '0.75rem', sm: '0.875rem' },

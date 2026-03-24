@@ -3990,7 +3990,7 @@ useEffect(() => {
                     sx={{ 
                       position: 'sticky', 
                       left: 0, 
-                      bgcolor: 'background.paper', 
+                      bgcolor: '#F4F6F9', 
                       zIndex: 3,
                       borderRight: '1px solid rgba(224, 224, 224, 0.12)'
                     }}
@@ -4005,7 +4005,7 @@ useEffect(() => {
                     sx={{ 
                       position: 'sticky', 
                       left: 48, 
-                      bgcolor: 'background.paper', 
+                      bgcolor: '#F4F6F9', 
                       zIndex: 3,
                       fontWeight: 700,
                       borderRight: '1px solid rgba(224, 224, 224, 0.12)'
@@ -4085,7 +4085,19 @@ useEffect(() => {
                           fontWeight: 600
                         }}
                       >
-                        {company.name}
+                        <Typography
+                          variant="body2"
+                          title={company.name}
+                          sx={{
+                            fontWeight: 600,
+                            maxWidth: { xs: '120px', sm: '220px' },
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {company.name}
+                        </Typography>
                       </TableCell>
                       <TableCell>{displayText(company.industry, '')}</TableCell>
                       <TableCell>{displayText(company.submittedByLc, '')}</TableCell>

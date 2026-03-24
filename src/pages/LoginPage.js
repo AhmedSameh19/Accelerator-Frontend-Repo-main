@@ -29,9 +29,9 @@ const HERO_PEOPLE = [
     key: 'sakr',
     name: 'Ahmed Sakr',
     role: 'MC Staff',
-    image: '/assets/images/sakr.webp',
+    image: '/assets/images/Sakr.webp',
     linkedin:
-      'https://www.linkedin.com/in/ahmed-sameh-7872091b5?utm_source=share_via&utm_content=profile&utm_medium=member_ios',
+      'www.linkedin.com/in/ahmed-sameh-7872091b5',
     zIndex: 2,
     overlapSx: {
       mr: { xs: -10, sm: -12, md: -14 },
@@ -111,8 +111,8 @@ const PortraitLink = memo(function PortraitLink({ person }) {
           backfaceVisibility: 'hidden',
           ...(person.key !== 'wello'
             ? {
-                filter: portraitRimFilter(person.key),
-              }
+              filter: portraitRimFilter(person.key),
+            }
             : {}),
         }}
       >
@@ -140,23 +140,23 @@ const PortraitLink = memo(function PortraitLink({ person }) {
             zIndex: 2,
             ...(person.imgScale != null
               ? {
-                  transformOrigin: 'bottom center',
-                  transform: {
-                    xs: `scale(${person.imgScale})`,
-                    sm: `scale(${person.imgScale})`,
-                    md: `scale(${person.imgScale})`,
-                  },
-                }
+                transformOrigin: 'bottom center',
+                transform: {
+                  xs: `scale(${person.imgScale})`,
+                  sm: `scale(${person.imgScale})`,
+                  md: `scale(${person.imgScale})`,
+                },
+              }
               : {}),
             ...(person.imgTranslateY
               ? {
-                  transform: {
-                    xs: `translateY(${person.imgTranslateY.xs}px)`,
-                    sm: `translateY(${person.imgTranslateY.sm}px)`,
-                    md: `translateY(${person.imgTranslateY.md}px)`,
-                  },
-                  transformOrigin: 'bottom center',
-                }
+                transform: {
+                  xs: `translateY(${person.imgTranslateY.xs}px)`,
+                  sm: `translateY(${person.imgTranslateY.sm}px)`,
+                  md: `translateY(${person.imgTranslateY.md}px)`,
+                },
+                transformOrigin: 'bottom center',
+              }
               : {}),
           }}
         />
@@ -202,18 +202,18 @@ const LoginPage = () => {
   const checkAuthAndUpdate = async () => {
     console.log('🔍 [LoginPage] Starting auth check...');
     setLoading(true);
-    
+
     try {
       console.log('🔍 [LoginPage] Calling isAuthenticated()...');
-    const authenticated = await isAuthenticated();
+      const authenticated = await isAuthenticated();
       console.log('🔍 [LoginPage] isAuthenticated() result:', authenticated);
-      
-    setIsLoggedIn(authenticated);
-    setLoading(false);
-      
-    if (authenticated) {
+
+      setIsLoggedIn(authenticated);
+      setLoading(false);
+
+      if (authenticated) {
         console.log('🔍 [LoginPage] User is authenticated, navigating to /leads');
-      navigate('/leads', { replace: true });
+        navigate('/leads', { replace: true });
       } else {
         console.log('🔍 [LoginPage] User is not authenticated, staying on login page');
       }
@@ -227,15 +227,15 @@ const LoginPage = () => {
     console.log('🔍 [LoginPage] useEffect triggered, checking URL params...');
     const urlParams = new URLSearchParams(window.location.search);
     const error = urlParams.get('error');
-    
+
     console.log('🔍 [LoginPage] URL params - error:', error);
-    
+
     if (error) {
       console.error('❌ [LoginPage] Auth error in URL:', error);
       const errorDescription = urlParams.get('error_description');
       console.error('❌ [LoginPage] Error description:', errorDescription);
     }
-    
+
     console.log('🔍 [LoginPage] Checking current auth status...');
     checkAuthAndUpdate();
   }, [navigate]);
@@ -360,123 +360,123 @@ const LoginPage = () => {
               gap: '5px',
             }}
           >
-          <Box
-            sx={{
-              width: { xs: 'min(94vw, 592px)', sm: 'min(90vw, 772px)', md: 856 },
-              height: { xs: 342, sm: 398, md: 430 },
-              position: 'relative',
-              mb: 0,
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'stretch',
-              justifyContent: 'center',
-              px: { xs: 0.5, sm: 1 },
-              overflow: 'visible',
-            }}
-          >
-            {/*
+            <Box
+              sx={{
+                width: { xs: 'min(94vw, 592px)', sm: 'min(90vw, 772px)', md: 856 },
+                height: { xs: 342, sm: 398, md: 430 },
+                position: 'relative',
+                mb: 0,
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'stretch',
+                justifyContent: 'center',
+                px: { xs: 0.5, sm: 1 },
+                overflow: 'visible',
+              }}
+            >
+              {/*
               Group halo only (no per-column blurred boxes — those read as rectangular lines).
               Sakr/Yassin: drop-shadow on masked imgs only; Wello: no glow.
             */}
-            <Box
-              aria-hidden
+              <Box
+                aria-hidden
+                sx={{
+                  position: 'absolute',
+                  left: { xs: '-18%', sm: '-16%', md: '-14%' },
+                  right: { xs: '-18%', sm: '-16%', md: '-14%' },
+                  top: { xs: '-20%', sm: '-18%', md: '-14%' },
+                  bottom: { xs: '-8%', sm: '-6%', md: '-4%' },
+                  zIndex: 0,
+                  pointerEvents: 'none',
+                  overflow: 'visible',
+                  transform: 'translateZ(0)',
+                  isolation: 'isolate',
+                }}
+              >
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: '38%',
+                    transform: 'translate3d(-50%, -50%, 0)',
+                    width: '155%',
+                    height: '140%',
+                    borderRadius: '50%',
+                    background:
+                      'radial-gradient(ellipse 88% 80% at 50% 36%, rgba(255, 255, 255, 0.2) 0%, rgba(200, 230, 255, 0.16) 28%, rgba(120, 185, 255, 0.1) 48%, rgba(3, 126, 243, 0.04) 62%, transparent 78%)',
+                    filter: 'blur(52px)',
+                    opacity: 1,
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: '36%',
+                    transform: 'translate3d(-50%, -50%, 0)',
+                    width: '110%',
+                    height: '95%',
+                    borderRadius: '50%',
+                    background:
+                      'radial-gradient(ellipse 72% 68% at 50% 34%, rgba(255, 255, 255, 0.55) 0%, rgba(248, 252, 255, 0.35) 30%, rgba(232, 246, 255, 0.18) 52%, rgba(160, 210, 255, 0.08) 68%, transparent 82%)',
+                    filter: 'blur(36px)',
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: '34%',
+                    transform: 'translate3d(-50%, -50%, 0)',
+                    width: '72%',
+                    height: '58%',
+                    borderRadius: '50%',
+                    background:
+                      'radial-gradient(ellipse 58% 50% at 50% 40%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.35) 42%, rgba(220, 238, 255, 0.12) 62%, transparent 80%)',
+                    filter: 'blur(24px)',
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: '30%',
+                    transform: 'translate3d(-50%, -50%, 0)',
+                    width: '44%',
+                    height: '34%',
+                    borderRadius: '50%',
+                    background:
+                      'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.15) 48%, transparent 72%)',
+                    filter: 'blur(18px)',
+                    opacity: 0.9,
+                  }}
+                />
+              </Box>
+
+              {HERO_PEOPLE.map((person) => (
+                <PortraitLink key={person.key} person={person} />
+              ))}
+            </Box>
+            <Typography
+              variant="h2"
               sx={{
-                position: 'absolute',
-                left: { xs: '-18%', sm: '-16%', md: '-14%' },
-                right: { xs: '-18%', sm: '-16%', md: '-14%' },
-                top: { xs: '-20%', sm: '-18%', md: '-14%' },
-                bottom: { xs: '-8%', sm: '-6%', md: '-4%' },
-                zIndex: 0,
-                pointerEvents: 'none',
-                overflow: 'visible',
-                transform: 'translateZ(0)',
-                isolation: 'isolate',
+                color: 'white',
+                fontWeight: 800,
+                fontFamily: 'Montserrat, sans-serif',
+                fontSize: { xs: '2.5rem', md: '3.5rem' },
+                textShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                mb: 0,
+                mt: 0,
+                letterSpacing: '-0.02em',
               }}
             >
-              <Box
-                sx={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: '38%',
-                  transform: 'translate3d(-50%, -50%, 0)',
-                  width: '155%',
-                  height: '140%',
-                  borderRadius: '50%',
-                  background:
-                    'radial-gradient(ellipse 88% 80% at 50% 36%, rgba(255, 255, 255, 0.2) 0%, rgba(200, 230, 255, 0.16) 28%, rgba(120, 185, 255, 0.1) 48%, rgba(3, 126, 243, 0.04) 62%, transparent 78%)',
-                  filter: 'blur(52px)',
-                  opacity: 1,
-                }}
-              />
-              <Box
-                sx={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: '36%',
-                  transform: 'translate3d(-50%, -50%, 0)',
-                  width: '110%',
-                  height: '95%',
-                  borderRadius: '50%',
-                  background:
-                    'radial-gradient(ellipse 72% 68% at 50% 34%, rgba(255, 255, 255, 0.55) 0%, rgba(248, 252, 255, 0.35) 30%, rgba(232, 246, 255, 0.18) 52%, rgba(160, 210, 255, 0.08) 68%, transparent 82%)',
-                  filter: 'blur(36px)',
-                }}
-              />
-              <Box
-                sx={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: '34%',
-                  transform: 'translate3d(-50%, -50%, 0)',
-                  width: '72%',
-                  height: '58%',
-                  borderRadius: '50%',
-                  background:
-                    'radial-gradient(ellipse 58% 50% at 50% 40%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.35) 42%, rgba(220, 238, 255, 0.12) 62%, transparent 80%)',
-                  filter: 'blur(24px)',
-                }}
-              />
-              <Box
-                sx={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: '30%',
-                  transform: 'translate3d(-50%, -50%, 0)',
-                  width: '44%',
-                  height: '34%',
-                  borderRadius: '50%',
-                  background:
-                    'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.15) 48%, transparent 72%)',
-                  filter: 'blur(18px)',
-                  opacity: 0.9,
-                }}
-              />
-            </Box>
-
-            {HERO_PEOPLE.map((person) => (
-              <PortraitLink key={person.key} person={person} />
-            ))}
-          </Box>
-          <Typography 
-            variant="h2"
-            sx={{ 
-              color: 'white',
-              fontWeight: 800,
-              fontFamily: 'Montserrat, sans-serif',
-              fontSize: { xs: '2.5rem', md: '3.5rem' },
-              textShadow: '0 2px 10px rgba(0,0,0,0.1)',
-              mb: 0,
-              mt: 0,
-              letterSpacing: '-0.02em',
-            }}
-          >
-            Welcome to the Accelerator
-          </Typography>
+              Welcome to the Accelerator
+            </Typography>
           </Box>
 
-          <Typography 
+          <Typography
             variant="h5"
-            sx={{ 
+            sx={{
               color: 'rgba(255,255,255,0.9)',
               fontWeight: 400,
               maxWidth: 500,
@@ -491,7 +491,7 @@ const LoginPage = () => {
               onClick={loginWithExpa}
               variant="contained"
               size="large"
-              sx={{ 
+              sx={{
                 py: 2,
                 px: { xs: 5, md: 8 },
                 fontSize: { xs: '1rem', md: '1.1rem' },

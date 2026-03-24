@@ -103,7 +103,7 @@ function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMor
                 sx={{ 
                   position: 'sticky', 
                   left: 0, 
-                  bgcolor: 'background.paper', 
+                  bgcolor: '#F4F6F9', 
                   zIndex: 3,
                   borderRight: `1px solid ${theme.palette.divider}`
                 }}
@@ -118,9 +118,8 @@ function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMor
                 sx={{ 
                   position: 'sticky', 
                   left: { xs: 48, sm: 58 }, 
-                  bgcolor: 'background.paper', 
+                  bgcolor: '#F4F6F9', 
                   zIndex: 3,
-                  fontWeight: 700,
                   borderRight: `1px solid ${theme.palette.divider}`
                 }}
               >

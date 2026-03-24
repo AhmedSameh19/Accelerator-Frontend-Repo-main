@@ -72,8 +72,8 @@ export default function AcceptedReport(){
                 <TableHead>
                   <TableRow>
                     <TableCell>Name</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Phone</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Email</TableCell>
+                    <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>Phone</TableCell>
                     <TableCell>LC</TableCell>
                     <TableCell>Product</TableCell>
                     <TableCell>Status</TableCell>
@@ -88,9 +88,22 @@ export default function AcceptedReport(){
                   ) : (
                     displayRows.map((lead, idx) => (
                       <TableRow key={lead.id || idx}>
-                        <TableCell>{lead.full_name || '-'}</TableCell>
-                        <TableCell>{lead.email || '-'}</TableCell>
-                        <TableCell>{lead.phone || '-'}</TableCell>
+                        <TableCell>
+                          <Typography 
+                            variant="body2" 
+                            title={lead.full_name}
+                            sx={{ 
+                              maxWidth: { xs: '120px', sm: '200px' },
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {lead.full_name || '-'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{lead.email || '-'}</TableCell>
+                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{lead.phone || '-'}</TableCell>
                         <TableCell>{lead.lc || '-'}</TableCell>
                         <TableCell>{lead.product || '-'}</TableCell>
                         <TableCell>{lead.status || '-'}</TableCell>

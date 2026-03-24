@@ -428,12 +428,12 @@ function VisitsPage() {
   }
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', maxWidth: 'none' }}>
       <Typography variant="h4" gutterBottom>
         Company Visits
       </Typography>
 
-      <Card sx={{ mb: 3 }}>
+      <Card sx={{ width: '100%', mb: 3 }}>
         <CardContent>
           <Grid container spacing={2}>
             <Grid item xs={12}>
@@ -442,28 +442,26 @@ function VisitsPage() {
               </Typography>
               <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflowX: 'auto' }}>
                 <Table sx={{ minWidth: 750, width: '100%' }} aria-label="scheduled visits table">
-                  <TableHead sx={{ bgcolor: 'grey.100' }}>
+                  <TableHead>
                     <TableRow>
                       <TableCell 
                         sx={{ 
                           py: 1, 
                           px: 2, 
-                          fontWeight: 'bold', 
-                          textAlign: 'left',
                           position: 'sticky',
                           left: 0,
-                          bgcolor: 'grey.100',
+                          bgcolor: '#F4F6F9',
                           zIndex: 3,
                           borderRight: '1px solid rgba(224, 224, 224, 1)'
                         }}
                       >
                         Company
                       </TableCell>
-                      <TableCell sx={{ py: 1, px: 2, fontWeight: 'bold', textAlign: 'left' }}>Contact Person</TableCell>
-                      <TableCell sx={{ py: 1, px: 2, fontWeight: 'bold', textAlign: 'left' }}>Location</TableCell>
-                      <TableCell sx={{ py: 1, px: 2, fontWeight: 'bold', textAlign: 'left' }}>Visit Date</TableCell>
-                      <TableCell sx={{ py: 1, px: 2, fontWeight: 'bold', textAlign: 'center' }}>Status</TableCell>
-                      <TableCell sx={{ py: 1, px: 2, fontWeight: 'bold', textAlign: 'center' }}>Actions</TableCell>
+                      <TableCell sx={{ py: 1, px: 2 }}>Contact Person</TableCell>
+                      <TableCell sx={{ py: 1, px: 2, display: { xs: 'none', md: 'table-cell' } }}>Location</TableCell>
+                      <TableCell sx={{ py: 1, px: 2 }}>Visit Date</TableCell>
+                      <TableCell sx={{ py: 1, px: 2, textAlign: 'center' }}>Status</TableCell>
+                      <TableCell sx={{ py: 1, px: 2, textAlign: 'center' }}>Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -504,7 +502,17 @@ function VisitsPage() {
                                 {company.name?.[0]?.toUpperCase()}
                               </Avatar>
                               <Box>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
+                                <Typography 
+                                  variant="subtitle2" 
+                                  title={company.name}
+                                  sx={{ 
+                                    fontWeight: 500,
+                                    maxWidth: { xs: '120px', sm: '250px' },
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
                                   {company.name}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary" display="block">
@@ -517,11 +525,11 @@ function VisitsPage() {
                             <Typography variant="body2">
                               {company.contact_person}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary" display="block">
+                            <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
                               {company.contact_position}
                             </Typography>
                           </TableCell>
-                          <TableCell sx={{ py: 1.5, px: 2, verticalAlign: 'top' }}>
+                          <TableCell sx={{ py: 1.5, px: 2, verticalAlign: 'top', display: { xs: 'none', md: 'table-cell' } }}>
                             <Typography variant="body2">
                               {company.address}
                             </Typography>

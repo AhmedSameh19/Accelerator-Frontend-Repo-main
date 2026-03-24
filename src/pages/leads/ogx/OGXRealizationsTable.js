@@ -63,7 +63,7 @@ export default function OGXRealizationsTable({
                   sx={{ 
                     position: 'sticky', 
                     left: 0, 
-                    bgcolor: 'background.paper', 
+                    bgcolor: '#F4F6F9', 
                     zIndex: 3,
                     borderRight: `1px solid ${theme.palette.divider}`
                   }}
@@ -84,7 +84,7 @@ export default function OGXRealizationsTable({
                     py: { xs: 1, sm: 2 },
                     position: 'sticky', 
                     left: 48, 
-                    bgcolor: 'background.paper', 
+                    bgcolor: '#F4F6F9', 
                     zIndex: 3,
                     fontWeight: 700,
                     borderRight: `1px solid ${theme.palette.divider}`
@@ -311,7 +311,18 @@ export default function OGXRealizationsTable({
                         >
                           {(lead.full_name || lead.fullName)?.[0]?.toUpperCase()}
                         </Avatar>
-                        <Typography variant="body2">{lead.full_name || lead.fullName}</Typography>
+                        <Typography 
+                          variant="body2"
+                          title={lead.full_name || lead.fullName}
+                          sx={{
+                            maxWidth: { xs: '120px', sm: '200px' },
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {lead.full_name || lead.fullName}
+                        </Typography>
                       </Box>
                     </TableCell>
 
