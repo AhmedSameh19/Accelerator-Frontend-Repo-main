@@ -23,11 +23,6 @@ import { useCRMType } from '../../context/CRMTypeContext';
 import { API_BASE } from '../../utils/apiBase';
 import { logout as logoutExpa } from '../../api/services/authService.ts';
 import NotificationsMenu from '../Notifications/NotificationsMenu';
-import { useTheme as useAppTheme } from '../../context/ThemeContext';
-import {
-  DarkMode as DarkModeIcon,
-  LightMode as LightModeIcon,
-} from '@mui/icons-material';
 import DrawerContent from './DrawerContent';
 import {
   COLLAPSED_DRAWER_WIDTH,
@@ -37,9 +32,8 @@ import {
 } from './navigationConfig';
 
 function MainLayout({ children }) {
-  const muiTheme = useTheme();
-  const { theme: themeMode, toggleTheme } = useAppTheme();
-  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [open, setOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -101,7 +95,7 @@ function MainLayout({ children }) {
     <Box sx={{ 
       display: 'flex', 
       minHeight: '100vh',
-      background: muiTheme.palette.background.default,
+      background: theme.palette.background.default,
       position: 'relative',
       '&::before': {
         content: '""',
@@ -111,7 +105,7 @@ function MainLayout({ children }) {
         width: '100vw',
         height: '100vh',
         zIndex: -1,
-        background: muiTheme.palette.background.default,
+        background: theme.palette.background.default,
       }
     }}>
       <AppBar
@@ -119,12 +113,12 @@ function MainLayout({ children }) {
         sx={{
           width: { md: `calc(100% - ${open ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH}px)`, xs: '100%' },
           ml: { md: `${open ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH}px`, xs: 0 },
-          transition: muiTheme.transitions.create(['width', 'margin'], {
-            easing: muiTheme.transitions.easing.sharp,
-            duration: muiTheme.transitions.duration.leavingScreen,
+          transition: theme.transitions.create(['width', 'margin'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
           }),
-          background: muiTheme.palette.background.paper,
-          color: muiTheme.palette.text.primary,
+          background: theme.palette.background.paper,
+          color: theme.palette.text.primary,
           boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
           borderBottom: '1px solid',
           borderColor: 'rgba(255, 255, 255, 0.12)',
@@ -141,7 +135,7 @@ function MainLayout({ children }) {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, color: muiTheme.palette.text.primary }}>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, color: theme.palette.text.primary }}>
             {activeTitle}
           </Typography>
           <FormControlLabel
@@ -153,17 +147,9 @@ function MainLayout({ children }) {
               />
             }
             label={crmType}
-            sx={{ color: muiTheme.palette.text.primary, mr: 2 }}
+            sx={{ color: theme.palette.text.primary, mr: 2 }}
           />
           <NotificationsMenu />
-          <IconButton
-            color="inherit"
-            onClick={toggleTheme}
-            sx={{ mx: 1 }}
-            title={`Switch to ${themeMode === 'light' ? 'dark' : 'light'} mode`}
-          >
-            {themeMode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
-          </IconButton>
           <IconButton
             edge="end"
             color="inherit"
@@ -185,11 +171,11 @@ function MainLayout({ children }) {
           '& .MuiDrawer-paper': {
             width: isMobile ? DRAWER_WIDTH : (open ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH),
             boxSizing: 'border-box',
-            transition: muiTheme.transitions.create('width', {
-              easing: muiTheme.transitions.easing.sharp,
-              duration: muiTheme.transitions.duration.enteringScreen,
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
             }),
-            bgcolor: muiTheme.palette.primary.main,
+            bgcolor: theme.palette.primary.main,
             borderRight: 'none',
             borderColor: 'transparent',
             height: '100vh',
@@ -209,9 +195,9 @@ function MainLayout({ children }) {
           marginLeft: { md: `${open ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH}px`, xs: 0 },
           marginTop: '64px',
           padding: '16px',
-          transition: muiTheme.transitions.create(['width', 'margin'], {
-            easing: muiTheme.transitions.easing.sharp,
-            duration: muiTheme.transitions.duration.leavingScreen,
+          transition: theme.transitions.create(['width', 'margin'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
           }),
           bgcolor: 'background.default',
         }}
@@ -228,9 +214,6 @@ function MainLayout({ children }) {
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
         <MenuItem onClick={() => navigate('/profile')}>Profile</MenuItem>
-        <MenuItem onClick={toggleTheme}>
-          Switch to {themeMode === 'light' ? 'Dark' : 'Light'} Mode
-        </MenuItem>
         <MenuItem onClick={handleLogout}>Logout</MenuItem>
       </Menu>
     </Box>

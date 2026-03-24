@@ -12,8 +12,7 @@ import {
   StepContent,
   Chip,
   Divider,
-  Paper,
-  useTheme
+  Paper
 } from '@mui/material';
 import {
   Business as BusinessIcon,
@@ -67,13 +66,12 @@ const funnelStages = [
 ];
 
 const accountTypeColors = {
-  iCX: { primary: 'var(--color-brand-green)', light: 'rgba(29, 214, 122, 0.1)' },
-  B2B: { primary: 'var(--color-brand-blue)', light: 'rgba(61, 158, 255, 0.1)' },
-  B2C: { primary: 'var(--color-brand-orange)', light: 'rgba(255, 107, 82, 0.1)' }
+  iCX: { primary: '#4CAF50', light: '#E8F5E9' },
+  B2B: { primary: '#2196F3', light: '#E3F2FD' },
+  B2C: { primary: '#FF9800', light: '#FFF3E0' }
 };
 
 function MarketResearchMetrics() {
-  const muiTheme = useTheme();
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -162,8 +160,7 @@ function MarketResearchMetrics() {
         elevation={0}
         sx={{
           height: '100%',
-          border: '1px solid',
-          borderColor: 'var(--color-border)',
+          border: '1px solid #e2e8f0',
           borderRadius: 3,
           overflow: 'hidden'
         }}
@@ -172,7 +169,7 @@ function MarketResearchMetrics() {
           {/* Account Type Header */}
           <Box sx={{ mb: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a202c' }}>
                 {accountType} Metrics
               </Typography>
               <Chip
@@ -224,7 +221,7 @@ function MarketResearchMetrics() {
                           variant="subtitle1"
                           sx={{
                             fontWeight: isCompleted ? 600 : 400,
-                            color: isCompleted ? 'text.primary' : 'text.disabled'
+                            color: isCompleted ? '#1a202c' : '#9e9e9e'
                           }}
                         >
                           {stage.label}
@@ -262,7 +259,7 @@ function MarketResearchMetrics() {
   if (loading) {
     return (
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, color: 'text.primary' }}>
+        <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, color: '#1a202c' }}>
           Market Research Funnel
         </Typography>
         <Card>
@@ -277,7 +274,7 @@ function MarketResearchMetrics() {
   if (error && !metrics) {
     return (
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, color: 'text.primary' }}>
+        <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, color: '#1a202c' }}>
           Market Research Funnel
         </Typography>
         <Card>
@@ -292,7 +289,7 @@ function MarketResearchMetrics() {
   return (
     <Box sx={{ mb: 4 }}>
       {/* Section Title */}
-      <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, color: 'text.primary' }}>
+      <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, color: '#1a202c' }}>
         Market Research Funnel
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>

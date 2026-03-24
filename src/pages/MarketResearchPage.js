@@ -1942,7 +1942,7 @@ useEffect(() => {
               <Grid container spacing={4}>
                 {/* Company Information */}
                 <Grid item xs={12} md={6}>
-                  <Box sx={{ pr: { md: 4 }, borderRight: { md: 1 }, borderColor: 'var(--color-border)' }}>
+                  <Box sx={{ pr: { md: 4 }, borderRight: { md: 1 }, borderColor: 'divider' }}>
                       <Typography 
                         variant="h6" 
                         gutterBottom 

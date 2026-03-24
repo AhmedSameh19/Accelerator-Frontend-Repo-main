@@ -28,7 +28,6 @@ const MOCK_TREND_DATA = [
 ];
 
 function Dashboard() {
-  const muiTheme = useTheme();
   const { currentUser } = useAuth();
   
   return (
@@ -87,18 +86,11 @@ function Dashboard() {
                       <stop offset="95%" stopColor="#037EF3" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={muiTheme.palette.divider} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: muiTheme.palette.text.secondary }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: muiTheme.palette.text.secondary }} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
                   <Tooltip 
-                    contentStyle={{ 
-                      borderRadius: 12, 
-                      border: `1px solid ${muiTheme.palette.divider}`, 
-                      boxShadow: '0 10px 25px var(--color-shadow)',
-                      backgroundColor: 'var(--color-bg-card)',
-                      color: 'var(--color-text-primary)'
-                    }}
-                    itemStyle={{ color: 'var(--color-text-primary)' }}
+                    contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
                   />
                   <Area type="monotone" dataKey="leads" stroke="#037EF3" strokeWidth={3} fillOpacity={1} fill="url(#colorLeads)" />
                   <Area type="monotone" dataKey="apps" stroke="#00C16E" strokeWidth={3} fillOpacity={0} />
@@ -118,16 +110,8 @@ function Dashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={MOCK_FUNNEL_DATA} layout="vertical" margin={{ left: -20 }}>
                   <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: muiTheme.palette.text.primary }} width={80} />
-                  <Tooltip 
-                    cursor={{ fill: 'transparent' }} 
-                    contentStyle={{ 
-                      borderRadius: 12,
-                      backgroundColor: 'var(--color-bg-card)',
-                      border: `1px solid ${muiTheme.palette.divider}`,
-                      color: 'var(--color-text-primary)'
-                    }} 
-                  />
+                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600 }} width={80} />
+                  <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: 12 }} />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={30}>
                     {MOCK_FUNNEL_DATA.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />

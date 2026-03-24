@@ -42,7 +42,8 @@ export default function DrawerContent({
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        bgcolor: 'var(--color-bg-sidebar)',
+        bgcolor: 'transparent',
+        background: `linear-gradient(180deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
       }}
     >
       <DrawerHeader>
@@ -55,7 +56,7 @@ export default function DrawerContent({
             ml: 2,
             fontWeight: 600,
             display: open ? 'block' : 'none',
-            color: 'var(--color-text-primary)',
+            color: '#fff',
           }}
         >
           The Accelerator
@@ -63,7 +64,7 @@ export default function DrawerContent({
         <IconButton
           onClick={onToggleOpen}
           sx={{
-            color: 'var(--color-text-primary)',
+            color: '#fff',
             transform: open ? 'none' : 'rotate(180deg)',
             transition: 'transform 0.3s',
             mr: open ? 0 : '4px',
@@ -72,7 +73,7 @@ export default function DrawerContent({
           {theme.direction === 'ltr' ? <ChevronLeftIcon /> : <ChevronRightIcon />}
         </IconButton>
       </DrawerHeader>
-      <Divider sx={{ borderColor: 'var(--color-border)' }} />
+      <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.12)' }} />
       <List
         sx={{
           flex: 1,
@@ -100,7 +101,7 @@ export default function DrawerContent({
                   px: 3,
                   pt: 2,
                   pb: 0.5,
-                  color: 'var(--color-text-muted)',
+                  color: 'rgba(255,255,255,0.6)',
                   fontSize: '0.7rem',
                   fontWeight: 700,
                   letterSpacing: '0.1em',
@@ -131,14 +132,14 @@ export default function DrawerContent({
                     minHeight: 44,
                     borderRadius: 2,
                     '&.Mui-selected': {
-                      bgcolor: 'var(--color-bg-secondary)',
-                      color: 'var(--color-brand-blue)',
+                      bgcolor: 'rgba(255, 255, 255, 0.15)',
+                      color: '#fff',
                       '&:hover': {
-                        bgcolor: 'var(--color-bg-secondary)',
+                        bgcolor: 'rgba(255, 255, 255, 0.2)',
                       },
                     },
                     '&:hover': {
-                      bgcolor: 'var(--color-bg-secondary)',
+                      bgcolor: 'rgba(255, 255, 255, 0.08)',
                     },
                   }}
                 >
@@ -156,7 +157,7 @@ export default function DrawerContent({
                       opacity: open ? 1 : 0,
                       transition: 'opacity 0.2s',
                       '& .MuiTypography-root': {
-                        color: 'inherit',
+                        color: '#fff',
                         fontWeight: activePath === item.path ? 600 : 400,
                         fontSize: '0.9rem',
                       },
@@ -168,7 +169,7 @@ export default function DrawerContent({
           </React.Fragment>
         ))}
       </List>
-      <Box sx={{ p: 2, bgcolor: 'var(--color-bg-sidebar)' }}>
+      <Box sx={{ p: 2, bgcolor: 'rgba(255, 255, 255, 0.05)' }}>
         <Box
           sx={{
             display: 'flex',
@@ -184,8 +185,7 @@ export default function DrawerContent({
             sx={{
               width: 40,
               height: 40,
-              bgcolor: 'var(--color-bg-secondary)',
-              color: 'var(--color-text-primary)',
+              bgcolor: 'rgba(255, 255, 255, 0.2)',
               flexShrink: 0,
             }}
           >
@@ -208,7 +208,7 @@ export default function DrawerContent({
               variant="subtitle1"
               noWrap
               sx={{
-                color: 'var(--color-text-primary)',
+                color: '#fff',
                 fontWeight: 700,
                 fontSize: 14,
                 lineHeight: 1.2,
@@ -220,7 +220,7 @@ export default function DrawerContent({
               variant="subtitle2"
               noWrap
               sx={{
-                color: 'var(--color-text-secondary)',
+                color: 'rgba(255, 255, 255, 0.85)',
                 fontWeight: 400,
                 fontSize: 12,
                 lineHeight: 1.2,
@@ -232,7 +232,7 @@ export default function DrawerContent({
               variant="caption"
               noWrap
               sx={{
-                color: 'var(--color-text-muted)',
+                color: 'rgba(255, 255, 255, 0.7)',
                 fontWeight: 400,
                 fontSize: 10,
                 lineHeight: 1.2,
