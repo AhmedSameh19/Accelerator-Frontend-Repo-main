@@ -79,6 +79,7 @@ import {
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import EmptyState from '../components/Common/EmptyState';
 import { useCRMType } from '../context/CRMTypeContext';
 import { useSnackbarContext } from '../context/SnackbarContext';
 import { EventEmitter } from 'events';

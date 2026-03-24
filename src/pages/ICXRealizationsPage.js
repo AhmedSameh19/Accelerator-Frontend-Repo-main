@@ -756,10 +756,6 @@ const getTeamUnderCurrentUser = (members) => {
     }
   };
 
-    copyToClipboard(text, title, lead);
-  };
-
-  const copyToClipboard = (text, title, lead) => {
   const handleRequestSort = (property) => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
