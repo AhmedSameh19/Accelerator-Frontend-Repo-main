@@ -1,81 +1,93 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 export function useInterviewHandlers() {
   const [interviewData, setInterviewData] = useState({});
 
-  const handleInterviewedChange = (appId, value, currentData) => {
-    const updatedData = {
-      ...interviewData,
-      [appId]: {
-        ...currentData,
+  const handleInterviewedChange = useCallback((appId, value, currentData) => {
+    setInterviewData(prev => {
+      const updatedData = {
+        ...prev,
+        [appId]: {
+          ...currentData,
+          interviewed: value,
+          interviewStatus: value !== 'Yes' ? '' : (currentData?.interviewStatus || ''),
+          rejectionReason: value !== 'Yes' ? '' : (currentData?.rejectionReason || '')
+        }
+      };
+      
+      // Auto-save to localStorage
+      const interviewEntry = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        applicationId: appId,
         interviewed: value,
         interviewStatus: value !== 'Yes' ? '' : (currentData?.interviewStatus || ''),
-        rejectionReason: value !== 'Yes' ? '' : (currentData?.rejectionReason || '')
-      }
-    };
-    setInterviewData(updatedData);
-    
-    // Auto-save to localStorage
-    const interviewEntry = {
-      id: Date.now(),
-      timestamp: new Date().toISOString(),
-      applicationId: appId,
-      interviewed: value,
-      interviewStatus: value !== 'Yes' ? '' : (currentData?.interviewStatus || ''),
-      rejectionReason: value !== 'Yes' ? '' : (currentData?.rejectionReason || ''),
-      author: 'Current User'
-    };
-    localStorage.setItem(`application_interview_status_${appId}`, JSON.stringify(interviewEntry));
-  };
+        rejectionReason: value !== 'Yes' ? '' : (currentData?.rejectionReason || ''),
+        author: 'Current User'
+      };
+      localStorage.setItem(`application_interview_status_${appId}`, JSON.stringify(interviewEntry));
+      
+      return updatedData;
+    });
+  }, []);
+unlink
 
-  const handleInterviewStatusChange = (appId, value, currentData) => {
-    const updatedData = {
-      ...interviewData,
-      [appId]: {
-        ...currentData,
+  const handleInterviewStatusChange = useCallback((appId, value, currentData) => {
+    setInterviewData(prev => {
+      const updatedData = {
+        ...prev,
+        [appId]: {
+          ...currentData,
+          interviewStatus: value,
+          rejectionReason: value !== 'Rejected' ? '' : (currentData?.rejectionReason || '')
+        }
+      };
+      
+      // Auto-save to localStorage
+      const interviewEntry = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        applicationId: appId,
+        interviewed: currentData?.interviewed || '',
         interviewStatus: value,
-        rejectionReason: value !== 'Rejected' ? '' : (currentData?.rejectionReason || '')
-      }
-    };
-    setInterviewData(updatedData);
-    
-    // Auto-save to localStorage
-    const interviewEntry = {
-      id: Date.now(),
-      timestamp: new Date().toISOString(),
-      applicationId: appId,
-      interviewed: currentData?.interviewed || '',
-      interviewStatus: value,
-      rejectionReason: value !== 'Rejected' ? '' : (currentData?.rejectionReason || ''),
-      author: 'Current User'
-    };
-    localStorage.setItem(`application_interview_status_${appId}`, JSON.stringify(interviewEntry));
-  };
+        rejectionReason: value !== 'Rejected' ? '' : (currentData?.rejectionReason || ''),
+        author: 'Current User'
+      };
+      localStorage.setItem(`application_interview_status_${appId}`, JSON.stringify(interviewEntry));
+      
+      return updatedData;
+    });
+  }, []);
+unlink
 
-  const handleRejectionReasonChange = (appId, value, currentData) => {
-    const updatedData = {
-      ...interviewData,
-      [appId]: {
-        ...currentData,
-        rejectionReason: value
-      }
-    };
-    setInterviewData(updatedData);
-    
-    // Auto-save to localStorage
-    const interviewEntry = {
-      id: Date.now(),
-      timestamp: new Date().toISOString(),
-      applicationId: appId,
-      interviewed: currentData?.interviewed || '',
-      interviewStatus: currentData?.interviewStatus || '',
-      rejectionReason: value,
-      author: 'Current User'
-    };
-    localStorage.setItem(`application_interview_status_${appId}`, JSON.stringify(interviewEntry));
-  };
+  const handleRejectionReasonChange = useCallback((appId, value, currentData) => {
+    setInterviewData(prev => {
+      const updatedData = {
+        ...prev,
+        [appId]: {
+          ...currentData,
+          rejectionReason: value
+        }
+      };
+      
+      // Auto-save to localStorage
+      const interviewEntry = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        applicationId: appId,
+        interviewed: currentData?.interviewed || '',
+        interviewStatus: currentData?.interviewStatus || '',
+        rejectionReason: value,
+        author: 'Current User'
+      };
+      localStorage.setItem(`application_interview_status_${appId}`, JSON.stringify(interviewEntry));
+      
+      return updatedData;
+    });
+  }, []);
+unlink
 
-  const loadInterviewData = (apps) => {
+  const loadInterviewData = useCallback((apps) => {
     const loadedData = {};
     apps.forEach(app => {
       const storedData = localStorage.getItem(`application_interview_status_${app.id}`);
@@ -89,7 +101,8 @@ export function useInterviewHandlers() {
       }
     });
     setInterviewData(loadedData);
-  };
+  }, []);
+unlink
 
   return {
     interviewData,
