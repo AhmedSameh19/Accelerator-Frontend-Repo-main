@@ -78,17 +78,32 @@ const LoginPage = () => {
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        background: 'linear-gradient(90deg, #1976d2 0%, #0CB9C1 100%)',
+        bgcolor: '#037EF3',
+        background: 'linear-gradient(135deg, #037EF3 0%, #025bb5 100%)',
         position: 'relative',
         overflow: 'hidden',
         '&::before': {
           content: '""',
           position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%)',
+          top: '-10%',
+          right: '-10%',
+          width: '40%',
+          height: '40%',
+          background: 'rgba(255, 255, 255, 0.05)',
+          borderRadius: '50%',
+          filter: 'blur(80px)',
+          zIndex: 1,
+        },
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          bottom: '-10%',
+          left: '-10%',
+          width: '40%',
+          height: '40%',
+          background: 'rgba(0, 193, 110, 0.1)',
+          borderRadius: '50%',
+          filter: 'blur(80px)',
           zIndex: 1,
         }
       }}
@@ -155,10 +170,9 @@ const LoginPage = () => {
             src="/assets/images/Accelerator logo.png"
             alt="Accelerator Logo"
             sx={{
-              height: '180px',
+              height: { xs: '120px', md: '180px' },
               width: 'auto',
               mb: 2,
-              // filter: 'brightness(0) invert(1)', // Removed to show original colors
             }}
           />
           <Typography 
@@ -166,9 +180,11 @@ const LoginPage = () => {
             sx={{ 
               color: 'white',
               fontWeight: 800,
+              fontFamily: 'Montserrat, sans-serif',
               fontSize: { xs: '2.5rem', md: '3.5rem' },
-              textShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              textShadow: '0 2px 10px rgba(0,0,0,0.1)',
               mb: 2,
+              letterSpacing: '-0.02em',
             }}
           >
             Welcome to The Accelerator
@@ -192,63 +208,25 @@ const LoginPage = () => {
               variant="contained"
               size="large"
               sx={{ 
-                py: 2.5,
-                px: 8,
-                fontSize: '1.2rem',
-                fontWeight: 600,
-                letterSpacing: '0.5px',
-                background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-                color: 'primary.main',
-                borderRadius: '12px',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: 'translateY(0)',
+                py: 2,
+                px: { xs: 5, md: 8 },
+                fontSize: { xs: '1rem', md: '1.1rem' },
+                fontWeight: 700,
+                fontFamily: 'Montserrat, sans-serif',
+                textTransform: 'none',
+                background: '#fff',
+                color: '#037EF3',
+                borderRadius: '50px',
+                transition: 'all 0.3s ease-in-out',
                 '&:hover': {
-                  background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 12px 40px rgba(0,0,0,0.2)',
+                  background: '#f8f9fa',
+                  transform: 'scale(1.02)',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
                 },
-                '&:active': {
-                  transform: 'translateY(1px)',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                },
-                boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-                position: 'relative',
-                overflow: 'hidden',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
-                  opacity: 0,
-                  transition: 'opacity 0.3s ease',
-                },
-                '&:hover::before': {
-                  opacity: 1,
-                },
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  background: 'linear-gradient(45deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%)',
-                  transform: 'translateX(-100%)',
-                  transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-                },
-                '&:hover::after': {
-                  transform: 'translateX(100%)',
-                },
-                '& .MuiButton-label': {
-                  position: 'relative',
-                  zIndex: 1,
-                },
+                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
               }}
             >
-              Continue with EXPA
+              Log in with EXPA
             </Button>
           )}
           {isLoggedIn && (

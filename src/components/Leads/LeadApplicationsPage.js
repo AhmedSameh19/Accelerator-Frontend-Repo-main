@@ -49,13 +49,13 @@ export default function LeadApplicationsPage() {
   return (
     <Box sx={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #e3f2fd 0%, #f8fafc 100%)',
+      bgcolor: 'background.default',
       boxSizing: 'border-box',
       pb: 8
     }}>
       <PageHeader onBack={handleBack} />
       <Box sx={{ maxWidth: 1100, mx: 'auto', px: { xs: 1, md: 0 } }}>
-        <Divider sx={{ mb: 4, borderColor: theme.palette.primary.light, opacity: 0.4 }} />
+        <Divider sx={{ mb: 4, borderColor: 'divider' }} />
         <Typography variant="h5" sx={{ mb: 3, fontWeight: 700, color: theme.palette.primary.dark, letterSpacing: 0.5, textAlign: 'left' }}>
           {applications.length > 0 ? `Showing ${applications.length} Application${applications.length > 1 ? 's' : ''}` : 'No Applications'}
         </Typography>

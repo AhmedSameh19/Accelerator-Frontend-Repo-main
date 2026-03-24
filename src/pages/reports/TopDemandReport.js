@@ -53,22 +53,24 @@ export default function TopDemandReport(){
             {loading ? <CircularProgress size={24} /> : error ? (
               <Typography color="error" variant="body2">{error}</Typography>
             ) : (
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Country</TableCell>
-                    <TableCell align="right">Applications</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {countries.map((c, idx) => (
-                    <TableRow key={`${c.country}-${idx}`}>
-                      <TableCell>{c.country || '—'}</TableCell>
-                      <TableCell align="right">{c.demand ?? 0}</TableCell>
+              <Box sx={{ overflowX: 'auto', width: '100%' }}>
+                <Table size="small" sx={{ whiteSpace: 'nowrap' }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Country</TableCell>
+                      <TableCell align="right">Applications</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHead>
+                  <TableBody>
+                    {countries.map((c, idx) => (
+                      <TableRow key={`${c.country}-${idx}`}>
+                        <TableCell>{c.country || '—'}</TableCell>
+                        <TableCell align="right">{c.demand ?? 0}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
             )}
           </CardContent>
         </Card>
@@ -78,22 +80,24 @@ export default function TopDemandReport(){
             {loading ? <CircularProgress size={24} /> : error ? (
               <Typography color="error" variant="body2">{error}</Typography>
             ) : (
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Project</TableCell>
-                    <TableCell align="right">Applications</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {projects.map((p, idx) => (
-                    <TableRow key={`${p.project_id}-${idx}`}>
-                      <TableCell>{p.project_title || '—'}</TableCell>
-                      <TableCell align="right">{p.demand ?? 0}</TableCell>
+              <Box sx={{ overflowX: 'auto', width: '100%' }}>
+                <Table size="small" sx={{ whiteSpace: 'nowrap' }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Project</TableCell>
+                      <TableCell align="right">Applications</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHead>
+                  <TableBody>
+                    {projects.map((p, idx) => (
+                      <TableRow key={`${p.project_id}-${idx}`}>
+                        <TableCell>{p.project_title || '—'}</TableCell>
+                        <TableCell align="right">{p.demand ?? 0}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
             )}
           </CardContent>
         </Card>

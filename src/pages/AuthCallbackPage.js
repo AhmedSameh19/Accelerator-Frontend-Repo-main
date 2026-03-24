@@ -383,13 +383,33 @@ const AuthCallbackPage = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-      {loading && <CircularProgress />}
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(90deg, #1976d2 0%, #0CB9C1 100%)',
+        color: 'white'
+      }}
+    >
+      {loading && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          <CircularProgress sx={{ color: 'white' }} size={48} />
+          <Typography variant="h6" sx={{ fontWeight: 500 }}>Authenticating with EXPA...</Typography>
+        </Box>
+      )}
       {error && (
-        <Typography color="error" variant="h6">{error}</Typography>
+        <Box sx={{ bgcolor: 'rgba(255,255,255,0.9)', p: 4, borderRadius: 2, textAlign: 'center' }}>
+          <Typography color="error" variant="h6">{error}</Typography>
+        </Box>
       )}
       {!loading && !error && (
-        <Typography variant="h6">Login successful! Redirecting...</Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>Login successful!</Typography>
+          <Typography variant="body1">Redirecting you to the CRM...</Typography>
+        </Box>
       )}
     </Box>
   );

@@ -9,6 +9,7 @@ import {
   Menu,
   MenuItem,
   useTheme,
+  useMediaQuery,
   Switch,
   FormControlLabel,
 } from '@mui/material';
@@ -32,7 +33,9 @@ import {
 
 function MainLayout({ children }) {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [open, setOpen] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const { currentUser, logout } = useAuth();
   const { crmType, toggleCRMType } = useCRMType();
@@ -43,7 +46,11 @@ function MainLayout({ children }) {
   const activeTitle = getActiveMenuTitle(menuItems, location.pathname);
 
   const handleDrawerToggle = () => {
-    setOpen(!open);
+    if (isMobile) {
+      setMobileOpen(!mobileOpen);
+    } else {
+      setOpen(!open);
+    }
   };
 
   const handleProfileMenuOpen = (event) => {
@@ -65,15 +72,22 @@ function MainLayout({ children }) {
     navigate('/login');
   };
 
+  const handleNavigate = (path) => {
+    navigate(path);
+    if (isMobile) {
+      setMobileOpen(false);
+    }
+  };
+
   const drawer = (
     <DrawerContent
-      open={open}
+      open={isMobile ? true : open}
       theme={theme}
       menuItems={menuItems}
       activePath={location.pathname}
       currentUser={currentUser}
       onToggleOpen={handleDrawerToggle}
-      onNavigate={navigate}
+      onNavigate={handleNavigate}
     />
   );
 
@@ -81,8 +95,7 @@ function MainLayout({ children }) {
     <Box sx={{ 
       display: 'flex', 
       minHeight: '100vh',
-      bgcolor: 'transparent',
-      background: 'linear-gradient(90deg, #1976d2 0%, #0CB9C1 100%)',
+      background: theme.palette.background.default,
       position: 'relative',
       '&::before': {
         content: '""',
@@ -92,21 +105,21 @@ function MainLayout({ children }) {
         width: '100vw',
         height: '100vh',
         zIndex: -1,
-        background: 'linear-gradient(90deg, #1976d2 0%, #0CB9C1 100%)',
+        background: theme.palette.background.default,
       }
     }}>
       <AppBar
         position="fixed"
         sx={{
-          width: `calc(100% - ${open ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH}px)`,
-          ml: `${open ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH}px`,
+          width: { md: `calc(100% - ${open ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH}px)`, xs: '100%' },
+          ml: { md: `${open ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH}px`, xs: 0 },
           transition: theme.transitions.create(['width', 'margin'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
           }),
-          background: 'linear-gradient(90deg, #0CB9C1 0%, #1976d2 100%)',
-          color: '#fff',
-          boxShadow: 'none',
+          background: theme.palette.background.paper,
+          color: theme.palette.text.primary,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
           borderBottom: '1px solid',
           borderColor: 'rgba(255, 255, 255, 0.12)',
           borderRadius: 0
@@ -122,7 +135,7 @@ function MainLayout({ children }) {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, color: '#fff' }}>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, color: theme.palette.text.primary }}>
             {activeTitle}
           </Typography>
           <FormControlLabel
@@ -134,7 +147,7 @@ function MainLayout({ children }) {
               />
             }
             label={crmType}
-            sx={{ color: '#fff', mr: 2 }}
+            sx={{ color: theme.palette.text.primary, mr: 2 }}
           />
           <NotificationsMenu />
           <IconButton
@@ -148,24 +161,28 @@ function MainLayout({ children }) {
       </AppBar>
 
       <Drawer
-        variant="permanent"
+        variant={isMobile ? 'temporary' : 'permanent'}
+        open={isMobile ? mobileOpen : open}
+        onClose={handleDrawerToggle}
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile.
+        }}
         sx={{
           '& .MuiDrawer-paper': {
-            width: open ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH,
+            width: isMobile ? DRAWER_WIDTH : (open ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH),
             boxSizing: 'border-box',
             transition: theme.transitions.create('width', {
               easing: theme.transitions.easing.sharp,
               duration: theme.transitions.duration.enteringScreen,
             }),
-            bgcolor: '#037ef3',
-            borderRight: '1px solid',
-            borderColor: 'rgba(255, 255, 255, 0.12)',
+            bgcolor: theme.palette.primary.main,
+            borderRight: 'none',
+            borderColor: 'transparent',
             height: '100vh',
             overflow: 'hidden',
             borderRadius: 0
           },
         }}
-        open={open}
       >
         {drawer}
       </Drawer>
@@ -174,8 +191,8 @@ function MainLayout({ children }) {
         component="main"
         sx={{
           flexGrow: 1,
-          width: `calc(100% - ${open ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH}px)`,
-          marginLeft: `${open ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH}px`,
+          width: { md: `calc(100% - ${open ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH}px)`, xs: '100%' },
+          marginLeft: { md: `${open ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH}px`, xs: 0 },
           marginTop: '64px',
           padding: '16px',
           transition: theme.transitions.create(['width', 'margin'], {

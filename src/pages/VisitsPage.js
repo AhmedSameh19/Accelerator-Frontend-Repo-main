@@ -439,11 +439,25 @@ function VisitsPage() {
               <Typography variant="h6" color="primary" gutterBottom>
                 Scheduled Visits
               </Typography>
-              <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-                <Table sx={{ minWidth: 750, width: '100%', tableLayout: 'fixed' }} aria-label="scheduled visits table">
+              <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflowX: 'auto' }}>
+                <Table sx={{ minWidth: 750, width: '100%' }} aria-label="scheduled visits table">
                   <TableHead sx={{ bgcolor: 'grey.100' }}>
                     <TableRow>
-                      <TableCell sx={{ py: 1, px: 2, fontWeight: 'bold', textAlign: 'left' }}>Company</TableCell>
+                      <TableCell 
+                        sx={{ 
+                          py: 1, 
+                          px: 2, 
+                          fontWeight: 'bold', 
+                          textAlign: 'left',
+                          position: 'sticky',
+                          left: 0,
+                          bgcolor: 'grey.100',
+                          zIndex: 3,
+                          borderRight: '1px solid rgba(224, 224, 224, 1)'
+                        }}
+                      >
+                        Company
+                      </TableCell>
                       <TableCell sx={{ py: 1, px: 2, fontWeight: 'bold', textAlign: 'left' }}>Contact Person</TableCell>
                       <TableCell sx={{ py: 1, px: 2, fontWeight: 'bold', textAlign: 'left' }}>Location</TableCell>
                       <TableCell sx={{ py: 1, px: 2, fontWeight: 'bold', textAlign: 'left' }}>Visit Date</TableCell>
@@ -471,7 +485,18 @@ function VisitsPage() {
                             '&:last-child td, &:last-child th': { border: 0 } 
                           }}
                         >
-                          <TableCell sx={{ py: 1.5, px: 2, verticalAlign: 'top' }}>
+                          <TableCell 
+                            sx={{ 
+                              py: 1.5, 
+                              px: 2, 
+                              verticalAlign: 'top',
+                              position: 'sticky',
+                              left: 0,
+                              bgcolor: 'background.paper',
+                              zIndex: 1,
+                              borderRight: '1px solid rgba(224, 224, 224, 1)'
+                            }}
+                          >
                             <Box display="flex" alignItems="center" gap={1.5}>
                               <Avatar sx={{ bgcolor: 'primary.light', width: 40, height: 40 }}>
                                 {company.name?.[0]?.toUpperCase()}

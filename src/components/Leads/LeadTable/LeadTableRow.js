@@ -31,13 +31,30 @@ export default function LeadTableRow({
         }
       }}
     >
-      <TableCell padding="checkbox">
+      <TableCell 
+        padding="checkbox"
+        sx={{ 
+          position: 'sticky', 
+          left: 0, 
+          bgcolor: isSelected ? 'action.selected' : 'background.paper', 
+          zIndex: 1,
+          borderRight: `1px solid ${theme.palette.divider}`
+        }}
+      >
         <Checkbox
           checked={isSelected}
           onChange={() => onSelect(effectiveSelectionId)}
         />
       </TableCell>
-      <TableCell>
+      <TableCell
+        sx={{ 
+          position: 'sticky', 
+          left: { xs: 48, sm: 58 }, 
+          bgcolor: isSelected ? 'action.selected' : 'background.paper', 
+          zIndex: 1,
+          borderRight: `1px solid ${theme.palette.divider}`
+        }}
+      >
         <Box
           sx={{
             display: 'flex',
@@ -65,7 +82,7 @@ export default function LeadTableRow({
             >
               {leadName || '-'}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
               ID: {displayId}
             </Typography>
           </Box>
@@ -75,23 +92,26 @@ export default function LeadTableRow({
       {isICX ? <TableCell>{homeMcName || '-'}</TableCell> : null}
       <TableCell>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {lead.phone || '-'}
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            {lead.phone || '-'}
+          </Typography>
           {lead.phone && (
             <Tooltip title="Call">
               <IconButton
-                size="small"
+                size="large"
                 onClick={(e) => {
                   e.stopPropagation();
                   window.location.href = `tel:${lead.phone}`;
                 }}
                 sx={{ 
                   color: theme.palette.primary.main,
+                  p: 1.5,
                   '&:hover': {
                     bgcolor: theme.palette.primary.light
                   }
                 }}
               >
-                <PhoneIcon fontSize="small" />
+                <PhoneIcon fontSize="medium" />
               </IconButton>
             </Tooltip>
           )}

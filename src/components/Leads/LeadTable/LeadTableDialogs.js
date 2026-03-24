@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, FormControl, InputLabel, Select, MenuItem, Stack, Typography } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, FormControl, InputLabel, Select, MenuItem, Stack, Typography, useMediaQuery, useTheme } from '@mui/material';
 
 export function AssignLeadDialog({ 
   open, 
@@ -9,9 +9,21 @@ export function AssignLeadDialog({
   setSelectedMember, 
   onConfirm 
 }) {
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Assign Lead</DialogTitle>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="sm" 
+      fullWidth 
+      fullScreen={fullScreen}
+      PaperProps={{
+        sx: { borderRadius: fullScreen ? 0 : 3 }
+      }}
+    >
+      <DialogTitle sx={{ fontWeight: 700 }}>Assign Lead</DialogTitle>
       <DialogContent>
         <FormControl fullWidth sx={{ mt: 2 }}>
           <InputLabel>Select Member</InputLabel>
@@ -52,9 +64,21 @@ export function BulkAssignDialog({
   selectedLeadsCount, 
   onConfirm 
 }) {
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Bulk Assign Leads</DialogTitle>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="sm" 
+      fullWidth 
+      fullScreen={fullScreen}
+      PaperProps={{
+        sx: { borderRadius: fullScreen ? 0 : 3 }
+      }}
+    >
+      <DialogTitle sx={{ fontWeight: 700 }}>Bulk Assign Leads</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 2 }}>
           <Typography>

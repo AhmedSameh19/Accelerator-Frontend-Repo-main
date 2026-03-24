@@ -55,10 +55,19 @@ export default function OGXRealizationsTable({
             },
           }}
         >
-          <Table>
+          <Table sx={{ whiteSpace: 'nowrap' }}>
             <TableHead>
               <TableRow>
-                <TableCell padding="checkbox">
+                <TableCell 
+                  padding="checkbox"
+                  sx={{ 
+                    position: 'sticky', 
+                    left: 0, 
+                    bgcolor: 'background.paper', 
+                    zIndex: 3,
+                    borderRight: `1px solid ${theme.palette.divider}`
+                  }}
+                >
                   <Checkbox
                     indeterminate={
                       selectedLeads.length > 0 && selectedLeads.length < leads.length
@@ -73,6 +82,12 @@ export default function OGXRealizationsTable({
                     whiteSpace: 'nowrap',
                     fontSize: { xs: '0.75rem', sm: '0.875rem' },
                     py: { xs: 1, sm: 2 },
+                    position: 'sticky', 
+                    left: 48, 
+                    bgcolor: 'background.paper', 
+                    zIndex: 3,
+                    fontWeight: 700,
+                    borderRight: `1px solid ${theme.palette.divider}`
                   }}
                 >
                   <TableSortLabel
@@ -288,7 +303,17 @@ export default function OGXRealizationsTable({
                       },
                     }}
                   >
-                    <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
+                    <TableCell 
+                      padding="checkbox" 
+                      onClick={(e) => e.stopPropagation()}
+                      sx={{ 
+                        position: 'sticky', 
+                        left: 0, 
+                        bgcolor: selectedLeads.includes(leadExpaId) ? 'action.selected' : 'background.paper', 
+                        zIndex: 1,
+                        borderRight: `1px solid ${theme.palette.divider}`
+                      }}
+                    >
                       <Checkbox
                         checked={selectedLeads.includes(leadExpaId)}
                         onChange={(e) => {
@@ -302,6 +327,12 @@ export default function OGXRealizationsTable({
                       sx={{
                         fontSize: { xs: '0.75rem', sm: '0.875rem' },
                         py: { xs: 1, sm: 2 },
+                        position: 'sticky', 
+                        left: 48, 
+                        bgcolor: selectedLeads.includes(leadExpaId) ? 'action.selected' : 'background.paper', 
+                        zIndex: 1,
+                        borderRight: `1px solid ${theme.palette.divider}`,
+                        fontWeight: 600
                       }}
                     >
                       <Box display="flex" alignItems="center" gap={1}>

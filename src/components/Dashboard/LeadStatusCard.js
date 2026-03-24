@@ -8,12 +8,17 @@ function LeadStatusCard({ title, count, change, icon, color }) {
         position: 'relative',
         height: '100%',
         overflow: 'hidden',
-        borderRadius: 2,
-        transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+        borderRadius: 4,
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         cursor: 'pointer',
+        border: '1px solid',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        background: 'rgba(255, 255, 255, 0.8)',
+        backdropFilter: 'blur(10px)',
         '&:hover': {
-          transform: 'translateY(-6px)',
-          boxShadow: theme => `0 8px 22px ${theme.palette[color]?.main || 'rgba(0,0,0,0.12)'}`
+          transform: 'translateY(-8px)',
+          boxShadow: theme => `0 20px 40px -12px ${theme.palette[color]?.main || 'rgba(0,0,0,0.12)'}`,
+          borderColor: `${color}.main`,
         }
       }}
     >
@@ -40,7 +45,7 @@ function LeadStatusCard({ title, count, change, icon, color }) {
       </Box>
 
       <CardContent sx={{ p: { xs: 2, sm: 2.5 }, pr: { xs: 6.5, sm: 7.5 } }}>
-        <Typography variant="subtitle2" color="text.secondary">
+        <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.7rem' }}>
           {title}
         </Typography>
 

@@ -4024,18 +4024,38 @@ useEffect(() => {
               </Button>
             )}
           </Box>
-          <TableContainer component={Paper} elevation={0}>
-            <Table>
+          <TableContainer component={Paper} elevation={0} sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <Table sx={{ minWidth: { xs: 800, md: 1000 }, whiteSpace: 'nowrap' }}>
               <TableHead>
                 <TableRow>
-                  <TableCell padding="checkbox">
+                  <TableCell 
+                    padding="checkbox"
+                    sx={{ 
+                      position: 'sticky', 
+                      left: 0, 
+                      bgcolor: 'background.paper', 
+                      zIndex: 3,
+                      borderRight: '1px solid rgba(224, 224, 224, 0.12)'
+                    }}
+                  >
                     <Checkbox
                       indeterminate={selectedCompanies.length > 0 && selectedCompanies.length < companies.length}
                       checked={companies.length > 0 && selectedCompanies.length === companies.length}
                       onChange={handleSelectAll}
                     />
                   </TableCell>
-                  <TableCell>Company Name</TableCell>
+                  <TableCell
+                    sx={{ 
+                      position: 'sticky', 
+                      left: 48, 
+                      bgcolor: 'background.paper', 
+                      zIndex: 3,
+                      fontWeight: 700,
+                      borderRight: '1px solid rgba(224, 224, 224, 0.12)'
+                    }}
+                  >
+                    Company Name
+                  </TableCell>
                   <TableCell>Industry</TableCell>
                   <TableCell>Submitted by LC</TableCell>
                   <TableCell>Size</TableCell>
@@ -4051,31 +4071,29 @@ useEffect(() => {
               <TableBody>
                 {companies.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} align="center" sx={{ py: 4 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        No companies found. Start by adding a new company or adjust your search criteria.
-                      </Typography>
-                      {allCompanies.length > 0 && (getUserLCName(currentUser) || getOfficeId(currentUser)) && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                          Showing only companies from your LC ({getUserLCName(currentUser) || `ID ${getOfficeId(currentUser)}`}). None of the {allCompanies.length} loaded match.
+                    <TableCell colSpan={12} align="center" sx={{ py: 6 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                        <SearchOffIcon sx={{ fontSize: 48, color: 'text.disabled', opacity: 0.5 }} />
+                        <Typography variant="h6" color="text.secondary">
+                          No Companies Found
                         </Typography>
-                      )}
-                      {companies.length === 0 && usePodioData && getOfficeId(currentUser) != null && !showAllLCs && (
-                        <Box sx={{ mt: 2 }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                            {allCompanies.length === 0
-                              ? `No companies submitted by your LC (${getUserLCName(currentUser) || getOfficeId(currentUser)}) in Podio yet.`
-                              : `None of the ${allCompanies.length} loaded companies match your LC.`}
-                          </Typography>
+                        <Typography variant="body2" color="text.disabled" sx={{ mb: 2 }}>
+                          {allCompanies.length > 0 && (getUserLCName(currentUser) || getOfficeId(currentUser))
+                            ? `Showing only companies from your LC (${getUserLCName(currentUser) || `ID ${getOfficeId(currentUser)}`}). None of the ${allCompanies.length} loaded match.`
+                            : "Start by adding a new company or adjust your search criteria."}
+                        </Typography>
+                        
+                        {companies.length === 0 && usePodioData && getOfficeId(currentUser) != null && !showAllLCs && (
                           <Button
                             variant="outlined"
                             size="small"
                             onClick={() => { setShowAllLCs(true); fetchCompanies({ showAllLCs: true }); }}
+                            sx={{ mt: 1, borderRadius: 2 }}
                           >
                             Show all LCs
                           </Button>
-                        </Box>
-                      )}
+                        )}
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -4098,13 +4116,34 @@ useEffect(() => {
                         }
                       }}
                     >
-                      <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
+                      <TableCell 
+                        padding="checkbox" 
+                        onClick={(e) => e.stopPropagation()}
+                        sx={{ 
+                          position: 'sticky', 
+                          left: 0, 
+                          bgcolor: selectedCompanies.includes(company.id) ? 'action.selected' : 'background.paper', 
+                          zIndex: 1,
+                          borderRight: '1px solid rgba(224, 224, 224, 0.12)'
+                        }}
+                      >
                         <Checkbox
                           checked={selectedCompanies.includes(company.id)}
                           onChange={() => handleSelectCompany(company.id)}
                         />
                       </TableCell>
-                      <TableCell>{company.name}</TableCell>
+                      <TableCell
+                        sx={{ 
+                          position: 'sticky', 
+                          left: 48, 
+                          bgcolor: selectedCompanies.includes(company.id) ? 'action.selected' : 'background.paper', 
+                          zIndex: 1,
+                          borderRight: '1px solid rgba(224, 224, 224, 0.12)',
+                          fontWeight: 600
+                        }}
+                      >
+                        {company.name}
+                      </TableCell>
                       <TableCell>{displayText(company.industry, '')}</TableCell>
                       <TableCell>{displayText(company.submittedByLc, '')}</TableCell>
                       <TableCell>{displayText(company.size)}</TableCell>

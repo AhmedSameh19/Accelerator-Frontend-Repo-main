@@ -2,196 +2,136 @@ import React from 'react';
 import { Grid, Box, Typography, Card, CardContent, Chip, Paper, Button } from '@mui/material';
 import { 
   Assessment as AssessmentIcon,
-  Dashboard as DashboardIcon
+  TrendingUp as TrendingUpIcon,
+  People as PeopleIcon,
+  AssignmentTurnedIn as AssignmentTurnedInIcon,
+  QueryStats as QueryStatsIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
-import ExpaMetrics from './ExpaMetrics';
-import MarketResearchMetrics from './MarketResearchMetrics';
+import LeadStatusCard from './LeadStatusCard';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Cell, PieChart, Pie } from 'recharts';
+
+const MOCK_FUNNEL_DATA = [
+  { name: 'Total Leads', value: 450, color: '#037EF3' },
+  { name: 'Applied', value: 320, color: '#FFC845' },
+  { name: 'Accepted', value: 85, color: '#00C16E' },
+  { name: 'Realized', value: 42, color: '#F85A40' },
+];
+
+const MOCK_TREND_DATA = [
+  { name: 'Jan', leads: 40, apps: 24 },
+  { name: 'Feb', leads: 30, apps: 13 },
+  { name: 'Mar', leads: 20, apps: 98 },
+  { name: 'Apr', leads: 27, apps: 39 },
+  { name: 'May', leads: 18, apps: 48 },
+  { name: 'Jun', leads: 23, apps: 38 },
+];
 
 function Dashboard() {
   const { currentUser } = useAuth();
   
   return (
-    <Box>
+    <Box sx={{ pb: 6 }}>
       {/* Welcome Section */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, color: '#1a202c', mb: 1 }}>
-          Hi, {currentUser?.name || 'User'}! 👋
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.1rem' }}>
-          Welcome to your AIESEC CRM Dashboard
-        </Typography>
+      <Box sx={{ mb: 4, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2 }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 800, fontFamily: 'Montserrat, sans-serif', color: 'text.primary', mb: 0.5, letterSpacing: '-0.02em' }}>
+            Hi, {currentUser?.name?.split(' ')[0] || 'User'}! 👋
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Here's what's happening with AIESEC Egypt chapters today.
+          </Typography>
+        </Box>
+        <Button 
+          variant="outlined" 
+          startIcon={<QueryStatsIcon />}
+          sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+        >
+          View Full Report
+        </Button>
       </Box>
 
-      {/* Main Coming Soon Card */}
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          p: 4, 
-          mb: 4, 
-          borderRadius: 3,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          textAlign: 'center'
-        }}
-      >
-        <Box sx={{ maxWidth: 600, mx: 'auto' }}>
-          <DashboardIcon sx={{ fontSize: 80, mb: 2, opacity: 0.9 }} />
-          <Typography variant="h3" sx={{ fontWeight: 700, mb: 2 }}>
-            Dashboard Coming Soon
-          </Typography>
-          <Typography variant="h6" sx={{ mb: 3, opacity: 0.9, lineHeight: 1.6 }}>
-            We're building a comprehensive dashboard with real-time analytics, lead tracking, and performance insights.
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 4, opacity: 0.8, lineHeight: 1.7 }}>
-            Get ready for interactive charts, lead conversion tracking, team performance metrics, and personalized insights that will help you optimize your recruitment efforts.
-          </Typography>
-          <Button 
-            variant="contained" 
-            size="large"
-            sx={{ 
-              bgcolor: 'white', 
-              color: '#667eea', 
-              fontWeight: 600,
-              px: 4,
-              py: 1.5,
-              '&:hover': {
-                bgcolor: '#f8fafc',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 8px 25px rgba(0,0,0,0.15)'
-              },
-              transition: 'all 0.3s ease'
-            }}
-          >
-            Get Notified When Available
-          </Button>
-        </Box>
-      </Paper>
+      {/* KPI Row */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <LeadStatusCard title="Total Leads" count="1,284" change={12} color="primary" icon={<PeopleIcon />} />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <LeadStatusCard title="Applications" count="342" change={8} color="warning" icon={<AssessmentIcon />} />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <LeadStatusCard title="Realizations" count="86" change={-2} color="success" icon={<AssignmentTurnedInIcon />} />
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <LeadStatusCard title="Conversion" count="14.2%" change={5} color="secondary" icon={<TrendingUpIcon />} />
+        </Grid>
+      </Grid>
 
-      {/* EXPA Metrics Section (added, do not modify existing sections) */}
-      <ExpaMetrics />
-
-      {/* Market Research Metrics Section */}
-      <MarketResearchMetrics />
-
-      {/* Features Grid */}
-      <Typography variant="h5" sx={{ fontWeight: 600, mb: 3, color: '#1a202c' }}>
-        What's Coming
-      </Typography>
-      
       <Grid container spacing={3}>
-        <Grid span={{ xs: 12, md: 6, lg: 4 }}>
-          <Card 
-            elevation={0} 
-            sx={{ 
-              height: '100%', 
-              p: 3, 
-              borderRadius: 3,
-              border: '1px solid #e2e8f0',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-                borderColor: '#037ef3'
-              }
-            }}
-          >
-            <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <AssessmentIcon sx={{ fontSize: 40, color: '#037ef3' }} />
-                <Box sx={{ ml: 2, flex: 1 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a202c' }}>
-                    Real-time Analytics
-                  </Typography>
-                  <Chip 
-                    label="In Development" 
-                    color="primary"
-                    size="small"
-                    sx={{ mt: 0.5 }}
-                  />
-                </Box>
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-                Live dashboards with real-time lead tracking, conversion rates, and performance metrics.
+        {/* Performance Trend */}
+        <Grid item xs={12} lg={8}>
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: '1px solid', borderColor: 'divider', height: '100%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Montserrat, sans-serif' }}>
+                Performance Overview
               </Typography>
-            </CardContent>
-          </Card>
+              <Chip label="Last 6 Months" size="small" variant="outlined" sx={{ borderRadius: 1.5 }} />
+            </Box>
+            <Box sx={{ height: 350, width: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={MOCK_TREND_DATA}>
+                  <defs>
+                    <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#037EF3" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#037EF3" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
+                  />
+                  <Area type="monotone" dataKey="leads" stroke="#037EF3" strokeWidth={3} fillOpacity={1} fill="url(#colorLeads)" />
+                  <Area type="monotone" dataKey="apps" stroke="#00C16E" strokeWidth={3} fillOpacity={0} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </Box>
+          </Paper>
         </Grid>
 
-        <Grid span={{ xs: 12, md: 6, lg: 4 }}>
-          <Card 
-            elevation={0} 
-            sx={{ 
-              height: '100%', 
-              p: 3, 
-              borderRadius: 3,
-              border: '1px solid #e2e8f0',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-                borderColor: '#30C39E'
-              }
-            }}
-          >
-            <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <AssessmentIcon sx={{ fontSize: 40, color: '#30C39E' }} />
-                <Box sx={{ ml: 2, flex: 1 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a202c' }}>
-                    Lead Conversion Tracking
-                  </Typography>
-                  <Chip 
-                    label="Coming Soon" 
-                    color="success"
-                    size="small"
-                    sx={{ mt: 0.5 }}
-                  />
+        {/* Funnel Chart */}
+        <Grid item xs={12} lg={4}>
+          <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: '1px solid', borderColor: 'divider', height: '100%' }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Montserrat, sans-serif', mb: 3 }}>
+              Conversion Pipeline
+            </Typography>
+            <Box sx={{ height: 300, width: '100%', position: 'relative' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={MOCK_FUNNEL_DATA} layout="vertical" margin={{ left: -20 }}>
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600 }} width={80} />
+                  <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: 12 }} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={30}>
+                    {MOCK_FUNNEL_DATA.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </Box>
+            <Stack spacing={1} sx={{ mt: 2 }}>
+              {MOCK_FUNNEL_DATA.map((item) => (
+                <Box key={item.name} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.color }} />
+                    <Typography variant="caption" sx={{ fontWeight: 600 }}>{item.name}</Typography>
+                  </Box>
+                  <Typography variant="caption" color="text.secondary">{item.value} ({Math.round(item.value / 4.5)}%)</Typography>
                 </Box>
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-                Track leads through the entire funnel with detailed conversion analytics and insights.
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid span={{ xs: 12, md: 6, lg: 4 }}>
-          <Card 
-            elevation={0} 
-            sx={{ 
-              height: '100%', 
-              p: 3, 
-              borderRadius: 3,
-              border: '1px solid #e2e8f0',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-                borderColor: '#F85A40'
-              }
-            }}
-          >
-            <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <AssessmentIcon sx={{ fontSize: 40, color: '#F85A40' }} />
-                <Box sx={{ ml: 2, flex: 1 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a202c' }}>
-                    Team Performance
-                  </Typography>
-                  <Chip 
-                    label="Planned" 
-                    color="secondary"
-                    size="small"
-                    sx={{ mt: 0.5 }}
-                  />
-                </Box>
-              </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-                Monitor team performance, individual KPIs, and productivity metrics with detailed reporting.
-              </Typography>
-            </CardContent>
-          </Card>
+              ))}
+            </Stack>
+          </Paper>
         </Grid>
       </Grid>
     </Box>

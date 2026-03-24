@@ -44,19 +44,21 @@ export function ICXFields({ formData, handleChange }) {
   );
 }
 
-export function OGXFields({ formData, handleChange }) {
+export function OGXFields({ formData, handleChange, hideName = false }) {
   return (
     <>
-      <Grid item xs={12}>
-        <TextField
-          name="name"
-          label="Full Name"
-          value={formData.name}
-          onChange={handleChange}
-          fullWidth
-          required
-        />
-      </Grid>
+      {!hideName && (
+        <Grid item xs={12}>
+          <TextField
+            name="name"
+            label="Full Name"
+            value={formData.name}
+            onChange={handleChange}
+            fullWidth
+            required
+          />
+        </Grid>
+      )}
       <Grid item xs={12}>
         <TextField
           name="background"

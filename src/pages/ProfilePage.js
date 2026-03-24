@@ -9,6 +9,8 @@ import CakeIcon from '@mui/icons-material/Cake';
 
 import WorkIcon from '@mui/icons-material/Work';
 
+import PageBreadcrumbs from '../components/Navigation/PageBreadcrumbs';
+
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { fetchCurrentPersonDetails } from '../api/services/aiesecApi';
@@ -136,44 +138,33 @@ const ProfilePage = () => {
       maxWidth: 1000,
       width: '100%',
       mx: 'auto',
-      mt: 6,
-      px: 0,
+      mt: { xs: 2, md: 6 },
+      p: { xs: 2, md: 0 },
       pb: 8,
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f5fafd 0%, #e3f2fd 100%)',
+      bgcolor: 'background.default',
       borderRadius: 6,
-      boxShadow: '0 8px 40px rgba(25,118,210,0.08)',
     }}>
+      <PageBreadcrumbs 
+        items={[
+          { label: 'Home', path: '/' },
+          { label: 'My Profile' }
+        ]} 
+        onBack={() => navigate('/')} 
+      />
+
       {/* Gradient Header with Avatar */}
-      <Paper elevation={4} sx={{
+      <Paper elevation={0} sx={{
         p: 0,
         mb: 6,
-        borderRadius: 5,
+        borderRadius: 4,
         overflow: 'hidden',
-        background: 'linear-gradient(90deg, #1976d2 0%, #0CB9C1 100%)',
+        bgcolor: 'primary.main',
+        background: 'linear-gradient(135deg, #037EF3 0%, #025bb5 100%)',
         position: 'relative',
-        boxShadow: '0 8px 32px rgba(25,118,210,0.10)',
         width: '100%',
       }}>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-start', p: 2, position: 'absolute', top: 0, left: 0 }}>
-          <Button
-            startIcon={<ArrowBackIcon />}
-            onClick={() => navigate('/')}
-            sx={{
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: 14,
-              textTransform: 'none',
-              zIndex: 10,
-              '&:hover': {
-                bgcolor: 'rgba(255, 255, 255, 0.1)',
-              }
-            }}
-          >
-            Back to Home
-          </Button>
-        </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 7, position: 'relative' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 5, position: 'relative' }}>
           <Avatar
             src={profilePhoto}
             sx={{
@@ -204,7 +195,7 @@ const ProfilePage = () => {
       </Paper>
 
       {/* Info Sections - 3 columns on desktop, 1 on mobile, equal height */}
-      <Grid container spacing={4} alignItems="stretch" sx={{ width: '100%', m: 0 }}>
+      <Grid container spacing={ { xs: 2, md: 4 } } alignItems="stretch" sx={{ width: '100%', m: 0 }}>
         {/* Personal Info */}
         <Grid item xs={12} md={4} sx={{ width: '100%' }}>
           <Paper elevation={3} sx={{

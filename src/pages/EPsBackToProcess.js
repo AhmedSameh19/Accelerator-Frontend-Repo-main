@@ -238,11 +238,23 @@ function EPsBackToProcess() {
         />
       </Paper>
 
-      <TableContainer component={Paper} elevation={2}>
-        <Table>
+      <TableContainer component={Paper} elevation={2} sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <Table sx={{ minWidth: { xs: 800, sm: 1000 }, whiteSpace: 'nowrap' }}>
           <TableHead>
             <TableRow sx={{ bgcolor: 'primary.main' }}>
-              <TableCell sx={{ color: 'white', fontWeight: 600 }}>Name</TableCell>
+              <TableCell 
+                sx={{ 
+                  color: 'white', 
+                  fontWeight: 600,
+                  position: 'sticky',
+                  left: 0,
+                  bgcolor: 'primary.main',
+                  zIndex: 3,
+                  borderRight: '1px solid rgba(255, 255, 255, 0.2)'
+                }}
+              >
+                Name
+              </TableCell>
               <TableCell sx={{ color: 'white', fontWeight: 600 }}>Contact Info</TableCell>
               <TableCell sx={{ color: 'white', fontWeight: 600 }}>LC</TableCell>
               <TableCell sx={{ color: 'white', fontWeight: 600 }}>Program</TableCell>
@@ -258,7 +270,15 @@ function EPsBackToProcess() {
                   onClick={() => handleRowClick(ep)}
                   sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
                 >
-                  <TableCell>
+                   <TableCell
+                    sx={{
+                      position: 'sticky',
+                      left: 0,
+                      bgcolor: 'background.paper',
+                      zIndex: 1,
+                      borderRight: '1px solid rgba(224, 224, 224, 1)'
+                    }}
+                  >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <PersonIcon color="primary" />
                       <Typography>{ep.name || ep.full_name}</Typography>

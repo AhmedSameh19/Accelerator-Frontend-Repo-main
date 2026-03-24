@@ -43,7 +43,7 @@ export default function DrawerContent({
         flexDirection: 'column',
         height: '100%',
         bgcolor: 'transparent',
-        background: 'linear-gradient(90deg, #1976d2 0%, #0CB9C1 100%)',
+        background: `linear-gradient(180deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
       }}
     >
       <DrawerHeader>
@@ -83,57 +83,91 @@ export default function DrawerContent({
           py: open ? 0 : 2,
         }}
       >
-        {menuItems
-          .filter((item) => item.show)
-          .map((item) => (
-            <ListItem
-              key={item.text}
-              disablePadding
-              sx={{
-                mb: open ? 1 : 0,
-                mx: 1,
-                borderRadius: 0,
-              }}
-            >
-              <ListItemButton
-                onClick={() => onNavigate(item.path)}
-                selected={activePath === item.path}
+        {Object.entries(
+          menuItems
+            .filter((item) => item.show)
+            .reduce((acc, item) => {
+              const group = item.group || 'Other';
+              if (!acc[group]) acc[group] = [];
+              acc[group].push(item);
+              return acc;
+            }, {})
+        ).map(([group, items]) => (
+          <React.Fragment key={group}>
+            {group !== 'Overview' && open && (
+              <Typography
+                variant="overline"
                 sx={{
-                  color: '#fff',
-                  height: open ? 'auto' : 40,
-                  '&.Mui-selected': {
-                    bgcolor: 'rgba(255, 255, 255, 0.12)',
-                    color: '#fff',
-                    '&:hover': {
-                      bgcolor: 'rgba(255, 255, 255, 0.12)',
-                    },
-                  },
-                  '&:hover': {
-                    bgcolor: 'rgba(255, 255, 255, 0.08)',
-                  },
+                  px: 3,
+                  pt: 2,
+                  pb: 0.5,
+                  color: 'rgba(255,255,255,0.6)',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  display: open ? 'block' : 'none',
+                  lineHeight: 1
                 }}
               >
-                <ListItemIcon
+                {group}
+              </Typography>
+            )}
+            {items.map((item) => (
+              <ListItem
+                key={item.text}
+                disablePadding
+                sx={{
+                  mb: open ? 0.5 : 0,
+                  mx: 1,
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                }}
+              >
+                <ListItemButton
+                  onClick={() => onNavigate(item.path)}
+                  selected={activePath === item.path}
                   sx={{
                     color: '#fff',
-                    minWidth: 40,
-                  }}
-                >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.text}
-                  sx={{
-                    opacity: open ? 1 : 0,
-                    transition: 'opacity 0.2s',
-                    '& .MuiTypography-root': {
+                    height: open ? 'auto' : 44,
+                    minHeight: 44,
+                    borderRadius: 2,
+                    '&.Mui-selected': {
+                      bgcolor: 'rgba(255, 255, 255, 0.15)',
                       color: '#fff',
+                      '&:hover': {
+                        bgcolor: 'rgba(255, 255, 255, 0.2)',
+                      },
+                    },
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 255, 255, 0.08)',
                     },
                   }}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
+                >
+                  <ListItemIcon
+                    sx={{
+                      color: activePath === item.path ? '#fff' : 'rgba(255,255,255,0.8)',
+                      minWidth: 40,
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.text}
+                    sx={{
+                      opacity: open ? 1 : 0,
+                      transition: 'opacity 0.2s',
+                      '& .MuiTypography-root': {
+                        color: '#fff',
+                        fontWeight: activePath === item.path ? 600 : 400,
+                        fontSize: '0.9rem',
+                      },
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </React.Fragment>
+        ))}
       </List>
       <Box sx={{ p: 2, bgcolor: 'rgba(255, 255, 255, 0.05)' }}>
         <Box

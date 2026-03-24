@@ -10,7 +10,10 @@ import {
   TablePagination,
   useTheme,
   Checkbox,
+  Box,
+  Typography,
 } from '@mui/material';
+import { SearchOff as SearchOffIcon } from '@mui/icons-material';
 import LeadProfile from './LeadProfile';
 import LeadTableHeader from './LeadTable/LeadTableHeader';
 import LeadTableRow from './LeadTable/LeadTableRow';
@@ -87,20 +90,42 @@ function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMor
           border: `1px solid ${theme.palette.divider}`,
           '& .MuiTableCell-root': {
             py: 2
-          }
+          },
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch'
         }}
       >
-        <Table>
+        <Table sx={{ minWidth: { xs: 800, sm: 1000 }, whiteSpace: 'nowrap' }}>
           <TableHead>
             <TableRow>
-              <TableCell padding="checkbox">
+              <TableCell 
+                padding="checkbox"
+                sx={{ 
+                  position: 'sticky', 
+                  left: 0, 
+                  bgcolor: 'background.paper', 
+                  zIndex: 3,
+                  borderRight: `1px solid ${theme.palette.divider}`
+                }}
+              >
                 <Checkbox
                   indeterminate={selectedLeads.length > 0 && selectedLeads.length < actuallyFilteredLeads.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).length}
                   checked={actuallyFilteredLeads.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).length > 0 && selectedLeads.length === actuallyFilteredLeads.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).length}
                   onChange={handleSelectAllWithFiltered}
                 />
               </TableCell>
-              <TableCell>Lead</TableCell>
+              <TableCell 
+                sx={{ 
+                  position: 'sticky', 
+                  left: { xs: 48, sm: 58 }, 
+                  bgcolor: 'background.paper', 
+                  zIndex: 3,
+                  fontWeight: 700,
+                  borderRight: `1px solid ${theme.palette.divider}`
+                }}
+              >
+                Lead
+              </TableCell>
               <TableCell>LC</TableCell>
               {isICX ? <TableCell>Home MC</TableCell> : null}
               <TableCell>Phone</TableCell>
@@ -110,9 +135,24 @@ function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMor
             </TableRow>
           </TableHead>
           <TableBody>
-            {actuallyFilteredLeads
-              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map(lead => {
+            {actuallyFilteredLeads.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                    <SearchOffIcon sx={{ fontSize: 48, color: 'text.disabled', opacity: 0.5 }} />
+                    <Typography variant="h6" color="text.secondary">
+                      No Leads Found
+                    </Typography>
+                    <Typography variant="body2" color="text.disabled">
+                      Try adjusting filters or checking another LC.
+                    </Typography>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ) : (
+              actuallyFilteredLeads
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map(lead => {
                 const selectionId = isICX
                   ? (lead.application_id ?? lead.expa_person_id)
                   : (lead.id ?? lead.expa_person_id);
@@ -131,7 +171,8 @@ function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMor
                     selectionId={selectionId}
                   />
                 );
-              })}
+              })
+            )}
           </TableBody>
         </Table>
       <TablePagination

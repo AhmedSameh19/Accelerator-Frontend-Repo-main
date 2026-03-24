@@ -20,7 +20,8 @@ export default function LeadProfileHeader({
       pb: 0, 
       position: 'relative', 
       overflow: 'hidden', 
-      background: 'linear-gradient(90deg, #0CB9C1 0%, #1976d2 100%)', 
+      bgcolor: 'primary.main',
+      background: 'linear-gradient(135deg, #037EF3 0%, #025bb5 100%)', 
       color: '#fff', 
       minHeight: { xs: 80, sm: 120 }, 
       px: { xs: 1, sm: 3 }, 
@@ -47,11 +48,12 @@ export default function LeadProfileHeader({
         </Avatar>
         <Box flex={1} sx={{ width: '100%', textAlign: { xs: 'center', sm: 'left' } }}>
           <Typography variant="h4" sx={{ 
-            fontWeight: 700, 
+            fontWeight: 800, 
+            fontFamily: 'Montserrat, sans-serif',
             color: '#fff', 
             mb: 0.5, 
-            letterSpacing: 1, 
-            fontSize: { xs: '1.1rem', sm: '2rem' } 
+            letterSpacing: '-0.02em', 
+            fontSize: { xs: '1.25rem', sm: '2rem' } 
           }}>
             {leadName}
           </Typography>
@@ -115,18 +117,19 @@ export default function LeadProfileHeader({
                   StepIconComponent={() => (
                     <Box
                       sx={{
-                        width: { xs: 20, sm: 28 },
-                        height: { xs: 20, sm: 28 },
+                        width: { xs: 24, sm: 32 },
+                        height: { xs: 24, sm: 32 },
                         borderRadius: '50%',
-                        backgroundColor: stepActive ? '#037ef3' : '#fff',
-                        border: stepActive ? 'none' : '2px solid #037ef3',
+                        backgroundColor: stepActive ? '#fff' : 'transparent',
+                        border: '2px solid #fff',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: stepActive ? 'white' : '#037ef3',
-                        fontSize: { xs: '0.8rem', sm: '1rem' },
-                        fontWeight: 500,
-                        minWidth: 0
+                        color: stepActive ? '#037EF3' : '#fff',
+                        fontSize: { xs: '0.75rem', sm: '0.9rem' },
+                        fontWeight: 700,
+                        transition: 'all 0.2s ease-in-out',
+                        boxShadow: stepActive ? '0 4px 10px rgba(0,0,0,0.1)' : 'none'
                       }}
                     >
                       {step.index}
@@ -183,11 +186,12 @@ export default function LeadProfileHeader({
                     <Typography
                       variant="body2"
                       sx={{
-                        color: '#fff',
-                        fontWeight: stepActive ? 600 : 400,
-                        mt: 0.5,
+                        color: index <= currentStep ? '#fff' : 'rgba(255,255,255,0.7)',
+                        fontWeight: stepActive ? 800 : 500,
+                        mt: 1,
                         fontSize: { xs: '0.65rem', sm: '0.85rem' },
-                        px: 0
+                        px: 0,
+                        letterSpacing: '0.02em'
                       }}
                     >
                       {step.label}

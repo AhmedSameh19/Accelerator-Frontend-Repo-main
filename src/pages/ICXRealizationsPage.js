@@ -1404,16 +1404,30 @@ const getTeamUnderCurrentUser = (members) => {
               }
             }}
           >
-            <Table>
+            <Table sx={{ whiteSpace: 'nowrap' }}>
               <TableHead>
                 <TableRow>
-                  <TableCell padding="checkbox">
+                  <TableCell 
+                    padding="checkbox"
+                    sx={{ 
+                      position: 'sticky', 
+                      left: 0, 
+                      bgcolor: 'background.paper', 
+                      zIndex: 3,
+                      borderRight: '1px solid rgba(224, 224, 224, 1)'
+                    }}
+                  >
                     {SelectAllCheckbox}
                   </TableCell>
                   <TableCell sx={{ 
                     whiteSpace: 'nowrap',
                     fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                    py: { xs: 1, sm: 2 }
+                    py: { xs: 1, sm: 2 },
+                    position: 'sticky', 
+                    left: 48, 
+                    bgcolor: 'background.paper', 
+                    zIndex: 3,
+                    borderRight: '1px solid rgba(224, 224, 224, 1)'
                   }}>
                     <TableSortLabel
                       active={orderBy === 'id'}
@@ -1426,7 +1440,12 @@ const getTeamUnderCurrentUser = (members) => {
                   <TableCell sx={{ 
                     whiteSpace: 'nowrap',
                     fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                    py: { xs: 1, sm: 2 }
+                    py: { xs: 1, sm: 2 },
+                    position: 'sticky', 
+                    left: 140, 
+                    bgcolor: 'background.paper', 
+                    zIndex: 3,
+                    borderRight: '1px solid rgba(224, 224, 224, 1)'
                   }}>
                     <TableSortLabel
                       active={orderBy === 'fullName'}
@@ -1563,10 +1582,16 @@ const getTeamUnderCurrentUser = (members) => {
                   </TableRow>
                 ) : leads.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} align="center">
-                      <Typography variant="body2" color="text.secondary">
-                        No EPs found. Adjust your search criteria.
-                      </Typography>
+                    <TableCell colSpan={13} align="center" sx={{ py: 6 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                        <SearchOffIcon sx={{ fontSize: 48, color: 'text.disabled', opacity: 0.5 }} />
+                        <Typography variant="h6" color="text.secondary">
+                          No Realizations Found
+                        </Typography>
+                        <Typography variant="body2" color="text.disabled">
+                          Try adjusting your filters or click "Refresh API" to load the latest data.
+                        </Typography>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -1582,16 +1607,37 @@ const getTeamUnderCurrentUser = (members) => {
                         }
                       }}
                     >
-                      <TableCell padding="checkbox">
+                      <TableCell 
+                        padding="checkbox"
+                        sx={{ 
+                          position: 'sticky', 
+                          left: 0, 
+                          bgcolor: 'background.paper', 
+                          zIndex: 1,
+                          borderRight: '1px solid rgba(224, 224, 224, 1)'
+                        }}
+                      >
                         <LeadCheckbox leadId={lead.id} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ 
+                        position: 'sticky', 
+                        left: 48, 
+                        bgcolor: 'background.paper', 
+                        zIndex: 1,
+                        borderRight: '1px solid rgba(224, 224, 224, 1)'
+                      }}>
                         <Typography variant="body2">
                           {lead.id}
                         </Typography>
                       </TableCell>
-                      <TableCell>
-                          <Typography variant="body2">
+                      <TableCell sx={{ 
+                        position: 'sticky', 
+                        left: 140, 
+                        bgcolor: 'background.paper', 
+                        zIndex: 1,
+                        borderRight: '1px solid rgba(224, 224, 224, 1)'
+                      }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
                             {lead.fullName}
                           </Typography>
                       </TableCell>

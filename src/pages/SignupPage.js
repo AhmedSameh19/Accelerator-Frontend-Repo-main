@@ -70,28 +70,40 @@ function SignupPage() {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <Paper elevation={3} sx={{ padding: 4, width: '100%' }}>
-          <Box sx={{ mb: 3, textAlign: 'center' }}>
-            <Typography variant="h4" component="h1" gutterBottom color="primary" sx={{ fontWeight: 'bold' }}>
-              AIESEC Egypt CRM
+    <Box sx={{
+      minHeight: '100vh',
+      bgcolor: '#037EF3',
+      background: 'linear-gradient(135deg, #037EF3 0%, #025bb5 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      py: 4
+    }}>
+      <Container maxWidth="sm">
+        <Paper elevation={0} sx={{ 
+          padding: { xs: 3, md: 5 }, 
+          width: '100%', 
+          borderRadius: 4,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
+        }}>
+          <Box sx={{ mb: 4, textAlign: 'center' }}>
+            <Typography variant="h4" component="h1" gutterBottom 
+              sx={{ fontWeight: 800, fontFamily: 'Montserrat, sans-serif', color: 'primary.main', letterSpacing: '-0.02em' }}>
+              Create Account
             </Typography>
-            <Typography variant="h5" component="h2">
-              Create an Account
+            <Typography variant="body1" color="text.secondary">
+              Join the Accelerator and manage your chapter
             </Typography>
           </Box>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
+            <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
               {error}
             </Alert>
           )}
 
           {success && (
-            <Alert severity="success" sx={{ mb: 3 }}>
+            <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>
               Account created successfully! Your account is pending approval from an administrator.
-              You will be able to login once approved.
             </Alert>
           )}
 
@@ -108,6 +120,8 @@ function SignupPage() {
               value={formData.name}
               onChange={handleChange}
               disabled={loading || success}
+              variant="outlined"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             />
             <TextField
               margin="normal"
@@ -120,33 +134,45 @@ function SignupPage() {
               value={formData.email}
               onChange={handleChange}
               disabled={loading || success}
+              variant="outlined"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="new-password"
-              value={formData.password}
-              onChange={handleChange}
-              disabled={loading || success}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="confirmPassword"
-              label="Confirm Password"
-              type="password"
-              id="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              disabled={loading || success}
-            />
-            <FormControl fullWidth margin="normal" required>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  margin="normal"
+                  required
+                  fullWidth
+                  name="password"
+                  label="Password"
+                  type="password"
+                  id="password"
+                  autoComplete="new-password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  disabled={loading || success}
+                  variant="outlined"
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  margin="normal"
+                  required
+                  fullWidth
+                  name="confirmPassword"
+                  label="Confirm"
+                  type="password"
+                  id="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  disabled={loading || success}
+                  variant="outlined"
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+              </Grid>
+            </Grid>
+            <FormControl fullWidth margin="normal" required variant="outlined">
               <InputLabel id="lc-code-label">Local Committee</InputLabel>
               <Select
                 labelId="lc-code-label"
@@ -156,6 +182,7 @@ function SignupPage() {
                 label="Local Committee"
                 onChange={handleChange}
                 disabled={loading || success}
+                sx={{ borderRadius: 2 }}
               >
                 {lcCodes.map(lc => (
                   <MenuItem key={lc.id} value={lc.id}>
@@ -169,21 +196,24 @@ function SignupPage() {
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ mt: 3, mb: 2 }}
+              sx={{ mt: 4, mb: 2, py: 1.5, borderRadius: 2, fontWeight: 700, textTransform: 'none', fontSize: '1rem' }}
               disabled={loading || success}
             >
-              {loading ? <CircularProgress size={24} /> : 'Sign Up'}
+              {loading ? <CircularProgress size={24} /> : 'Create Account'}
             </Button>
 
-            <Box sx={{ textAlign: 'center' }}>
-              <Link href="/login" variant="body2">
-                {"Already have an account? Sign In"}
-              </Link>
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Already have an account?{' '}
+                <Link href="/login" sx={{ fontWeight: 600, color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                  Sign In
+                </Link>
+              </Typography>
             </Box>
           </Box>
         </Paper>
-      </Box>
-    </Container>
+      </Container>
+    </Box>
   );
 }
 
