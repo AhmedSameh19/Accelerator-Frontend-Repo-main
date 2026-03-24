@@ -88,7 +88,7 @@ function MainLayout({ children }) {
   const drawer = (
     <DrawerContent
       open={isMobile ? true : open}
-      theme={theme}
+      theme={muiTheme}
       menuItems={menuItems}
       activePath={location.pathname}
       currentUser={currentUser}

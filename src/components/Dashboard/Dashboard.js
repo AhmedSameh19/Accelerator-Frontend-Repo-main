@@ -1,5 +1,5 @@
 import React from 'react';
-import { Grid, Box, Typography, Card, CardContent, Chip, Paper, Button, Stack } from '@mui/material';
+import { Grid, Box, Typography, Card, CardContent, Chip, Paper, Button, Stack, useTheme } from '@mui/material';
 import { 
   Assessment as AssessmentIcon,
   TrendingUp as TrendingUpIcon,
