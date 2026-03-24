@@ -78,7 +78,7 @@ const PortraitLink = memo(function PortraitLink({ person }) {
         zIndex: person.zIndex,
         ...person.overlapSx,
         flex: '0 0 auto',
-        width: { xs: 170, sm: 232, md: 270 },
+        width: 270,
         height: '100%',
         alignSelf: 'stretch',
         textDecoration: 'none',
@@ -120,6 +120,10 @@ const PortraitLink = memo(function PortraitLink({ person }) {
           component="img"
           src={person.image}
           alt={person.name}
+          width="270"
+          height="430"
+          loading="lazy"
+          fetchpriority="low"
           sx={{
             display: 'block',
             maxHeight: '100%',
@@ -141,21 +145,7 @@ const PortraitLink = memo(function PortraitLink({ person }) {
             ...(person.imgScale != null
               ? {
                 transformOrigin: 'bottom center',
-                transform: {
-                  xs: `scale(${person.imgScale})`,
-                  sm: `scale(${person.imgScale})`,
-                  md: `scale(${person.imgScale})`,
-                },
-              }
-              : {}),
-            ...(person.imgTranslateY
-              ? {
-                transform: {
-                  xs: `translateY(${person.imgTranslateY.xs}px)`,
-                  sm: `translateY(${person.imgTranslateY.sm}px)`,
-                  md: `translateY(${person.imgTranslateY.md}px)`,
-                },
-                transformOrigin: 'bottom center',
+                transform: 'scale(' + person.imgScale + ')',
               }
               : {}),
           }}
@@ -182,10 +172,10 @@ const PortraitLink = memo(function PortraitLink({ person }) {
           willChange: 'opacity',
         }}
       >
-        <Box sx={{ fontSize: { xs: '0.8rem', md: '0.88rem' }, fontWeight: 700, lineHeight: 1.2 }}>
+        <Box sx={{ fontSize: '0.88rem', fontWeight: 700, lineHeight: 1.2 }}>
           {`${person.name} - ${person.role}`}
         </Box>
-        <Box sx={{ fontSize: { xs: '0.72rem', md: '0.78rem' }, opacity: 0.9 }}>
+        <Box sx={{ fontSize: '0.78rem', opacity: 0.9 }}>
           Click to go to LinkedIn
         </Box>
       </Box>
@@ -261,316 +251,126 @@ const LoginPage = () => {
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        bgcolor: '#1976d2',
-        background: LOGIN_PAGE_MAIN_GRADIENT,
+        alignItems: 'center',
+        justifyContent: 'center',
+        bgcolor: '#F4F6F9',
+        p: 2,
         position: 'relative',
-        /* hidden clips drop-shadows / blurred halos → hard vertical/horizontal seams */
-        overflow: 'visible',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: LOGIN_PAGE_BG_RADIAL_OVERLAY,
-          zIndex: 1,
-          pointerEvents: 'none',
-          transform: 'translateZ(0)',
-        },
-        '&::after': {
-          content: '""',
-          position: 'absolute',
-          bottom: '-10%',
-          left: '-10%',
-          width: '40%',
-          height: '40%',
-          background: 'rgba(0, 193, 110, 0.1)',
-          borderRadius: '50%',
-          filter: 'blur(80px)',
-          zIndex: 1,
-          pointerEvents: 'none',
-          transform: 'translateZ(0)',
-        },
+        overflow: 'hidden',
       }}
     >
-      {/* Header */}
-      <Box
-        sx={{
-          width: '100%',
-          p: { xs: 2.5, sm: 3 },
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          zIndex: 2,
-        }}
-      >
+      <Container maxWidth="sm">
         <Box
-          component="img"
-          src="/assets/images/accelerator_logo.png"
-          alt="Accelerator Logo"
           sx={{
-            height: { xs: '48px', sm: '60px' },
-            width: 'auto',
-          }}
-        />
-        <Typography
-          variant="h6"
-          sx={{
-            color: 'white',
-            fontWeight: 600,
-            fontSize: { xs: '0.9rem', sm: '1.25rem' },
-          }}
-        >
-          AIESEC in Egypt
-        </Typography>
-      </Box>
-
-      {/* Main Content */}
-      <Container
-        maxWidth="lg"
-        sx={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          position: 'relative',
-          zIndex: 2,
-          py: 4,
-        }}
-      >
-        <Stack
-          spacing={4}
-          alignItems="center"
-          sx={{
-            maxWidth: 828,
-            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            background: '#ffffff',
+            borderRadius: 4,
+            boxShadow: '0 10px 40px rgba(0,0,0,0.08)',
+            p: { xs: 4, sm: 8 },
+            position: 'relative',
+            zIndex: 10,
           }}
         >
           <Box
+            component="img"
+            src="/assets/images/accelerator_logo.png"
+            alt="Accelerator Logo"
+            width="180"
+            height="60"
+            fetchpriority="high"
+            loading="eager"
             sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              width: '100%',
-              gap: '5px',
+              height: '60px',
+              width: 'auto',
+              mb: 4,
             }}
-          >
-            <Box
-              sx={{
-                width: { xs: 'min(94vw, 520px)', sm: 'min(90vw, 772px)', md: 856 },
-                height: { xs: 280, sm: 398, md: 430 },
-                position: 'relative',
-                mb: 0,
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'stretch',
-                justifyContent: 'center',
-                px: { xs: 0.5, sm: 1 },
-                overflow: 'visible',
-              }}
-            >
-              {/*
-              Group halo only (no per-column blurred boxes — those read as rectangular lines).
-              Sakr/Yassin: drop-shadow on masked imgs only; Wello: no glow.
-            */}
-              <Box
-                aria-hidden
-                sx={{
-                  position: 'absolute',
-                  left: { xs: '-18%', sm: '-16%', md: '-14%' },
-                  right: { xs: '-18%', sm: '-16%', md: '-14%' },
-                  top: { xs: '-20%', sm: '-18%', md: '-14%' },
-                  bottom: { xs: '-8%', sm: '-6%', md: '-4%' },
-                  zIndex: 0,
-                  pointerEvents: 'none',
-                  overflow: 'visible',
-                  transform: 'translateZ(0)',
-                  isolation: 'isolate',
-                }}
-              >
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '38%',
-                    transform: 'translate3d(-50%, -50%, 0)',
-                    width: '155%',
-                    height: '140%',
-                    borderRadius: '50%',
-                    background:
-                      'radial-gradient(ellipse 88% 80% at 50% 36%, rgba(255, 255, 255, 0.2) 0%, rgba(200, 230, 255, 0.16) 28%, rgba(120, 185, 255, 0.1) 48%, rgba(3, 126, 243, 0.04) 62%, transparent 78%)',
-                    filter: 'blur(52px)',
-                    opacity: 1,
-                  }}
-                />
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '36%',
-                    transform: 'translate3d(-50%, -50%, 0)',
-                    width: '110%',
-                    height: '95%',
-                    borderRadius: '50%',
-                    background:
-                      'radial-gradient(ellipse 72% 68% at 50% 34%, rgba(255, 255, 255, 0.55) 0%, rgba(248, 252, 255, 0.35) 30%, rgba(232, 246, 255, 0.18) 52%, rgba(160, 210, 255, 0.08) 68%, transparent 82%)',
-                    filter: 'blur(36px)',
-                  }}
-                />
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '34%',
-                    transform: 'translate3d(-50%, -50%, 0)',
-                    width: '72%',
-                    height: '58%',
-                    borderRadius: '50%',
-                    background:
-                      'radial-gradient(ellipse 58% 50% at 50% 40%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.35) 42%, rgba(220, 238, 255, 0.12) 62%, transparent 80%)',
-                    filter: 'blur(24px)',
-                  }}
-                />
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    left: '50%',
-                    top: '30%',
-                    transform: 'translate3d(-50%, -50%, 0)',
-                    width: '44%',
-                    height: '34%',
-                    borderRadius: '50%',
-                    background:
-                      'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.15) 48%, transparent 72%)',
-                    filter: 'blur(18px)',
-                    opacity: 0.9,
-                  }}
-                />
-              </Box>
-
-              {HERO_PEOPLE.map((person) => (
-                <PortraitLink key={person.key} person={person} />
-              ))}
-            </Box>
-            <Typography
-              variant="h2"
-              sx={{
-                color: 'white',
-                fontWeight: 800,
-                fontFamily: 'Montserrat, sans-serif',
-                fontSize: { xs: '2rem', md: '3.5rem' },
-                textShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                mb: 0,
-                mt: 0,
-                letterSpacing: '-0.02em',
-              }}
-            >
-              Welcome to the Accelerator
-            </Typography>
-          </Box>
+          />
 
           <Typography
-            variant="h5"
+            variant="h4"
             sx={{
-              color: 'rgba(255,255,255,0.9)',
-              fontWeight: 400,
-              maxWidth: 500,
-              fontSize: { xs: '1rem', md: '1.25rem' },
-              mb: { xs: 2.5, md: 4 },
+              color: '#1A1D23',
+              fontWeight: 800,
+              fontFamily: 'Montserrat, sans-serif',
+              mb: 1,
+              textAlign: 'center',
+            }}
+          >
+            Welcome Back
+          </Typography>
+
+          <Typography
+            variant="body1"
+            sx={{
+              color: '#64748B',
+              mb: 4,
+              textAlign: 'center',
+              maxWidth: 320,
             }}
           >
             Manage your EPs, track performance, and drive impact in AIESEC in Egypt
           </Typography>
 
-          {!isLoggedIn && (
+          {!isLoggedIn ? (
             <Button
               onClick={loginWithExpa}
               variant="contained"
               size="large"
               sx={{
+                width: '100%',
                 py: 2,
-                px: { xs: 5, md: 8 },
-                fontSize: { xs: '1rem', md: '1.1rem' },
+                fontSize: '1.1rem',
                 fontWeight: 700,
-                fontFamily: 'Montserrat, sans-serif',
                 textTransform: 'none',
-                background: '#fff',
-                color: '#037EF3',
-                borderRadius: '50px',
-                transition: 'all 0.3s ease-in-out',
+                background: '#037EF3',
+                color: '#fff',
+                borderRadius: '12px',
+                transition: 'all 0.3s ease',
                 '&:hover': {
-                  background: '#f8f9fa',
-                  transform: 'scale(1.02)',
-                  boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+                  background: '#0266C8',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 8px 25px rgba(3, 126, 243, 0.3)',
                 },
-                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
               }}
             >
               Log in with EXPA
             </Button>
-          )}
-          {isLoggedIn && (
-            <Typography sx={{ color: 'white', fontWeight: 600 }}>
-              You are already logged in.
+          ) : (
+            <Typography sx={{ color: '#037EF3', fontWeight: 600 }}>
+              You are already logged in. Redirecting...
             </Typography>
           )}
-        </Stack>
+
+          <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid #E2E8F0', width: '100%', textAlign: 'center' }}>
+            <Typography variant="body2" sx={{ color: '#64748B' }}>
+              2025 © AIESEC in Egypt
+            </Typography>
+          </Box>
+        </Box>
       </Container>
 
-      {/* Footer */}
+      {/* Hero People - Desktop Only */}
       <Box
         sx={{
-          p: { xs: 2.5, sm: 3 },
-          textAlign: 'center',
-          zIndex: 2,
-          mt: 'auto',
+          display: { xs: 'none', lg: 'flex' },
+          position: 'absolute',
+          bottom: 0,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 856,
+          height: 380,
+          justifyContent: 'center',
+          alignItems: 'flex-end',
+          zIndex: 1,
+          opacity: 0.4,
+          pointerEvents: 'none',
         }}
       >
-        <Typography
-          variant="body2"
-          sx={{
-            color: 'rgba(255,255,255,0.8)',
-            fontSize: { xs: '0.7rem', sm: '0.875rem' },
-            '& a': {
-              color: 'rgba(255,255,255,0.9)',
-              textDecoration: 'none',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                color: 'white',
-                textDecoration: 'underline',
-              },
-            },
-          }}
-        >
-          2025 © Courtesy of AIESEC in Egypt. Developed by{' '}
-          <a
-            href="https://www.linkedin.com/in/mohamed-wael-407945228/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Mohamed Wael
-          </a>
-          , with contributions from{' '}
-          <a
-            href="https://www.linkedin.com/in/ahmed-sameh-7872091b5"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Ahmed Sakr
-          </a>
-          {' '}and{' '}
-          <a
-            href="https://www.linkedin.com/in/yassin-amr-330930196/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Yassin Hawash
-          </a>
-          .
-        </Typography>
-
+        {HERO_PEOPLE.map((person) => (
+          <PortraitLink key={person.key} person={person} />
+        ))}
       </Box>
     </Box>
   );
