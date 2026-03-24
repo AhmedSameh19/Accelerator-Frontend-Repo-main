@@ -29,21 +29,21 @@ const HERO_PEOPLE = [
     key: 'sakr',
     name: 'Ahmed Sakr',
     role: 'MC Staff',
-    image: '/assets/images/Sakr.webp',
+    image: '/assets/images/sakr.webp',
     linkedin:
-      'www.linkedin.com/in/ahmed-sameh-7872091b5',
+      'https://www.linkedin.com/in/ahmed-sameh-7872091b5',
     zIndex: 2,
     overlapSx: {
       mr: { xs: -10, sm: -12, md: -14 },
       position: 'relative',
-      left: { xs: -88, sm: -112, md: -136 },
+      left: { xs: -68, sm: -112, md: -136 },
     },
   },
   {
     key: 'wello',
     name: 'Mohamed Wael',
     role: 'MCVP IM',
-    image: '/assets/images/Wello.webp',
+    image: '/assets/images/wello.webp',
     linkedin: 'https://www.linkedin.com/in/mohamed-wael-407945228/',
     zIndex: 3,
     overlapSx: { mx: { xs: -8, sm: -10, md: -14 } },
@@ -53,13 +53,13 @@ const HERO_PEOPLE = [
     key: 'yassin',
     name: 'Yassin Hawash',
     role: 'MC Staff',
-    image: '/assets/images/Yassin.webp',
+    image: '/assets/images/yassin.webp',
     linkedin: 'https://www.linkedin.com/in/yassin-amr-330930196/',
     zIndex: 2,
     overlapSx: {
       ml: { xs: -8, sm: -10, md: -14 },
       position: 'relative',
-      left: { xs: 67, sm: 87, lg: 108 },
+      left: { xs: 52, sm: 87, lg: 108 },
     },
   },
 ];
@@ -78,7 +78,7 @@ const PortraitLink = memo(function PortraitLink({ person }) {
         zIndex: person.zIndex,
         ...person.overlapSx,
         flex: '0 0 auto',
-        width: { xs: 193, sm: 232, md: 270 },
+        width: { xs: 170, sm: 232, md: 270 },
         height: '100%',
         alignSelf: 'stretch',
         textDecoration: 'none',
@@ -297,11 +297,8 @@ const LoginPage = () => {
       {/* Header */}
       <Box
         sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          p: 3,
+          width: '100%',
+          p: { xs: 2.5, sm: 3 },
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -310,12 +307,11 @@ const LoginPage = () => {
       >
         <Box
           component="img"
-          src="/assets/images/Accelerator logo.png"
+          src="/assets/images/accelerator_logo.png"
           alt="Accelerator Logo"
           sx={{
-            height: '60px',
+            height: { xs: '48px', sm: '60px' },
             width: 'auto',
-            // filter: 'brightness(0) invert(1)', // Removed to show original colors
           }}
         />
         <Typography
@@ -323,6 +319,7 @@ const LoginPage = () => {
           sx={{
             color: 'white',
             fontWeight: 600,
+            fontSize: { xs: '0.9rem', sm: '1.25rem' },
           }}
         >
           AIESEC in Egypt
@@ -362,8 +359,8 @@ const LoginPage = () => {
           >
             <Box
               sx={{
-                width: { xs: 'min(94vw, 592px)', sm: 'min(90vw, 772px)', md: 856 },
-                height: { xs: 342, sm: 398, md: 430 },
+                width: { xs: 'min(94vw, 520px)', sm: 'min(90vw, 772px)', md: 856 },
+                height: { xs: 280, sm: 398, md: 430 },
                 position: 'relative',
                 mb: 0,
                 display: 'flex',
@@ -463,7 +460,7 @@ const LoginPage = () => {
                 color: 'white',
                 fontWeight: 800,
                 fontFamily: 'Montserrat, sans-serif',
-                fontSize: { xs: '2.5rem', md: '3.5rem' },
+                fontSize: { xs: '2rem', md: '3.5rem' },
                 textShadow: '0 2px 10px rgba(0,0,0,0.1)',
                 mb: 0,
                 mt: 0,
@@ -480,7 +477,8 @@ const LoginPage = () => {
               color: 'rgba(255,255,255,0.9)',
               fontWeight: 400,
               maxWidth: 500,
-              mb: 4,
+              fontSize: { xs: '1rem', md: '1.25rem' },
+              mb: { xs: 2.5, md: 4 },
             }}
           >
             Manage your EPs, track performance, and drive impact in AIESEC in Egypt
@@ -524,19 +522,17 @@ const LoginPage = () => {
       {/* Footer */}
       <Box
         sx={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          p: 3,
+          p: { xs: 2.5, sm: 3 },
           textAlign: 'center',
           zIndex: 2,
+          mt: 'auto',
         }}
       >
         <Typography
           variant="body2"
           sx={{
             color: 'rgba(255,255,255,0.8)',
+            fontSize: { xs: '0.7rem', sm: '0.875rem' },
             '& a': {
               color: 'rgba(255,255,255,0.9)',
               textDecoration: 'none',
