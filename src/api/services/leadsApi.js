@@ -1,6 +1,7 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import { getCrmAccessToken } from '../../utils/crmToken';
+import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 
 const API_BASE_URL = process.env.REACT_APP_FASTAPI_BASE || 'https://api-accelerator.aiesec.org.eg/api/v1';
 
@@ -53,59 +54,22 @@ api.interceptors.request.use(
 // Add response interceptor for error handling
 api.interceptors.response.use(
   (response) => {
-    // Log successful response CORS headers
-    console.log('✅ [leadsApi] Response received:', {
-      status: response.status,
-      headers: {
-        'access-control-allow-origin': response.headers['access-control-allow-origin'],
-        'access-control-allow-credentials': response.headers['access-control-allow-credentials'],
-        'access-control-allow-methods': response.headers['access-control-allow-methods'],
-        'access-control-allow-headers': response.headers['access-control-allow-headers']
-      }
-    });
     return response;
   },
   (error) => {
+    // Attach friendly message to the error object
+    error.friendlyMessage = getFriendlyErrorMessage(error);
+    
     if (error.response) {
-      // Server responded with error status
       console.error('❌ [leadsApi] Response error:', {
         status: error.response.status,
-        statusText: error.response.statusText,
-        headers: error.response.headers,
+        message: error.friendlyMessage,
         data: error.response.data
       });
-      
-      if (error.response.status === 401) {
-        console.error('❌ [leadsApi] Unauthorized - token may be invalid or expired');
-      } else if (error.response.status === 403) {
-        console.error('❌ [leadsApi] Forbidden - insufficient permissions');
-      } else if (error.response.status === 404) {
-        console.error('❌ [leadsApi] Not found - endpoint may be incorrect');
-      } else if (error.response.status >= 500) {
-        console.error('❌ [leadsApi] Server error');
-      }
-    } else if (error.request) {
-      // Request made but no response (network error, CORS, etc.)
-      console.error('❌ [leadsApi] Network error - no response received');
-      console.error('❌ [leadsApi] Request details:', {
-        url: error.config?.url,
-        method: error.config?.method,
-        baseURL: error.config?.baseURL,
-        withCredentials: error.config?.withCredentials,
-        headers: error.config?.headers
-      });
-      
-      // Check if it's a CORS error
-      if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
-        console.error('❌ [leadsApi] This is likely a CORS issue. Check backend configuration:');
-        console.error('   1. Access-Control-Allow-Origin must be exactly: ' + window.location.origin);
-        console.error('   2. Access-Control-Allow-Credentials must be: true');
-        console.error('   3. Access-Control-Allow-Headers must include: Authorization, Content-Type');
-        console.error('   4. Backend must handle OPTIONS preflight requests');
-      }
     } else {
-      console.error('❌ [leadsApi] Error setting up request:', error.message);
+      console.error('❌ [leadsApi] Network/Setup error:', error.friendlyMessage);
     }
+    
     return Promise.reject(error);
   }
 );

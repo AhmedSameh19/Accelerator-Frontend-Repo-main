@@ -31,6 +31,7 @@ import Cookies from 'js-cookie';
 import { useAuth } from '../../context/AuthContext';
 import { useTeamMembersContext } from '../../context/TeamMembersContext';
 import { useCRMType } from '../../context/CRMTypeContext';
+import { useSnackbarContext } from '../../context/SnackbarContext';
 
 import ICXLeadsPage from './icx/ICXLeadsPage';
 
@@ -47,7 +48,6 @@ import LeadsPageView from './components/LeadsPageView';
 import { useLeadsCursorFetch } from '../../hooks/leads/useLeadsCursorFetch';
 import { useLeadStatuses } from '../../hooks/leads/useLeadStatuses';
 
-
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -63,21 +63,13 @@ function OGXB2CLeadsPage() {
   // ---------------------------------------------------------------------------
   const { currentUser, isAdmin } = useAuth();
   const { members, fetchMembers, hasFetched: membersFetched } = useTeamMembersContext();
+  const { showSuccess, showError, showWarning, showInfo } = useSnackbarContext();
   
   // ---------------------------------------------------------------------------
   // FORM STATE
   // ---------------------------------------------------------------------------
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  
-  // ---------------------------------------------------------------------------
-  // NOTIFICATION STATE
-  // ---------------------------------------------------------------------------
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
   
   // ---------------------------------------------------------------------------
   // FILTER STATE
@@ -299,8 +291,6 @@ function OGXB2CLeadsPage() {
       formOpen={formOpen}
       editing={editing}
       onFormClose={handleFormClose}
-      snackbar={snackbar}
-      onSnackbarClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
     />
   );
 }

@@ -13,7 +13,7 @@ import {
   Box,
   Typography,
 } from '@mui/material';
-import { SearchOff as SearchOffIcon } from '@mui/icons-material';
+import EmptyState from '../Common/EmptyState';
 import LeadProfile from './LeadProfile';
 import LeadTableHeader from './LeadTable/LeadTableHeader';
 import LeadTableRow from './LeadTable/LeadTableRow';
@@ -138,15 +138,11 @@ function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMor
             {actuallyFilteredLeads.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                    <SearchOffIcon sx={{ fontSize: 48, color: 'text.disabled', opacity: 0.5 }} />
-                    <Typography variant="h6" color="text.secondary">
-                      No Leads Found
-                    </Typography>
-                    <Typography variant="body2" color="text.disabled">
-                      Try adjusting filters or checking another LC.
-                    </Typography>
-                  </Box>
+                  <EmptyState 
+                    title="No Leads Found"
+                    description="We couldn't find any leads matching your current view."
+                    isFiltered={!!assignedMemberFilter}
+                  />
                 </TableCell>
               </TableRow>
             ) : (

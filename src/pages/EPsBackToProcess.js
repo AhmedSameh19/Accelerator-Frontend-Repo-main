@@ -31,6 +31,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCRMType } from '../context/CRMTypeContext';
 import { LC_CODES } from '../lcCodes';
 import b2cAPI from '../api/services/b2cAPI';
+import EmptyState from '../components/Common/EmptyState';
 
 function EPsBackToProcess() {
   const { currentUser, isAdmin } = useAuth();
@@ -417,10 +418,13 @@ function EPsBackToProcess() {
             ))}
             {filteredEPs.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                  <Typography color="text.secondary">
-                    {searchQuery ? 'No matching EPs found' : 'No EPs marked back to process'}
-                  </Typography>
+                <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                  <EmptyState
+                    title={searchQuery ? "No matching EPs found" : "No EPs marked back to process"}
+                    description={searchQuery ? "Try adjusting your search terms to find the participant you're looking for." : "When an EP needs further processing, they will appear here for your attention."}
+                    actionLabel="Reload List"
+                    onAction={loadEPsBackToProcess}
+                  />
                 </TableCell>
               </TableRow>
             )}

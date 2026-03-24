@@ -16,6 +16,7 @@ import {
   useTheme,
 } from '@mui/material';
 
+import { ERROR_MESSAGES } from '../../utils/errorHandler';
 import { ICXFields, OGXFields, CommonFields } from './LeadForm/LeadFormFields';
 
 function LeadForm({ open, onClose, onSave, initialData, isICX = false }) {
@@ -27,16 +28,15 @@ function LeadForm({ open, onClose, onSave, initialData, isICX = false }) {
     status: 'open',
     score: 0,
     product: '',
-    // oGX specific fields
     background: '',
     graduation: '',
-    // iCX specific fields
     company_name: '',
     contact_person: '',
     position: '',
     company_size: '',
     industry: ''
   });
+  const [errors, setErrors] = useState({});
   const [activeStep, setActiveStep] = useState(0);
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
@@ -47,35 +47,62 @@ function LeadForm({ open, onClose, onSave, initialData, isICX = false }) {
       setFormData(initialData);
     } else {
       setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        source: '',
-        status: 'open',
-        score: 0,
-        product: '',
-        background: '',
-        graduation: '',
-        company_name: '',
-        contact_person: '',
-        position: '',
-        company_size: '',
-        industry: ''
+        name: '', email: '', phone: '', source: '', status: 'open', score: 0, product: '',
+        background: '', graduation: '', company_name: '', contact_person: '',
+        position: '', company_size: '', industry: ''
       });
     }
+    setErrors({});
     setActiveStep(0);
   }, [initialData, open]);
 
+  const validateField = (name, value) => {
+    let error = '';
+    if (!value && ['name', 'email', 'company_name', 'contact_person'].includes(name)) {
+      error = ERROR_MESSAGES.REQUIRED;
+    } else if (name === 'email' && value && !/\S+@\S+\.\S+/.test(value)) {
+      error = ERROR_MESSAGES.INVALID_EMAIL;
+    } else if (name === 'phone' && value && !/^01[0-2,5]\d{8}$/.test(value.replace(/\s/g, ''))) {
+      error = ERROR_MESSAGES.INVALID_PHONE;
+    }
+    
+    setErrors(prev => ({ ...prev, [name]: error }));
+    return error;
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    validateField(name, value);
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      validateField(name, value);
+    }
+  };
+
+  const validateStep = () => {
+    const currentErrors = {};
+    if (activeStep === 0) {
+      if (isICX) {
+        if (!formData.company_name) currentErrors.company_name = ERROR_MESSAGES.REQUIRED;
+        if (!formData.contact_person) currentErrors.contact_person = ERROR_MESSAGES.REQUIRED;
+      } else {
+        if (!formData.name) currentErrors.name = ERROR_MESSAGES.REQUIRED;
+      }
+      if (!formData.email) currentErrors.email = ERROR_MESSAGES.REQUIRED;
+      else if (!/\S+@\S+\.\S+/.test(formData.email)) currentErrors.email = ERROR_MESSAGES.INVALID_EMAIL;
+    }
+    setErrors(currentErrors);
+    return Object.keys(currentErrors).length === 0;
   };
 
   const handleNext = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
+    if (validateStep()) {
+      setActiveStep((prevActiveStep) => prevActiveStep + 1);
+    }
   };
 
   const handleBack = () => {
@@ -84,7 +111,9 @@ function LeadForm({ open, onClose, onSave, initialData, isICX = false }) {
 
   const handleSubmit = (e) => {
     if (e) e.preventDefault();
-    onSave(formData);
+    if (validateStep()) {
+      onSave(formData);
+    }
   };
 
   const renderStepContent = (step) => {
@@ -100,6 +129,9 @@ function LeadForm({ open, onClose, onSave, initialData, isICX = false }) {
                     label="Company Name"
                     value={formData.company_name}
                     onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={!!errors.company_name}
+                    helperText={errors.company_name}
                     fullWidth
                     required
                   />
@@ -110,6 +142,9 @@ function LeadForm({ open, onClose, onSave, initialData, isICX = false }) {
                     label="Contact Person"
                     value={formData.contact_person}
                     onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={!!errors.contact_person}
+                    helperText={errors.contact_person}
                     fullWidth
                     required
                   />
@@ -122,6 +157,9 @@ function LeadForm({ open, onClose, onSave, initialData, isICX = false }) {
                   label="Full Name"
                   value={formData.name}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  error={!!errors.name}
+                  helperText={errors.name}
                   fullWidth
                   required
                 />
@@ -134,6 +172,9 @@ function LeadForm({ open, onClose, onSave, initialData, isICX = false }) {
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                error={!!errors.email}
+                helperText={errors.email}
                 fullWidth
                 required
               />
@@ -141,9 +182,12 @@ function LeadForm({ open, onClose, onSave, initialData, isICX = false }) {
             <Grid item xs={12}>
               <TextField
                 name="phone"
-                label="Phone"
+                label="Phone (01X XXXX XXXX)"
                 value={formData.phone}
                 onChange={handleChange}
+                onBlur={handleBlur}
+                error={!!errors.phone}
+                helperText={errors.phone}
                 fullWidth
               />
             </Grid>
@@ -179,7 +223,9 @@ function LeadForm({ open, onClose, onSave, initialData, isICX = false }) {
         <Stepper activeStep={activeStep} sx={{ pt: 2, pb: 4 }}>
           {steps.map((label) => (
             <Step key={label}>
-              <StepLabel>{label}</StepLabel>
+              <StepLabel error={activeStep === 0 && (!!errors.name || !!errors.email || !!errors.company_name || !!errors.contact_person)}>
+                {label}
+              </StepLabel>
             </Step>
           ))}
         </Stepper>

@@ -33,8 +33,6 @@ import {
   StepContent,
   Avatar,
   Stack,
-  Snackbar,
-  Alert,
   Tab,
   Tabs,
   Timeline,
@@ -76,11 +74,13 @@ import {
   Filter as FilterIcon,
   Refresh as RefreshIcon,
   CalendarToday as CalendarTodayIcon,
+  SearchOff as SearchOffIcon,
 } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { useCRMType } from '../context/CRMTypeContext';
+import { useSnackbarContext } from '../context/SnackbarContext';
 import { EventEmitter } from 'events';
 import { useAuth } from '../context/AuthContext';
 import { LC_CODES, MC_EGYPT_CODE } from '../lcCodes';
@@ -198,11 +198,7 @@ function MarketResearchPage() {
     date: '',
     description: ''
   });
-  const [snackbar, setSnackbar] = useState({
-      open: false,
-      message: '',
-      severity: 'success'
-    });
+  const { showSuccess, showError, showWarning, showInfo } = useSnackbarContext();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const initialCompanyState = {
@@ -406,11 +402,7 @@ const getTeamUnderCurrentUser = (members) => {
     } catch (error) {
       console.error('Error fetching active members:', error);
       setActiveMembers([]);
-      setSnackbar({
-        open: true,
-        message: 'Failed to fetch members',
-        severity: 'error',
-      });
+      showError('Failed to fetch members');
     }
   }, []);
   // Update fetchLeads to accept lcCode as a parameter
@@ -420,11 +412,7 @@ useEffect(() => {
   const token = currentUser?.token || getCrmAccessToken();
 
   if (!isAdmin && !lcCode) {
-    setSnackbar({
-      open: true,
-      message: "No office assigned to your account. Cannot fetch companies.",
-      severity: "error",
-    });
+    showError("No office assigned to your account. Cannot fetch companies.");
     return;
   }
 
@@ -594,26 +582,14 @@ useEffect(() => {
             setCompanies(parsedCompanies);
           }
           if (parsedCompanies.length > 0 && !append) {
-            setSnackbar({
-              open: true,
-              message: useShowAll ? `Loaded ${parsedCompanies.length} companies (all LCs).` : `Loaded ${parsedCompanies.length} companies from Market Research.`,
-              severity: 'success',
-            });
+            showSuccess(useShowAll ? `Loaded ${parsedCompanies.length} companies (all LCs).` : `Loaded ${parsedCompanies.length} companies from Market Research.`);
           } else if (parsedCompanies.length === 0 && !append && lcId != null) {
-            setSnackbar({
-              open: true,
-              message: `No companies submitted by your LC (${getUserLCName(currentUser) || lcId}) in Podio. Use "Show all LCs" to see all companies.`,
-              severity: 'info',
-            });
+            showInfo(`No companies submitted by your LC (${getUserLCName(currentUser) || lcId}) in Podio. Use "Show all LCs" to see all companies.`);
           }
           return;
         } catch (backendErr) {
           console.warn('[MarketResearch] FastAPI backend fetch failed:', backendErr?.message);
-          setSnackbar({
-            open: true,
-            message: 'Could not load companies. Ensure the FastAPI backend is running (port 8000) and Podio is configured.',
-            severity: 'warning',
-          });
+          showWarning('Could not load companies. Ensure the FastAPI backend is running (port 8000) and Podio is configured.');
           setAllCompanies([]);
           setCompanies([]);
           setLastFetchPageSize(0);
@@ -1395,11 +1371,7 @@ useEffect(() => {
     } catch (err) {
       console.error('Error updating company:', err);
     }
-    setSnackbar({
-      open: true,
-      message: 'Congratulations! Opportunity raised – end of funnel! 🎉',
-      severity: 'success'
-    });
+    showSuccess('Congratulations! Opportunity raised – end of funnel! 🎉');
   };
 
   const renderCompanyForm = () => (
@@ -1906,7 +1878,7 @@ useEffect(() => {
                           company_name: company.name || company.companyName || 'Company',
                           visit_date: date.toISOString(),
                         });
-                        setSnackbar({ open: true, message: 'Visit date and time saved. It will appear on the Calendar page and sync to Google Calendar when connected.', severity: 'success' });
+                        showSuccess('Visit date and time saved. It will appear on the Calendar page and sync to Google Calendar when connected.');
                         const newStep = Math.max(company.currentStep || 0, 2);
                         const updated = { ...company, currentStep: newStep };
                         setSelectedCompany(updated);
@@ -1919,7 +1891,7 @@ useEffect(() => {
                           localStorage.setItem(`company_profile_${company.id}`, JSON.stringify(profile));
                         } catch (e) {}
                       } catch (e) {
-                        setSnackbar({ open: true, message: 'Failed to save visit date.', severity: 'error' });
+                        showError('Failed to save visit date.');
                       }
                     }}
                     ampm
@@ -3455,19 +3427,11 @@ useEffect(() => {
             : c
         )
       );
-      setSnackbar({
-        open: true,
-        message: `Company assigned to ${memberName}`,
-        severity: 'success',
-      });
+      showSuccess(`Company assigned to ${memberName}`);
       handleAssignClose();
     } catch (error) {
       console.error('Error assigning company:', error);
-      setSnackbar({
-        open: true,
-        message: error?.response?.data?.detail || error?.message || 'Failed to assign company',
-        severity: 'error',
-      });
+      showError(error?.response?.data?.detail || error?.message || 'Failed to assign company');
     }
   };
 
@@ -3511,18 +3475,10 @@ useEffect(() => {
       );
       setSelectedCompanies([]);
       handleBulkAssignClose();
-      setSnackbar({
-        open: true,
-        message: `Assigned ${selectedCompanies.length} companies to ${memberName}`,
-        severity: 'success',
-      });
+      showSuccess(`Assigned ${selectedCompanies.length} companies to ${memberName}`);
     } catch (error) {
       console.error('Error assigning companies:', error);
-      setSnackbar({
-        open: true,
-        message: error?.response?.data?.detail || error?.message || 'Failed to assign companies',
-        severity: 'error',
-      });
+      showError(error?.response?.data?.detail || error?.message || 'Failed to assign companies');
     }
   };
 
@@ -3583,9 +3539,9 @@ useEffect(() => {
                 try {
                   const url = await marketResearchAPI.getPodioFormUrl();
                   if (url) window.location.href = url;
-                  else setSnackbar({ open: true, message: 'Could not get Podio form URL.', severity: 'warning' });
+                  else showWarning('Could not get Podio form URL.');
                 } catch (e) {
-                  setSnackbar({ open: true, message: 'Could not open Podio form. Ensure the backend is running.', severity: 'warning' });
+                  showWarning('Could not open Podio form. Ensure the backend is running.');
                 }
               }}
             >
@@ -4072,28 +4028,14 @@ useEffect(() => {
                 {companies.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={12} align="center" sx={{ py: 6 }}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                        <SearchOffIcon sx={{ fontSize: 48, color: 'text.disabled', opacity: 0.5 }} />
-                        <Typography variant="h6" color="text.secondary">
-                          No Companies Found
-                        </Typography>
-                        <Typography variant="body2" color="text.disabled" sx={{ mb: 2 }}>
-                          {allCompanies.length > 0 && (getUserLCName(currentUser) || getOfficeId(currentUser))
-                            ? `Showing only companies from your LC (${getUserLCName(currentUser) || `ID ${getOfficeId(currentUser)}`}). None of the ${allCompanies.length} loaded match.`
-                            : "Start by adding a new company or adjust your search criteria."}
-                        </Typography>
-                        
-                        {companies.length === 0 && usePodioData && getOfficeId(currentUser) != null && !showAllLCs && (
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            onClick={() => { setShowAllLCs(true); fetchCompanies({ showAllLCs: true }); }}
-                            sx={{ mt: 1, borderRadius: 2 }}
-                          >
-                            Show all LCs
-                          </Button>
-                        )}
-                      </Box>
+                      <EmptyState
+                        title="No Companies Found"
+                        description={allCompanies.length > 0 && (getUserLCName(currentUser) || getOfficeId(currentUser))
+                          ? `Showing only companies from your LC (${getUserLCName(currentUser) || `ID ${getOfficeId(currentUser)}`}). None of the ${allCompanies.length} loaded match.`
+                          : "Start by adding a new company or adjust your search criteria."}
+                        actionLabel={usePodioData && getOfficeId(currentUser) != null && !showAllLCs ? "Show all LCs" : undefined}
+                        onAction={() => { setShowAllLCs(true); fetchCompanies({ showAllLCs: true }); }}
+                      />
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -4376,19 +4318,7 @@ useEffect(() => {
         </DialogActions>
       </Dialog>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          severity={snackbar.severity}
-          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
-  );};
+  );
+}
 export default MarketResearchPage; 

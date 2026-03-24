@@ -1,5 +1,6 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 
 // AIESEC API Access Token
 const ACCESS_TOKEN = "BKueT_b0BFOqRiIEbGVKtYf2D9E-Pg2EUSOVC8NPt84";
@@ -250,7 +251,8 @@ export const fetchSignups = async (startDate = "2025-08-01", lcCode = Cookies.ge
     }
     return allLeads;
   } catch (error) {
-    console.error('Error fetching AIESEC signups:', error);
+    error.friendlyMessage = getFriendlyErrorMessage(error);
+    console.error('Error fetching AIESEC signups:', error.friendlyMessage);
     return [];
   }
 };
@@ -313,8 +315,8 @@ export const fetchOpportunityApplications = async (personId, startDate = "2025-0
     console.log('Fetched applications:', applications); // Debug logging
     return applications;
   } catch (error) {
-    console.error("Error fetching opportunity applications:", error);
-    console.error("Error details:", error.response?.data || error.message); // More detailed error logging
+    error.friendlyMessage = getFriendlyErrorMessage(error);
+    console.error("Error fetching opportunity applications:", error.friendlyMessage);
     return [];
   }
 };

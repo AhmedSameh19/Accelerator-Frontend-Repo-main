@@ -1,6 +1,7 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import { CRM_ACCESS_TOKEN_KEY } from '../../utils/tokenKeys';
+import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 
 // Remove the hardcoded API key - we'll use the user's access token
 const API_URL = "https://gis-api.aiesec.org/graphql";
@@ -142,16 +143,8 @@ async function fetchData(query) {
 
     return response.data.data.allOpportunityApplication.data;
   } catch (error) {
-    console.error('Error fetching data:', error);
-    if (error.response) {
-      console.error('Error response data:', error.response.data);
-      console.error('Error response status:', error.response.status);
-      console.error('Error response headers:', error.response.headers);
-    } else if (error.request) {
-      console.error('Error request:', error.request);
-    } else {
-      console.error('Error message:', error.message);
-    }
+    error.friendlyMessage = getFriendlyErrorMessage(error);
+    console.error('Error fetching data:', error.friendlyMessage);
     throw error;
   }
 }

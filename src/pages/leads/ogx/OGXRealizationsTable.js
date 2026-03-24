@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Avatar,
   Box,
@@ -20,13 +19,14 @@ import {
 } from '@mui/material';
 import { 
   ContentCopy as ContentCopyIcon,
-  SearchOff as SearchOffIcon,
 } from '@mui/icons-material';
+import EmptyState from '../../../components/Common/EmptyState';
 
 import { getProgrammeChipSx, getStatusChipSx } from './ogxChipStyles';
 
 export default function OGXRealizationsTable({
   leads,
+  fetchLeads,
   selectedLeads,
   order,
   orderBy,
@@ -114,38 +114,6 @@ export default function OGXRealizationsTable({
                     Phone Number
                   </TableSortLabel>
                 </TableCell>
-
-                {/* <TableCell
-                  sx={{
-                    whiteSpace: 'nowrap',
-                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                    py: { xs: 1, sm: 2 },
-                  }}
-                >
-                  <TableSortLabel
-                    active={orderBy === 'homeLC'}
-                    direction={orderBy === 'homeLC' ? order : 'asc'}
-                    onClick={() => handleRequestSort('homeLC')}
-                  >
-                    Home LC
-                  </TableSortLabel>
-                </TableCell>
-
-                <TableCell
-                  sx={{
-                    whiteSpace: 'nowrap',
-                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                    py: { xs: 1, sm: 2 },
-                  }}
-                >
-                  <TableSortLabel
-                    active={orderBy === 'homeMC'}
-                    direction={orderBy === 'homeMC' ? order : 'asc'}
-                    onClick={() => handleRequestSort('homeMC')}
-                  >
-                    Home MC
-                  </TableSortLabel>
-                </TableCell> */}
 
                 <TableCell
                   sx={{
@@ -275,15 +243,12 @@ export default function OGXRealizationsTable({
               {leads.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={13} align="center" sx={{ py: 6 }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                      <SearchOffIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
-                      <Typography variant="h6" color="text.secondary">
-                        No realizations found
-                      </Typography>
-                      <Typography variant="body2" color="text.disabled">
-                        Try adjusting your filters or click "Refresh API" to load the latest data
-                      </Typography>
-                    </Box>
+                    <EmptyState
+                      title="No Realizations Found"
+                      description="We couldn't find any realizations matching your current filters. Try adjusting them or refresh from the API."
+                      actionLabel="Refresh API"
+                      onAction={fetchLeads}
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

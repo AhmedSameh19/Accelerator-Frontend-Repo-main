@@ -41,6 +41,7 @@ import {
   List,
   CircularProgress,
 } from '@mui/material';
+import { useSnackbarContext } from '../context/SnackbarContext';
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -73,7 +74,9 @@ import {
   Refresh as RefreshIcon,
   Print as PrintIcon,
   PersonAdd as PersonAddIcon,
+  SearchOff as SearchOffIcon,
 } from '@mui/icons-material';
+import EmptyState from '../components/Common/EmptyState';
 import { useCRMType } from '../context/CRMTypeContext';
 import {
   bulkAssignICXRealizations,
@@ -316,11 +319,7 @@ function ICXRealizationsPage() {
   const [tab, setTab] = useState(0);
   // Preparation state for each lead (by id)
   const [prepState, setPrepState] = useState({});
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
+  const { showSuccess, showError, showWarning } = useSnackbarContext();
   const [order, setOrder] = useState('asc');
   const [orderBy, setOrderBy] = useState('id');
   const [uniqueHostLCs, setUniqueHostLCs] = useState([]);
@@ -339,7 +338,7 @@ function ICXRealizationsPage() {
       if (!hostLcId) {
         setLeads([]);
         setOriginalLeads([]);
-        setError('No office assigned to your account. Cannot fetch realizations.');
+        showError('No office assigned to your account. Cannot fetch realizations.');
         return;
       }
 
@@ -378,11 +377,7 @@ function ICXRealizationsPage() {
       setLeads(normalized);
       setOriginalLeads(normalized);
 
-      setSnackbar({
-        open: true,
-        message: `Successfully loaded ${normalized.length} Expected Realizations`,
-        severity: 'success'
-      });
+      showSuccess(`Successfully loaded ${normalized.length} Expected Realizations`);
 
       setError(null);
     } catch (err) {
@@ -390,14 +385,12 @@ function ICXRealizationsPage() {
       
       // Handle authentication errors specifically
       if (err.message && err.message.includes('Authentication required')) {
+        showWarning('Please log in to access realizations data');
         setError('Authentication required. Please log in to view realizations data.');
-        setSnackbar({
-          open: true,
-          message: 'Please log in to access realizations data',
-          severity: 'warning'
-        });
       } else {
-        setError('Failed to fetch leads. Please try again later.');
+        const friendlyMsg = err.friendlyMessage || 'Failed to fetch leads. Please try again later.';
+        showError(friendlyMsg);
+        setError(friendlyMsg);
       }
       
       setLeads([]);
@@ -405,7 +398,7 @@ function ICXRealizationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser, isAdmin]);
+  }, [currentUser, isAdmin, showSuccess, showError, showWarning]);
 
   // useEffect for initial load
   useEffect(() => {
@@ -421,11 +414,7 @@ function ICXRealizationsPage() {
       const personId = Cookies.get("person_id");
       if (!isAdmin && !lcCode) {
         setLeads([]);
-        setSnackbar({
-          open: true,
-          message: "No office assigned to your account. Cannot fetch leads.",
-          severity: "error",
-        });
+        showError("No office assigned to your account. Cannot fetch leads.");
         setLoading(false);
         return;
       }
@@ -597,11 +586,7 @@ const getTeamUnderCurrentUser = (members) => {
     setActiveMembers(teamMembers);
     } catch (error) {
       console.error('Error fetching active members:', error);
-      setSnackbar({
-        open: true,
-        message: 'Failed to fetch active members',
-        severity: 'error',
-      });
+      showError('Failed to fetch active members');
     }
   };
 
@@ -763,30 +748,18 @@ const getTeamUnderCurrentUser = (members) => {
     
     if (textToCopy) {
       navigator.clipboard.writeText(textToCopy).then(() => {
-        setSnackbar({
-          open: true,
-          message: 'Copied to clipboard!',
-          severity: 'success'
-        });
+        showSuccess('Copied to clipboard!');
       }).catch(err => {
-        setSnackbar({
-          open: true,
-          message: 'Failed to copy to clipboard',
-          severity: 'error'
-        });
+        showError('Failed to copy to clipboard');
         console.error('Failed to copy:', err);
       });
     }
   };
 
-  const handleCloseSnackbar = (event, reason) => {
-    if (reason === 'clickaway') {
-      return;
-    }
-    setSnackbar(prev => ({ ...prev, open: false }));
+    copyToClipboard(text, title, lead);
   };
 
-  // Add this function to handle sorting
+  const copyToClipboard = (text, title, lead) => {
   const handleRequestSort = (property) => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
@@ -1024,20 +997,12 @@ const getTeamUnderCurrentUser = (members) => {
 
       await fetchLeads();
 
-      setSnackbar({
-        open: true,
-        message: `Successfully assigned ${selectedLeads.length} realizations to member`,
-        severity: 'success'
-      });
+      showSuccess(`Successfully assigned ${selectedLeads.length} realizations to member`);
 
       setSelectedLeadsSet(new Set());
     } catch (error) {
       console.error('Error bulk assigning realizations:', error);
-      setSnackbar({
-        open: true,
-        message: 'Failed to assign realizations',
-        severity: 'error'
-      });
+      showError('Failed to assign realizations');
     }
   };
 
@@ -1583,15 +1548,12 @@ const getTeamUnderCurrentUser = (members) => {
                 ) : leads.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={13} align="center" sx={{ py: 6 }}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                        <SearchOffIcon sx={{ fontSize: 48, color: 'text.disabled', opacity: 0.5 }} />
-                        <Typography variant="h6" color="text.secondary">
-                          No Realizations Found
-                        </Typography>
-                        <Typography variant="body2" color="text.disabled">
-                          Try adjusting your filters or click "Refresh API" to load the latest data.
-                        </Typography>
-                      </Box>
+                      <EmptyState
+                        title="No Realizations Found"
+                        description="We couldn't find any expected realizations for your office. Try adjusting your filters or refresh the data from the API."
+                        actionLabel="Refresh API"
+                        onAction={fetchLeads}
+                      />
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -2858,22 +2820,7 @@ const getTeamUnderCurrentUser = (members) => {
         </Dialog>
       )}
 
-      {/* Add Snackbar at the end of the component */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-      >
-        <Alert 
-          onClose={handleCloseSnackbar} 
-          severity={snackbar.severity}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+
 
       {/* Bulk Assign Dialog */}
       <Dialog open={bulkAssignDialogOpen} onClose={() => setBulkAssignDialogOpen(false)} maxWidth="sm" fullWidth>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Paper, Typography, TextField, Button, List, ListItem, Box, Snackbar, Alert } from '@mui/material';
+import { Paper, Typography, TextField, Button, List, ListItem, Box } from '@mui/material';
+import { useSnackbarContext } from '../../../context/SnackbarContext';
 import { Comment as CommentIcon } from '@mui/icons-material';
 
 export default function CustomerInterviewCommentsSection({
@@ -9,7 +10,7 @@ export default function CustomerInterviewCommentsSection({
   onAddComment,
   isB2C
 }) {
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const { showSuccess, showError } = useSnackbarContext();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,11 +24,7 @@ export default function CustomerInterviewCommentsSection({
         // Pass the comment text to the handler
         await onAddComment(commentText);
         // Show success message only if no error was thrown
-        setSnackbar({
-          open: true,
-          message: 'Comment submitted successfully!',
-          severity: 'success'
-        });
+        showSuccess('Comment submitted successfully!');
       } catch (error) {
         console.error('Error in handleSubmit:', error);
         // Restore the comment text if submission failed
@@ -43,18 +40,11 @@ export default function CustomerInterviewCommentsSection({
           errorMessage = error.message;
         }
         
-        setSnackbar({
-          open: true,
-          message: errorMessage,
-          severity: 'error'
-        });
+        showError(errorMessage);
       }
     }
   };
 
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
 
   return (
     <Paper elevation={1} sx={{ 
@@ -169,21 +159,6 @@ export default function CustomerInterviewCommentsSection({
           </Box>
         )}
       </List>
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity || (snackbar.message.includes('Failed') ? 'error' : 'success')}
-          variant="filled"
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Paper>
   );
 }

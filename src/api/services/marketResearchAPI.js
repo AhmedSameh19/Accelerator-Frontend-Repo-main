@@ -1,5 +1,6 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 import { getCrmAccessToken } from '../../utils/crmToken';
 
 const API_BASE_URL = 'https://api-accelerator.aiesec.org.eg/api/v1';
@@ -52,6 +53,23 @@ backendApi.interceptors.request.use(
     return config;
   },
   (err) => Promise.reject(err)
+);
+
+// Add response interceptors for error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    error.friendlyMessage = getFriendlyErrorMessage(error);
+    return Promise.reject(error);
+  }
+);
+
+backendApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    error.friendlyMessage = getFriendlyErrorMessage(error);
+    return Promise.reject(error);
+  }
 );
 
 const marketResearchAPI = {

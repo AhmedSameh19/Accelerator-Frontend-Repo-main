@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import { signup } from '../api/services/authService.ts';
 import { LC_CODES } from '../lcCodes';
+import { ERROR_MESSAGES } from '../utils/errorHandler';
 
 function SignupPage() {
   const [formData, setFormData] = useState({
@@ -14,34 +15,63 @@ function SignupPage() {
     confirmPassword: '',
     lc_code: ''
   });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  // Use static LC_CODES
   const lcCodes = LC_CODES;
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
+  const validateField = (name, value) => {
+    let errorMsg = '';
+    if (!value && name !== 'confirmPassword') {
+      errorMsg = ERROR_MESSAGES.REQUIRED;
+    } else if (name === 'email' && value && !/\S+@\S+\.\S+/.test(value)) {
+      errorMsg = ERROR_MESSAGES.INVALID_EMAIL;
+    } else if (name === 'password' && value && value.length < 8) {
+      errorMsg = ERROR_MESSAGES.PASSWORD_SHORT;
+    } else if (name === 'confirmPassword') {
+      if (!value) errorMsg = ERROR_MESSAGES.REQUIRED;
+      else if (value !== formData.password) errorMsg = 'Passwords do not match';
+    }
+    
+    setErrors(prev => ({ ...prev, [name]: errorMsg }));
+    return errorMsg;
+  };
 
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    validateField(name, value);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      validateField(name, value);
+    }
   };
 
   const validate = () => {
+    const newErrors = {};
+    Object.keys(formData).forEach(key => {
+      const err = validateField(key, formData[key]);
+      if (err) newErrors[key] = err;
+    });
+    setErrors(newErrors);
+    
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return false;
     }
     if (!formData.lc_code) {
-      setError('Please select your Local Committee');
+      setErrors(prev => ({ ...prev, lc_code: 'Please select your Local Committee' }));
       return false;
     }
-    return true;
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!validate()) return;
     
     setLoading(true);
@@ -49,21 +79,14 @@ function SignupPage() {
     setSuccess(false);
 
     try {
-      // Remove confirmPassword before sending to API
       const { confirmPassword, ...signupData } = formData;
       await signup(signupData);
       setSuccess(true);
-      // Reset form
-      setFormData({
-        name: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        lc_code: ''
-      });
+      setFormData({ name: '', email: '', password: '', confirmPassword: '', lc_code: '' });
+      setErrors({});
     } catch (err) {
       console.error('Signup error:', err);
-      setError(typeof err === 'string' ? err : 'Failed to create account. Please try again.');
+      setError(err.friendlyMessage || 'Failed to create account. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -107,7 +130,7 @@ function SignupPage() {
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleSubmit}>
+          <Box component="form" onSubmit={handleSubmit} noValidate>
             <TextField
               margin="normal"
               required
@@ -119,6 +142,9 @@ function SignupPage() {
               autoFocus
               value={formData.name}
               onChange={handleChange}
+              onBlur={handleBlur}
+              error={!!errors.name}
+              helperText={errors.name}
               disabled={loading || success}
               variant="outlined"
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
@@ -133,6 +159,9 @@ function SignupPage() {
               autoComplete="email"
               value={formData.email}
               onChange={handleChange}
+              onBlur={handleBlur}
+              error={!!errors.email}
+              helperText={errors.email}
               disabled={loading || success}
               variant="outlined"
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
@@ -150,6 +179,9 @@ function SignupPage() {
                   autoComplete="new-password"
                   value={formData.password}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  error={!!errors.password}
+                  helperText={errors.password}
                   disabled={loading || success}
                   variant="outlined"
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
@@ -166,13 +198,16 @@ function SignupPage() {
                   id="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  error={!!errors.confirmPassword}
+                  helperText={errors.confirmPassword}
                   disabled={loading || success}
                   variant="outlined"
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 />
               </Grid>
             </Grid>
-            <FormControl fullWidth margin="normal" required variant="outlined">
+            <FormControl fullWidth margin="normal" required variant="outlined" error={!!errors.lc_code}>
               <InputLabel id="lc-code-label">Local Committee</InputLabel>
               <Select
                 labelId="lc-code-label"
@@ -181,6 +216,7 @@ function SignupPage() {
                 value={formData.lc_code}
                 label="Local Committee"
                 onChange={handleChange}
+                onBlur={handleBlur}
                 disabled={loading || success}
                 sx={{ borderRadius: 2 }}
               >
@@ -190,6 +226,11 @@ function SignupPage() {
                   </MenuItem>
                 ))}
               </Select>
+              {errors.lc_code && (
+                <Typography variant="caption" color="error" sx={{ ml: 2, mt: 0.5 }}>
+                  {errors.lc_code}
+                </Typography>
+              )}
             </FormControl>
 
             <Button

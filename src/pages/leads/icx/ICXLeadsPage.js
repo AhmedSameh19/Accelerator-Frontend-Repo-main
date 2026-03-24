@@ -3,6 +3,7 @@ import Cookies from 'js-cookie';
 
 import { useAuth } from '../../../context/AuthContext';
 import { useTeamMembersContext } from '../../../context/TeamMembersContext';
+import { useSnackbarContext } from '../../../context/SnackbarContext';
 
 import { LC_CODES } from '../../../lcCodes';
 
@@ -42,11 +43,7 @@ export default function ICXLeadsPage() {
   const { currentUser, isAdmin } = useAuth();
   const { members, fetchMembers, hasFetched: membersFetched } = useTeamMembersContext();
 
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success',
-  });
+  const { showSuccess, showError, showWarning, showInfo } = useSnackbarContext();
 
   // Filters (same as OGX/B2C)
   const [searchTerm, setSearchTerm] = useState('');
@@ -138,8 +135,6 @@ export default function ICXLeadsPage() {
       formOpen={false}
       editing={null}
       onFormClose={() => {}}
-      snackbar={snackbar}
-      onSnackbarClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
     />
   );
 }

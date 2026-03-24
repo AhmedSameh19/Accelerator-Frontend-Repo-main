@@ -12,6 +12,8 @@ import ErrorBoundary from './app/ErrorBoundary';
 import { router } from './routes/router';
 import { appTheme } from './theme/appTheme';
 
+import { SnackbarProvider } from './context/SnackbarContext';
+
 function App() {
   const { showGame, setShowGame } = useEasterEgg();
 
@@ -19,17 +21,19 @@ function App() {
     <ThemeProvider theme={appTheme}>
       <CssBaseline />
       <ErrorBoundary>
-        <NotificationsProvider>
-          <NotificationInitializer />
-          <AuthProvider>
-            <TeamMembersProvider>
-              <CRMTypeProvider>
-                <RouterProvider router={router} />
-                {showGame && <ChickenInvaders onClose={() => setShowGame(false)} />}
-              </CRMTypeProvider>
-            </TeamMembersProvider>
-          </AuthProvider>
-        </NotificationsProvider>
+        <SnackbarProvider>
+          <NotificationsProvider>
+            <NotificationInitializer />
+            <AuthProvider>
+              <TeamMembersProvider>
+                <CRMTypeProvider>
+                  <RouterProvider router={router} />
+                  {showGame && <ChickenInvaders onClose={() => setShowGame(false)} />}
+                </CRMTypeProvider>
+              </TeamMembersProvider>
+            </AuthProvider>
+          </NotificationsProvider>
+        </SnackbarProvider>
       </ErrorBoundary>
     </ThemeProvider>
   );

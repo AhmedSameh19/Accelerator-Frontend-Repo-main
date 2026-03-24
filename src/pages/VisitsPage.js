@@ -54,6 +54,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import marketResearchAPI from '../api/services/marketResearchAPI';
+import EmptyState from '../components/Common/EmptyState';
 function VisitsPage() {
   const [companies, setCompanies] = useState([]);
   const [openVisitProfileDialog, setOpenVisitProfileDialog] = useState(false);
@@ -468,10 +469,11 @@ function VisitsPage() {
                   <TableBody>
                     {companies.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            No visits scheduled. Companies with 'Visit Status' set to 'Scheduled' will appear here.
-                          </Typography>
+                        <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                          <EmptyState
+                            title="No Scheduled Visits"
+                            description="You don't have any visits scheduled at the moment. Companies marked as 'Visit Scheduled' in the Market Research tool will appear here."
+                          />
                         </TableCell>
                       </TableRow>
                     ) : (

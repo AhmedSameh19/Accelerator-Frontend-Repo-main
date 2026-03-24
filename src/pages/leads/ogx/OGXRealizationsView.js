@@ -74,9 +74,6 @@ export default function OGXRealizationsView({
   setPrepState,
   fileToBase64,
 
-  snackbar,
-  setSnackbar,
-
   bulkAssignDialogOpen,
   handleBulkAssignClose,
   selectedMember,
@@ -121,6 +118,7 @@ export default function OGXRealizationsView({
 
         <OGXRealizationsTable
           leads={leads}
+          fetchLeads={fetchLeads}
           selectedLeads={selectedLeads}
           order={order}
           orderBy={orderBy}
@@ -164,26 +162,6 @@ export default function OGXRealizationsView({
           copyToClipboard={copyToClipboard}
           formatDate={formatDate}
         />
-
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={snackbar.severity === 'success' ? 3000 : 5000}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        >
-          <Alert
-            onClose={() => setSnackbar({ ...snackbar, open: false })}
-            severity={snackbar.severity}
-            variant="filled"
-            sx={{ 
-              width: '100%',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            }}
-          >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
-
         {/* Bulk Assign Dialog */}
         <OGXBulkAssignDialog
           open={bulkAssignDialogOpen}

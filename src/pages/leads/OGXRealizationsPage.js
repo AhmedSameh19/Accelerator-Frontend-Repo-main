@@ -46,6 +46,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useCRMType } from '../../context/CRMTypeContext';
 import { useTeamMembersContext } from '../../context/TeamMembersContext';
+import { useSnackbarContext } from '../../context/SnackbarContext';
 
 // Utilities
 import { LC_CODES, MC_EGYPT_CODE } from '../../lcCodes';
@@ -102,6 +103,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
   const crmType = crmTypeOverride || context.crmType;
   const { currentUser, isAdmin } = useAuth();
   const { members, fetchMembers, hasFetched: membersFetched } = useTeamMembersContext();
+  const { showSuccess, showError, showWarning, showInfo } = useSnackbarContext();
 
   // ---------------------------------------------------------------------------
   // FILTER STATE
@@ -157,15 +159,6 @@ function OGXRealizationsPage({ crmTypeOverride }) {
   const [orderBy, setOrderBy] = useState('id');
 
   // ---------------------------------------------------------------------------
-  // NOTIFICATION STATE
-  // ---------------------------------------------------------------------------
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success',
-  });
-
-  // ---------------------------------------------------------------------------
   // BULK ASSIGNMENT STATE
   // ---------------------------------------------------------------------------
   const [selectedLeads, setSelectedLeads] = useState([]);
@@ -192,11 +185,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
       const lcCode = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
       
       if (!lcCode) {
-        setSnackbar({
-          open: true,
-          message: 'Unable to determine your office. Please try logging in again.',
-          severity: 'warning',
-        });
+        showWarning('Unable to determine your office. Please try logging in again.');
         setLeads([]);
         setOriginalLeads([]);
         return;
@@ -208,11 +197,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
       setOriginalLeads(data || []);
       
       if (!data || data.length === 0) {
-        setSnackbar({
-          open: true,
-          message: 'No realizations found. They will appear here once available.',
-          severity: 'info',
-        });
+        showInfo('No realizations found. They will appear here once available.');
       }
     } catch (err) {
       console.error('Error fetching OGX realizations:', err);
@@ -221,7 +206,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
       setOriginalLeads([]);
       
       // User-friendly error messages based on error type
-      let userMessage = 'Unable to load realizations. Please try again.';
+      let userMessage = err.friendlyMessage || 'Unable to load realizations. Please try again.';
       if (err?.response?.status === 401 || err?.response?.status === 403) {
         userMessage = 'Your session has expired. Please log in again.';
       } else if (err?.response?.status === 404) {
@@ -230,11 +215,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
         userMessage = 'Unable to connect to the server. Please check your internet connection.';
       }
       
-      setSnackbar({
-        open: true,
-        message: userMessage,
-        severity: 'warning',
-      });
+      showWarning(userMessage);
     } finally {
       setLoading(false);
     }
@@ -328,11 +309,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
       
       // Show success message
       const assignCount = selectedLeads.length;
-      setSnackbar({
-        open: true,
-        message: `Successfully assigned ${assignCount} realization${assignCount > 1 ? 's' : ''} to ${memberName}`,
-        severity: 'success',
-      });
+      showSuccess(`Successfully assigned ${assignCount} realization${assignCount > 1 ? 's' : ''} to ${memberName}`);
       
       // Clear selections and close dialog
       setSelectedLeads([]);
@@ -349,11 +326,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
         userMessage = 'Connection lost. Please check your internet and try again.';
       }
       
-      setSnackbar({
-        open: true,
-        message: userMessage,
-        severity: 'warning',
-      });
+      showWarning(userMessage);
     } finally {
       setBulkAssignLoading(false);
     }
@@ -901,8 +874,6 @@ function OGXRealizationsPage({ crmTypeOverride }) {
       prepState={prepState}
       setPrepState={setPrepState}
       fileToBase64={fileToBase64}
-      snackbar={snackbar}
-      setSnackbar={setSnackbar}
       bulkAssignDialogOpen={bulkAssignDialogOpen}
       handleBulkAssignClose={handleBulkAssignClose}
       selectedMember={selectedMember}

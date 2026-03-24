@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Alert, Box, CircularProgress, Snackbar } from '@mui/material';
+import { Alert, Box, CircularProgress } from '@mui/material';
 
 import LeadTable from '../../../components/Leads/LeadTable';
 import LeadForm from '../../../components/Leads/LeadForm';
@@ -35,8 +35,6 @@ export default function LeadsPageView({
   formOpen,
   editing,
   onFormClose,
-  snackbar,
-  onSnackbarClose,
 }) {
   return (
     <Box>
@@ -95,11 +93,6 @@ export default function LeadsPageView({
 
       <LeadForm open={formOpen} initial={editing} onClose={onFormClose} />
 
-      <Snackbar open={snackbar.open} autoHideDuration={5000} onClose={onSnackbarClose}>
-        <Alert onClose={onSnackbarClose} severity={snackbar.severity} variant="filled" sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }

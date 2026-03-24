@@ -1,5 +1,6 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 
 const API_BASE_URL = 'https://api-accelerator.aiesec.org.eg/api/v1';
 
@@ -10,6 +11,15 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    error.friendlyMessage = getFriendlyErrorMessage(error);
+    return Promise.reject(error);
+  }
+);
 
 /**
  * Resolve current user's person id in sync format (for alt_person_id when cookie uses different format).

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import { getCrmAccessToken } from '../../utils/crmToken';
+import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 
 const API_BASE_URL = 'https://api-accelerator.aiesec.org.eg/api/v1';
 
@@ -23,6 +24,15 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    error.friendlyMessage = getFriendlyErrorMessage(error);
     return Promise.reject(error);
   }
 );

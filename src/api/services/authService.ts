@@ -2,6 +2,8 @@
 import Cookies from 'js-cookie';
 import { GetTokenResponse } from './auth-types';
 import axios, { AxiosResponse } from 'axios';
+// @ts-ignore
+import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 import { CRM_ACCESS_TOKEN_KEY,PERSONID,USEREMAIL,USERLC,TOKEN_EXPIRY_KEY,REFRESH_TOKEN_KEY , USERNAME,USERROLE} from '../../utils/tokenKeys';
 
 const AUTH_CLIENT_ID = '0Bwg6JeTDUb6h0O9SHNkOwepr3W34gcwVjj_VsLr9vs';
@@ -33,20 +35,25 @@ export const isLoggedIn = async (): Promise<boolean> => {
 };
 
 export const login = async (email: string, password: string) => {
-    const response = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password });
-    const { token, user } = response.data || {};
+    try {
+        const response = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password });
+        const { token, user } = response.data || {};
 
-    // IMPORTANT: Save only the JWT token string, not the whole response object
-    if (token) {
-        const isSecureContext = typeof window !== 'undefined' && window.location.protocol === 'https:';
-        Cookies.set(CRM_ACCESS_TOKEN_KEY, token, {
-            sameSite: 'Lax',
-            secure: isSecureContext,
-            expires: 7
-        });
+        // IMPORTANT: Save only the JWT token string, not the whole response object
+        if (token) {
+            const isSecureContext = typeof window !== 'undefined' && window.location.protocol === 'https:';
+            Cookies.set(CRM_ACCESS_TOKEN_KEY, token, {
+                sameSite: 'Lax',
+                secure: isSecureContext,
+                expires: 7
+            });
+        }
+
+        return { token, user };
+    } catch (error: any) {
+        error.friendlyMessage = getFriendlyErrorMessage(error);
+        throw error;
     }
-
-    return { token, user };
 };
 
 
