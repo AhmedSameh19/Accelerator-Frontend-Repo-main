@@ -32,9 +32,9 @@ const EmptyState = ({
         textAlign: 'center',
         justifyContent: 'center',
         minHeight: 300,
-        bgcolor: 'rgba(0,0,0,0.02)',
+        bgcolor: 'var(--color-bg-secondary)',
         borderRadius: 4,
-        border: '2px dashed rgba(0,0,0,0.05)',
+        border: '2px dashed var(--color-border)',
         width: '100%'
       }}
     >
@@ -72,7 +72,7 @@ const EmptyState = ({
             textTransform: 'none',
             fontWeight: 600,
             fontFamily: 'Montserrat, sans-serif',
-            boxShadow: '0 4px 14px rgba(3, 126, 243, 0.39)'
+            boxShadow: '0 4px 14px var(--color-shadow)'
           }}
         >
           {actionLabel}

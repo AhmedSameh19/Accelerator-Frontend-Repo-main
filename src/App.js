@@ -13,12 +13,19 @@ import { router } from './routes/router';
 import { appTheme } from './theme/appTheme';
 
 import { SnackbarProvider } from './context/SnackbarContext';
+import { ThemeProvider as CustomThemeProvider, useTheme } from './context/ThemeContext';
+import './theme/tokens.css';
 
-function App() {
+const ThemeAppContent = () => {
+  const { theme } = useTheme();
   const { showGame, setShowGame } = useEasterEgg();
 
+  // We'll update appTheme to handle the mode change based on the 'theme' from CustomThemeProvider
+  // For now, we'll pass the mode to a function if we refactor appTheme, 
+  // but MUI ThemeProvider can also take the theme object directly.
+  
   return (
-    <ThemeProvider theme={appTheme}>
+    <ThemeProvider theme={appTheme(theme)}>
       <CssBaseline />
       <ErrorBoundary>
         <SnackbarProvider>
@@ -36,6 +43,14 @@ function App() {
         </SnackbarProvider>
       </ErrorBoundary>
     </ThemeProvider>
+  );
+};
+
+function App() {
+  return (
+    <CustomThemeProvider>
+      <ThemeAppContent />
+    </CustomThemeProvider>
   );
 }
 
