@@ -1,6 +1,7 @@
 import React from 'react';
 import { RouterProvider } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material';
+import { CssBaseline } from '@mui/material';
+import { ThemeProvider } from '@mui/material/styles';
 import { AuthProvider } from './context/AuthContext';
 import { CRMTypeProvider } from './context/CRMTypeContext';
 import { NotificationsProvider } from './context/NotificationsContext';
