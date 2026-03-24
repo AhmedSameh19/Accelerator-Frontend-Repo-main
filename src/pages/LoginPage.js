@@ -36,7 +36,7 @@ const HERO_PEOPLE = [
     overlapSx: {
       mr: { xs: -10, sm: -12, md: -14 },
       position: 'relative',
-      left: { xs: -68, sm: -112, md: -136 },
+      left: { xs: -45, sm: -112, md: -136 },
     },
   },
   {
@@ -59,7 +59,7 @@ const HERO_PEOPLE = [
     overlapSx: {
       ml: { xs: -8, sm: -10, md: -14 },
       position: 'relative',
-      left: { xs: 52, sm: 87, lg: 108 },
+      left: { xs: 35, sm: 87, lg: 108 },
     },
   },
 ];
@@ -78,7 +78,7 @@ const PortraitLink = memo(function PortraitLink({ person }) {
         zIndex: person.zIndex,
         ...person.overlapSx,
         flex: '0 0 auto',
-        width: { xs: 170, sm: 232, md: 270 },
+        width: { xs: 130, sm: 232, md: 270 },
         height: '100%',
         alignSelf: 'stretch',
         textDecoration: 'none',
@@ -264,8 +264,11 @@ const LoginPage = () => {
         bgcolor: '#1976d2',
         background: LOGIN_PAGE_MAIN_GRADIENT,
         position: 'relative',
+        width: '100vw',
+        maxWidth: '100vw',
         /* hidden clips drop-shadows / blurred halos → hard vertical/horizontal seams */
-        overflow: 'visible',
+        overflowX: 'hidden',
+        overflowY: 'auto',
         '&::before': {
           content: '""',
           position: 'absolute',
