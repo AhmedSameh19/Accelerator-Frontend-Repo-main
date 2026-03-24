@@ -30,7 +30,6 @@ export function useInterviewHandlers() {
       return updatedData;
     });
   }, []);
-unlink
 
   const handleInterviewStatusChange = useCallback((appId, value, currentData) => {
     setInterviewData(prev => {
@@ -58,7 +57,6 @@ unlink
       return updatedData;
     });
   }, []);
-unlink
 
   const handleRejectionReasonChange = useCallback((appId, value, currentData) => {
     setInterviewData(prev => {
@@ -85,7 +83,6 @@ unlink
       return updatedData;
     });
   }, []);
-unlink
 
   const loadInterviewData = useCallback((apps) => {
     const loadedData = {};
@@ -102,7 +99,6 @@ unlink
     });
     setInterviewData(loadedData);
   }, []);
-unlink
 
   return {
     interviewData,
