@@ -1,3 +1,6 @@
+/**
+ * Calendar — visits and events, Google Calendar OAuth/events, and Market Research follow-up sync.
+ */
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Paper, Grid, Dialog, DialogTitle,

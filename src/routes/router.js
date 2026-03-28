@@ -91,7 +91,7 @@ export const router = createBrowserRouter(
       errorElement: <RouteErrorFallback />,
     },
     {
-      path: '/calendar',
+      path: '/calendar', // Google Calendar + MR visits (CalendarPage)
       element: protectedLayoutRoute(<CalendarPage />),
       errorElement: <RouteErrorFallback />,
     },
@@ -121,7 +121,7 @@ export const router = createBrowserRouter(
       errorElement: <RouteErrorFallback />,
     },
     {
-      path: '/market-research',
+      path: '/market-research', // Podio-backed companies (MarketResearchPage)
       element: protectedLayoutRoute(<MarketResearchPage />),
       errorElement: <RouteErrorFallback />,
     },
