@@ -5,7 +5,7 @@ import { leadsApi } from '../../api/services/leadsApi';
 export function useLeadsCursorFetch({ homeLcId, hostLcId, mode } = {}) {
   const fetchSeqRef = useRef(0);
   const inFlightRef = useRef(false);
-  const nextCursorRef = useRef(null);
+  const nextPageRef = useRef(1);
   const pendingRef = useRef(null);
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,7 @@ export function useLeadsCursorFetch({ homeLcId, hostLcId, mode } = {}) {
           value: effectiveLcId,
         });
         console.warn('💡 [useLeadsCursorFetch] Cannot fetch leads without LC ID. Check user LC configuration.');
-        nextCursorRef.current = null;
+        nextPageRef.current = 1;
         pendingRef.current = null;
         setHasMore(false);
         setLeads([]);
@@ -50,30 +50,27 @@ export function useLeadsCursorFetch({ homeLcId, hostLcId, mode } = {}) {
         setLoading(true);
         setError(null);
         if (reset) {
-          nextCursorRef.current = null;
+          nextPageRef.current = 1;
           setHasMore(false);
           setLeads([]);
         }
 
-        const limit = 10;
-        let page;
+        const limit = 20;
+        let pageData;
         try {
           if (effectiveMode === 'icx') {
-            console.log('🔍 [useLeadsCursorFetch] Fetching iCX leads for hostLcId:', effectiveLcId);
-            page = await leadsApi.getICXLeads({
+            pageData = await leadsApi.getICXLeads({
               host_lc_id: effectiveLcId,
               limit,
-              cursor: nextCursorRef.current,
+              page: nextPageRef.current,
             });
           } else {
-            console.log('🔍 [useLeadsCursorFetch] Fetching leads for homeLcId:', effectiveLcId);
-            page = await leadsApi.getLeads({
+            pageData = await leadsApi.getLeads({
               home_lc_id: effectiveLcId,
               limit,
-              cursor: nextCursorRef.current,
+              page: nextPageRef.current,
             });
           }
-          console.log('🔍 [useLeadsCursorFetch] Received page:', page);
         } catch (e) {
           console.error('❌ [useLeadsCursorFetch] Error fetching leads:', e);
           if (fetchSeqRef.current === fetchSeq) {
@@ -86,16 +83,21 @@ export function useLeadsCursorFetch({ homeLcId, hostLcId, mode } = {}) {
         if (fetchSeqRef.current !== fetchSeq) return;
 
         // Handle different response structures
-        const rows = page?.items || page?.data || page?.leads || (Array.isArray(page) ? page : []);
-        console.log('🔍 [useLeadsCursorFetch] Extracted rows:', rows.length);
+        const rows = pageData?.data || pageData?.items || pageData?.leads || (Array.isArray(pageData) ? pageData : []);
 
         setLeads((prev) => {
           if (fetchSeqRef.current !== fetchSeq) return prev;
           return reset ? rows : [...prev, ...rows];
         });
 
-        nextCursorRef.current = page?.next_cursor ?? page?.cursor ?? null;
-        setHasMore(Boolean(nextCursorRef.current) && rows.length > 0);
+        if (pageData?.pagination) {
+            setHasMore(pageData.pagination.hasNextPage);
+            nextPageRef.current = pageData.pagination.hasNextPage ? nextPageRef.current + 1 : null;
+        } else {
+            // Fallback for old endpoints / mock data
+            setHasMore(rows.length === limit);
+            nextPageRef.current = rows.length === limit ? nextPageRef.current + 1 : null;
+        }
       } finally {
         inFlightRef.current = false;
         if (fetchSeqRef.current === fetchSeq) setLoading(false);
@@ -118,7 +120,7 @@ export function useLeadsCursorFetch({ homeLcId, hostLcId, mode } = {}) {
 
   const loadMore = useCallback(async () => {
     if (!effectiveLcId) return;
-    if (!nextCursorRef.current) return;
+    if (!nextPageRef.current) return;
     await fetchNextPage({ reset: false });
   }, [fetchNextPage, effectiveLcId]);
 

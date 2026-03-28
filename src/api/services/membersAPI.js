@@ -44,10 +44,27 @@ export const getSyncPersonId = async (accessToken) => {
 export const fetchMyReports = async (accessToken) => {
   if (!accessToken) return [];
   try {
-    const response = await api.get('members/me/reports', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    return Array.isArray(response.data) ? response.data : [];
+    let allMembers = [];
+    let page = 1;
+    let hasNextPage = true;
+    while (hasNextPage) {
+      const response = await api.get('members/me/reports', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { page, limit: 100 }
+      });
+      const resData = response.data;
+      if (resData && resData.data) {
+        allMembers = allMembers.concat(resData.data);
+        hasNextPage = resData.pagination?.hasNextPage || false;
+        page++;
+      } else if (Array.isArray(resData)) {
+        allMembers = allMembers.concat(resData);
+        hasNextPage = false;
+      } else {
+        hasNextPage = false;
+      }
+    }
+    return allMembers;
   } catch (e) {
     console.error('Error fetching my reports:', e);
     return [];
@@ -56,6 +73,30 @@ export const fetchMyReports = async (accessToken) => {
 
 export const fetchActiveMembers = async (home_lc_id, reports_to_expa_person_id, options = {}) => {
   try {
+    let allMembers = [];
+    let page = 1;
+    let hasNextPage = true;
+    while (hasNextPage) {
+      const params = { page, limit: 100 };
+      if (options.alt_person_id) params.alt_person_id = options.alt_person_id;
+      const response = await api.get(
+        `members/by-lc/${home_lc_id}/reports-to/${reports_to_expa_person_id}`,
+        { params }
+      );
+      const resData = response.data;
+      if (resData && resData.data) {
+        allMembers = allMembers.concat(resData.data);
+        hasNextPage = resData.pagination?.hasNextPage || false;
+        page++;
+      } else if (Array.isArray(resData)) {
+        allMembers = allMembers.concat(resData);
+        hasNextPage = false;
+      } else {
+        hasNextPage = false;
+      }
+    }
+    return allMembers;
+  } catch (error) {
     const params = {};
     if (options.alt_person_id) params.alt_person_id = options.alt_person_id;
     const response = await api.get(
@@ -73,8 +114,24 @@ export const fetchActiveMembers = async (home_lc_id, reports_to_expa_person_id, 
 export const fetchMembersByLc = async (home_lc_id) => {
   if (!home_lc_id) return [];
   try {
-    const response = await api.get(`members/by-lc/${home_lc_id}`);
-    return Array.isArray(response.data) ? response.data : [];
+    let allMembers = [];
+    let page = 1;
+    let hasNextPage = true;
+    while (hasNextPage) {
+      const response = await api.get(`members/by-lc/${home_lc_id}`, { params: { page, limit: 100 } });
+      const resData = response.data;
+      if (resData && resData.data) {
+        allMembers = allMembers.concat(resData.data);
+        hasNextPage = resData.pagination?.hasNextPage || false;
+        page++;
+      } else if (Array.isArray(resData)) {
+        allMembers = allMembers.concat(resData);
+        hasNextPage = false;
+      } else {
+        hasNextPage = false;
+      }
+    }
+    return allMembers;
   } catch (error) {
     console.error('Error fetching members by LC:', error);
     return [];
@@ -83,6 +140,7 @@ export const fetchMembersByLc = async (home_lc_id) => {
 
 const normalizeMembersList = (data) => {
   if (Array.isArray(data)) return data;
+  if (data?.data && Array.isArray(data.data)) return data.data;
   // Some backends return {} when empty
   if (data && typeof data === 'object') return [];
   return [];

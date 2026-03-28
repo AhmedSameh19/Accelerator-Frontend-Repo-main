@@ -242,7 +242,9 @@ const marketResearchAPI = {
    */
   getFromBackend: async (params = {}) => {
     try {
-      const requestParams = { limit: params.limit ?? 500, offset: params.offset ?? 0 };
+      const limit = Math.min(params.limit ?? 100, 100);
+      const page = params.offset !== undefined ? Math.floor(params.offset / limit) + 1 : 1;
+      const requestParams = { limit, page };
       if (params.lc_id != null) requestParams.lc_id = params.lc_id;
       const response = await backendApi.get('/market-research', { params: requestParams, timeout: 45000 });
       return response.data;

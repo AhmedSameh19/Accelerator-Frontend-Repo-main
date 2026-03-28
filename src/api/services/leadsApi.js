@@ -80,22 +80,10 @@ api.interceptors.response.use(
 // Leads API functions
 export const leadsApi = {
   // Get all leads with optional filters
-  getLeads: async ({ home_lc_id, limit = 50, cursor = null, skip } = {}) => {
+  getLeads: async ({ home_lc_id, limit = 50, page = 1 } = {}) => {
     if (home_lc_id == null) throw new Error('home_lc_id is required');
 
-    const params = { home_lc_id: Number(home_lc_id), limit: Number(limit) };
-
-    // preferred: cursor pagination
-    if (typeof cursor === 'string' && cursor.length) {
-      // Support opaque cursor tokens (if backend returns encoded cursor)
-      params.cursor = cursor;
-    } else if (cursor?.created_at && cursor?.expa_person_id) {
-      params.cursor_created_at = cursor.created_at;
-      params.cursor_expa_person_id = cursor.expa_person_id;
-    } else if (skip !== undefined) {
-      // fallback: offset pagination
-      params.skip = Number(skip);
-    }
+    const params = { home_lc_id: Number(home_lc_id), limit: Number(limit), page: Number(page) };
 
     try {
       console.log('🔍 [leadsApi] Fetching leads with params:', params);
@@ -150,21 +138,10 @@ export const leadsApi = {
 
   // Get iCX leads (applications) scoped by host LC
   // Backend: GET /api/v1/icx/leads?host_lc_id=...&cursor_created_at=...&cursor_application_id=...
-  getICXLeads: async ({ host_lc_id, limit = 50, cursor = null, skip } = {}) => {
+  getICXLeads: async ({ host_lc_id, limit = 50, page = 1 } = {}) => {
     if (host_lc_id == null) throw new Error('host_lc_id is required');
 
-    const params = { host_lc_id: String(host_lc_id), limit: Number(limit) };
-
-    // preferred: cursor pagination
-    if (typeof cursor === 'string' && cursor.length) {
-      params.cursor = cursor;
-    } else if (cursor?.created_at && cursor?.application_id) {
-      params.cursor_created_at = cursor.created_at;
-      params.cursor_application_id = cursor.application_id;
-    } else if (skip !== undefined) {
-      // fallback: offset pagination
-      params.skip = Number(skip);
-    }
+    const params = { host_lc_id: String(host_lc_id), limit: Number(limit), page: Number(page) };
 
     try {
       console.log('🔍 [leadsApi] Fetching iCX leads with params:', params);

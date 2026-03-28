@@ -320,13 +320,30 @@ function processApplicationData(data) {
 // }
 async function getRealizations(lcCode) {
   try {
-    // NOTE: Backend redirects `/realizations` -> `/realizations/` with a 307 that may downgrade to http
-    // if proxy headers aren't set correctly. Call `/realizations/` directly to avoid redirect.
-    const response = await axios.get(`${API_BASE_URL}/realizations/`, {
-      params: { home_lc_id: lcCode }
-    });
-    console.log('Realizations fetched successfully:', response.data);
-    return response.data.items;
+    let allItems = [];
+    let page = 1;
+    let hasNextPage = true;
+    while (hasNextPage) {
+      const response = await axios.get(`${API_BASE_URL}/realizations/`, {
+        params: { home_lc_id: lcCode, page, limit: 100 }
+      });
+      const data = response.data;
+      if (data && data.data) {
+        allItems = allItems.concat(data.data);
+        hasNextPage = data.pagination?.hasNextPage || false;
+        page++;
+      } else if (data && data.items) {
+        allItems = allItems.concat(data.items);
+        hasNextPage = false;
+      } else if (Array.isArray(data)) {
+        allItems = allItems.concat(data);
+        hasNextPage = false;
+      } else {
+        hasNextPage = false;
+      }
+    }
+    console.log('Realizations fetched successfully:', allItems.length);
+    return allItems;
   } catch (error) {
     console.error('Error fetching realizations:', error);
     throw error;
@@ -469,12 +486,29 @@ async function getICXRealizations(hostLcId) {
   if (hostLcId == null) throw new Error('host_lc_id is required');
 
   try {
-    const response = await axios.get(`${API_BASE_URL}/icx/realizations/`, {
-      params: { host_lc_id: String(hostLcId) },
-    });
-
-    const items = response?.data?.items ?? response?.data ?? [];
-    return Array.isArray(items) ? items : [];
+    let allItems = [];
+    let page = 1;
+    let hasNextPage = true;
+    while (hasNextPage) {
+      const response = await axios.get(`${API_BASE_URL}/icx/realizations/`, {
+        params: { host_lc_id: String(hostLcId), page, limit: 100 },
+      });
+      const data = response.data;
+      if (data && data.data) {
+        allItems = allItems.concat(data.data);
+        hasNextPage = data.pagination?.hasNextPage || false;
+        page++;
+      } else if (data && data.items) {
+        allItems = allItems.concat(data.items);
+        hasNextPage = false;
+      } else if (Array.isArray(data)) {
+        allItems = allItems.concat(data);
+        hasNextPage = false;
+      } else {
+        hasNextPage = false;
+      }
+    }
+    return allItems;
   } catch (error) {
     console.error('Error fetching iCX realizations:', error);
     throw error;
