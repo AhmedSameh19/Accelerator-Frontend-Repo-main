@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { CRM_API_V1_BASE } from '../../constants/crmApiBase';
 import { getCrmAccessToken } from '../../utils/crmToken';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://api-accelerator.aiesec.org.eg/api/v1';
+const API_BASE_URL = CRM_API_V1_BASE;
 
 // Create axios instance with auth interceptor
 const api = axios.create({

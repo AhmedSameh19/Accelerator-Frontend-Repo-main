@@ -797,44 +797,30 @@ useEffect(() => {
   }, [searchTerm, selectedIndustry, selectedSize, selectedAccountType, selectedStatus, usePodioData, handleLocalSearch]);
 
   const handleSaveCompany = async () => {
+    if (!selectedCompany?.id) {
+      handleCloseDialog();
+      return;
+    }
     const now = new Date().toISOString();
     const officeId = getOfficeId(currentUser);
-  
+
     try {
-      let response;
-      if (selectedCompany) {
-        // Update existing company
-        response = await marketResearchAPI.updateCompany(selectedCompany.id, {
-          ...newCompany,
-          updated_at: now,
-          created_by_lc: officeId
-        });
-  
-        setAllCompanies(prev =>
-          prev.map(comp => (comp.id === selectedCompany.id ? response.data : comp))
-        );
-        setCompanies(prev =>
-          prev.map(comp => (comp.id === selectedCompany.id ? response.data : comp))
-        );
-      } else {
-        // Add new company
-        response = await marketResearchAPI.addCompany({
-          ...newCompany,
-          created_at: now,
-          updated_at: now,
-          currentStep: 0,
-          comments: [],
-          followups: [],
-          created_by_lc: officeId
-        });
-  
-        setAllCompanies(prev => [...prev, response.data]);
-        setCompanies(prev => [...prev, response.data]); // <== FIXED
-      }
-  
+      const response = await marketResearchAPI.updateCompany(selectedCompany.id, {
+        ...newCompany,
+        updated_at: now,
+        created_by_lc: officeId,
+      });
+
+      setAllCompanies((prev) =>
+        prev.map((comp) => (comp.id === selectedCompany.id ? response.data : comp))
+      );
+      setCompanies((prev) =>
+        prev.map((comp) => (comp.id === selectedCompany.id ? response.data : comp))
+      );
+
       handleCloseDialog();
     } catch (err) {
-      console.error("Error saving company:", err);
+      console.error('Error saving company:', err);
     }
   };
   
@@ -896,13 +882,6 @@ useEffect(() => {
   // Add status filter handler
   const handleStatusChange = (event) => {
     setSelectedStatus(event.target.value);
-  };
-
-  const handleAddCompany = () => {
-    setSelectedCompany(null);
-    setNewCompany(initialCompanyState);
-    setActiveStep(0);
-    setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
@@ -3897,26 +3876,6 @@ useEffect(() => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={2}>
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleAddCompany}
-                sx={{ 
-                  height: '56px',
-                  borderRadius: 2,
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                    transform: 'translateY(-1px)',
-                  },
-                }}
-              >
-                Add Company
-              </Button>
-            </Grid>
           </Grid>
         </CardContent>
       </Card>
@@ -4218,7 +4177,7 @@ useEffect(() => {
       </Card>
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>{selectedCompany ? 'Edit Company' : 'Add New Company'}</DialogTitle>
+        <DialogTitle>Edit Company</DialogTitle>
         <DialogContent dividers>
           <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
             {steps.map((step, index) => (
@@ -4255,7 +4214,7 @@ useEffect(() => {
               disabled={!isStepComplete(activeStep)}
               startIcon={<SaveIcon />}
             >
-              {selectedCompany ? 'Save Changes' : 'Add Company'}
+              Save Changes
             </Button>
           )}
         </DialogActions>

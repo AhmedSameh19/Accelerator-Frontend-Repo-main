@@ -1,12 +1,11 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { CRM_API_V1_BASE } from '../../constants/crmApiBase';
 import { getFriendlyErrorMessage } from '../../utils/errorHandler';
-
-const API_BASE_URL = 'https://api-accelerator.aiesec.org.eg/api/v1';
 
 // Create axios instance
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: CRM_API_V1_BASE,
   headers: {
     'Content-Type': 'application/json',
   },

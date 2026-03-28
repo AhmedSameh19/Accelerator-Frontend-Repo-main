@@ -1,47 +1,39 @@
+const path = require('path');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
-module.exports = function(app) {
+// CRA usually injects REACT_APP_*; ensure .env is read if proxy runs without them.
+try {
+  // eslint-disable-next-line import/no-extraneous-dependencies, global-require
+  require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+} catch (_) {
+  /* optional */
+}
+
+const proxyTarget = process.env.REACT_APP_PROXY_TARGET || 'http://localhost:8000';
+
+module.exports = function (app) {
   app.use(
     '/api',
     createProxyMiddleware({
-      target: 'https://api-accelerator.aiesec.org.eg/api/v1', // Local backend
+      target: proxyTarget,
       changeOrigin: true,
-      secure: false, // No SSL for localhost
-      logLevel: 'debug',
-      // Don't rewrite the path - keep /api/v1/... as is
-      pathRewrite: {
-        '^/api': '/api' // Keep the /api prefix
-      },
-      onProxyReq: (proxyReq, req, res) => {
-        // Log the proxy request for debugging
-        console.log('🔄 [Proxy] Proxying request:', {
-          originalUrl: req.url,
-          proxiedUrl: proxyReq.path,
-          target: 'https://api-accelerator.aiesec.org.eg/api/v1',
-          method: req.method
-        });
-      },
-      onProxyRes: (proxyRes, req, res) => {
-        // Log the proxy response for debugging
-        const statusCode = proxyRes.statusCode;
-        if (statusCode >= 400) {
-          console.error(`❌ [Proxy] Backend error ${statusCode}:`, {
-            url: req.url,
-            statusCode: statusCode,
-            statusMessage: proxyRes.statusMessage,
-            headers: proxyRes.headers
-          });
-        } else {
-          console.log('✅ [Proxy] Proxy response:', {
-            statusCode: statusCode,
-            url: req.url
-          });
-        }
+      secure: false,
+      logLevel: 'warn',
+      pathRewrite: (path) => {
+        if (path.startsWith('/api/v1')) return path;
+        return path.replace(/^\/api/, '/api/v1');
       },
       onError: (err, req, res) => {
-        console.error('❌ [Proxy] Proxy error:', err.message);
-        console.error('❌ [Proxy] Request URL:', req.url);
-      }
+        console.error('[Proxy]', err.message, req.url);
+        if (res && !res.headersSent) {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              detail: `Proxy error — is the backend running on ${proxyTarget}?`,
+            })
+          );
+        }
+      },
     })
   );
 };

@@ -3,7 +3,10 @@ import Cookies from 'js-cookie';
 import { getCrmAccessToken } from '../../utils/crmToken';
 import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 
-const API_BASE_URL = process.env.REACT_APP_FASTAPI_BASE || 'https://api-accelerator.aiesec.org.eg/api/v1';
+const API_BASE_URL =
+  process.env.REACT_APP_FASTAPI_BASE ||
+  process.env.REACT_APP_API_BASE_URL ||
+  'http://localhost:8000/api/v1';
 
 // Create axios instance
 const api = axios.create({

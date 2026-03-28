@@ -1,16 +1,12 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import { CRM_API_V1_BASE } from '../../constants/crmApiBase';
 import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 import { getCrmAccessToken } from '../../utils/crmToken';
 
-const API_BASE_URL = 'https://api-accelerator.aiesec.org.eg/api/v1';
-
-// FastAPI backend base URL for market research endpoints
-const FASTAPI_BASE = process.env.REACT_APP_FASTAPI_BASE || 'https://api-accelerator.aiesec.org.eg/api/v1';
-
 // Create axios instance for legacy API
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: CRM_API_V1_BASE,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -19,7 +15,7 @@ const api = axios.create({
 
 // Create axios instance for FastAPI backend (market research)
 const backendApi = axios.create({
-  baseURL: FASTAPI_BASE,
+  baseURL: CRM_API_V1_BASE,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
 });
@@ -73,19 +69,6 @@ backendApi.interceptors.response.use(
 );
 
 const marketResearchAPI = {
-  addCompany: async (companyData) => {
-    try {
-
-      const id = Cookies.get('person_id');
-      const data = { ...companyData, created_by: id, };
-      console.log("ALOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO: ", data);
-      const response = await api.post('/marketResearch/companies', data);
-      return response.data; // returns the saved company
-    } catch (error) {
-      console.error('Error adding/updating company:', error);
-      throw error;
-    }
-  },
   getCompanies: async () => {
     try {
 
