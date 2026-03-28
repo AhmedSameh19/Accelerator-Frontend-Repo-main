@@ -97,14 +97,6 @@ export const fetchActiveMembers = async (home_lc_id, reports_to_expa_person_id, 
     }
     return allMembers;
   } catch (error) {
-    const params = {};
-    if (options.alt_person_id) params.alt_person_id = options.alt_person_id;
-    const response = await api.get(
-      `members/by-lc/${home_lc_id}/reports-to/${reports_to_expa_person_id}`,
-      { params }
-    );
-    return response.data;
-  } catch (error) {
     console.error('Error fetching active members:', error);
     throw error;
   }
