@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         const user = JSON.parse(storedUser);
-        
+
         // Load LC from localStorage if not already in user object
         if (!user.lc) {
           const storedLC = localStorage.getItem('userLC');
@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
             user.lc = storedLC;
           }
         }
-        
+
         setCurrentUser(user);
         setIsAdmin(user.role === 'admin');
       }
@@ -45,15 +45,15 @@ export const AuthProvider = ({ children }) => {
   const login = async (accessToken, userRole = null, userLC = null, userName = null, currentOffices = null) => {
     try {
       console.log('🔍 [AuthContext] login() called with:', { accessToken: !!accessToken, userRole, userLC, userName, currentOffices });
-      
+
       // For OAuth login, we expect an access token
       if (accessToken) {
         const personId = Cookies.get('person_id');
         const userEmail = Cookies.get('user_email');
-        
+
         console.log('🔍 [AuthContext] Person ID from cookie:', personId);
         console.log('🔍 [AuthContext] User email from cookie:', userEmail);
-        
+
         const oauthUser = {
           id: personId || 'oauth-user',
           email: userEmail || 'user@aiesec.org',
@@ -86,16 +86,16 @@ export const AuthProvider = ({ children }) => {
 
         setCurrentUser(oauthUser);
         setIsAdmin(userRole === 'admin' || userRole === 'MCVP' || userRole === 'MCVP');
-        
+
         console.log('🔍 [AuthContext] OAuth login successful:', oauthUser);
         return true;
       }
-      
+
       // Fallback to admin login for backward compatibility
       if (typeof accessToken === 'string' && accessToken.includes('@')) {
         const email = accessToken;
         const password = userRole; // In this case, userRole is actually the password
-        
+
         if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
           const adminUser = {
             id: 'admin-1',
@@ -123,7 +123,7 @@ export const AuthProvider = ({ children }) => {
           return true;
         }
       }
-      
+
       throw new Error('Invalid credentials');
     } catch (error) {
       console.error('❌ [AuthContext] Login error:', error);
@@ -135,12 +135,12 @@ export const AuthProvider = ({ children }) => {
     // Clear team members cache
     localStorage.removeItem('team_members');
     localStorage.removeItem('team_members_timestamp');
-    
+
     // Clear user data
     localStorage.removeItem('user');
     localStorage.removeItem('isAdmin');
     localStorage.removeItem('userLC');
-    
+
     setCurrentUser(null);
     setIsAdmin(false);
   };

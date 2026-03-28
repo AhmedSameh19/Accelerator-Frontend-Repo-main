@@ -51,6 +51,7 @@ import { useSnackbarContext } from '../../context/SnackbarContext';
 // Utilities
 import { LC_CODES, MC_EGYPT_CODE } from '../../lcCodes';
 import { fileToBase64 } from '../../utils/fileToBase64';
+import { matchSearchTerm } from '../../utils/searchUtils';
 
 // Components
 import OGXRealizationsView from './ogx/OGXRealizationsView';
@@ -72,14 +73,14 @@ function getOfficeId(currentUser) {
   if (currentUser?.current_offices?.[0]?.id) {
     return currentUser.current_offices[0].id;
   }
-  
+
   // Fallback: Try to find by LC name
   const lcName = currentUser?.lc || localStorage.getItem('userLC');
   if (lcName && Array.isArray(LC_CODES)) {
     const found = LC_CODES.find((lc) => lc.name === lcName);
     if (found) return found.id;
   }
-  
+
   return null;
 }
 
@@ -183,19 +184,19 @@ function OGXRealizationsPage({ crmTypeOverride }) {
       setLoading(true);
       setError(null);
       const lcCode = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
-      
+
       if (!lcCode) {
         showWarning('Unable to determine your office. Please try logging in again.');
         setLeads([]);
         setOriginalLeads([]);
         return;
       }
-      
+
       const data = await getRealizations(lcCode);
       console.log('Fetched OGX realizations:', data);
       setLeads(data || []);
       setOriginalLeads(data || []);
-      
+
       if (!data || data.length === 0) {
         showInfo('No realizations found. They will appear here once available.');
       }
@@ -204,7 +205,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
       setError('Unable to load realizations');
       setLeads([]);
       setOriginalLeads([]);
-      
+
       // User-friendly error messages based on error type
       let userMessage = err.friendlyMessage || 'Unable to load realizations. Please try again.';
       if (err?.response?.status === 401 || err?.response?.status === 403) {
@@ -214,7 +215,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
       } else if (err?.message?.includes('Network') || err?.code === 'ERR_NETWORK') {
         userMessage = 'Unable to connect to the server. Please check your internet connection.';
       }
-      
+
       showWarning(userMessage);
     } finally {
       setLoading(false);
@@ -276,13 +277,13 @@ function OGXRealizationsPage({ crmTypeOverride }) {
    */
   const handleBulkAssignConfirm = async () => {
     if (!selectedMember || selectedLeads.length === 0 || bulkAssignLoading) return;
-    
+
     setBulkAssignLoading(true);
     try {
       // Find selected member details
       const selectedMemberData = members.find(m => m.expa_person_id === selectedMember);
       const memberName = selectedMemberData?.full_name || selectedMemberData?.person?.name || 'Unknown Member';
-      
+
       await bulkAssignLeads({
         expa_person_ids: selectedLeads,
         member_id: selectedMember,
@@ -300,24 +301,24 @@ function OGXRealizationsPage({ crmTypeOverride }) {
         }
         return lead;
       });
-      
+
       setLeads(updatedLeads);
       setOriginalLeads(updatedLeads);
 
       // Update assignments data
       setRefreshKey((prev) => prev + 1);
-      
+
       // Show success message
       const assignCount = selectedLeads.length;
       showSuccess(`Successfully assigned ${assignCount} realization${assignCount > 1 ? 's' : ''} to ${memberName}`);
-      
+
       // Clear selections and close dialog
       setSelectedLeads([]);
       handleBulkAssignClose();
-      
+
     } catch (e) {
       console.error('Error bulk assigning leads:', e);
-      
+
       // User-friendly error messages
       let userMessage = 'Unable to complete the assignment. Please try again.';
       if (e?.response?.status === 401 || e?.response?.status === 403) {
@@ -325,7 +326,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
       } else if (e?.message?.includes('Network') || e?.code === 'ERR_NETWORK') {
         userMessage = 'Connection lost. Please check your internet and try again.';
       }
-      
+
       showWarning(userMessage);
     } finally {
       setBulkAssignLoading(false);
@@ -339,14 +340,14 @@ function OGXRealizationsPage({ crmTypeOverride }) {
 
   /** Unique host MCs from the original leads */
   const uniqueHostMCs = getUniqueHostMCs(originalLeads || []);
-  
+
   /** Unique host LCs from the original leads */
   const uniqueHostLCs = getUniqueHostLCs(originalLeads || []);
 
   // ===========================================================================
   // FILTER HANDLERS
   // ===========================================================================
- 
+
   // Re-run search when filters change
   useEffect(() => {
     handleSearch();
@@ -365,75 +366,80 @@ function OGXRealizationsPage({ crmTypeOverride }) {
    * Filter leads based on current filter state
    * @param {Object} [searchDateFilter=dateRange] - Date filter to apply
    */
+  /**
+   * Filter leads based on current filter state
+   * @param {Object} [searchDateFilter=dateRange] - Date filter to apply
+   */
   const handleSearch = (searchDateFilter = dateRange) => {
     const filteredLeads = originalLeads.filter((lead) => {
-      // Date range filter
+      if (!lead) return false;
+
+      // 1. Date range filter
       if (
         searchDateFilter?.field &&
         searchDateFilter?.startDate &&
         searchDateFilter?.endDate
       ) {
-        const leadDate = new Date(lead[searchDateFilter.field]);
-        if (leadDate < searchDateFilter.startDate || leadDate > searchDateFilter.endDate) {
+        const leadDateStr = lead[searchDateFilter.field] || lead.created_at || lead.updated_at;
+        if (!leadDateStr) return false;
+
+        const leadDate = new Date(leadDateStr);
+        if (isNaN(leadDate.getTime())) return false;
+
+        const start = new Date(searchDateFilter.startDate);
+        const end = new Date(searchDateFilter.endDate);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+
+        if (leadDate < start || leadDate > end) {
           return false;
         }
       }
 
-      if (!lead) return false;
+      // 2. Search term filter
+      const searchFields = [
+        'id', 'opportunityId', 'oppId', 'opportunity_id', 'expa_person_id',
+        'fullName', 'full_name', 'phone', 'contact_number', 'email'
+      ];
+      if (!matchSearchTerm(lead, searchTerm, searchFields)) {
+        return false;
+      }
 
-      // Get field values (handle both camelCase and snake_case)
-      const leadFullName = (lead.fullName || lead.full_name || '').toLowerCase();
-      const leadPhone = (lead.phone || lead.contact_number || '').toLowerCase();
+      // 3. Host MC filter
       const leadHostMC = lead.hostMC || lead.host_mc_name || '';
+      if (selectedCountry && selectedCountry !== 'Show All' && leadHostMC !== selectedCountry) {
+        return false;
+      }
+
+      // 4. Host LC filter
       const leadHostLC = lead.hostLC || lead.host_lc_name || '';
-      const leadHomeLC = lead.homeLC || lead.home_lc_name || '';
-      const leadHomeMC = lead.homeMC || lead.home_mc_name || '';
+      if (selectedHostLC && selectedHostLC !== 'Show All' && leadHostLC !== selectedHostLC) {
+        return false;
+      }
+
+      // 5. Product/Programme filter
       const leadProgramme = lead.programme || '';
+      if (selectedExchangeType && leadProgramme !== selectedExchangeType) {
+        return false;
+      }
+
+      // 6. Status filter
       const leadStatus = (lead.status || '').toLowerCase();
+      if (selectedStatus && selectedStatus !== 'Show All' && leadStatus !== selectedStatus.toLowerCase()) {
+        return false;
+      }
 
-      // Search term filter (ID, name, phone)
-      const searchLower = searchTerm.toLowerCase();
-      const matchesSearch = !searchTerm ||
-        (lead.id?.toString() || '').includes(searchTerm) ||
-        (lead.opportunityId?.toString() || '').includes(searchTerm) ||
-        (lead.oppId?.toString() || '').includes(searchTerm) ||
-        (lead.opportunity_id?.toString() || '').includes(searchTerm) ||
-        (lead.expa_person_id?.toString() || '').includes(searchTerm) ||
-        leadFullName.includes(searchLower) ||
-        leadPhone.includes(searchLower) ||
-        `${getCountryCode(leadHomeMC)} ${leadPhone}`.toLowerCase().includes(searchLower);
-
-      // Host MC filter
-      const matchesMC =
-        selectedCountry === 'Show All' ||
-        !selectedCountry ||
-        leadHostMC === selectedCountry;
-
-      // Host LC filter
-      const matchesHostLC =
-        selectedHostLC === 'Show All' ||
-        !selectedHostLC ||
-        leadHostLC === selectedHostLC;
-
-      // Product/Programme filter
-      const matchesProduct = !selectedExchangeType || leadProgramme === selectedExchangeType;
-
-      // Status filter
-      const matchesStatus =
-        selectedStatus === 'Show All' ||
-        !selectedStatus ||
-        leadStatus === selectedStatus.toLowerCase();
-
-      // Assigned Member filter
+      // 7. Assigned Member filter
       const leadAssignedMemberId = lead.assigned_member_id || '';
-      const matchesAssignedMember =
-        selectedAssignedMember === 'all' ||
-        !selectedAssignedMember ||
-        (selectedAssignedMember === 'unassigned'
-          ? !leadAssignedMemberId
-          : leadAssignedMemberId === selectedAssignedMember);
+      if (selectedAssignedMember && selectedAssignedMember !== 'all') {
+        if (selectedAssignedMember === 'unassigned') {
+          if (leadAssignedMemberId) return false;
+        } else if (String(leadAssignedMemberId) !== String(selectedAssignedMember)) {
+          return false;
+        }
+      }
 
-      return matchesSearch && matchesMC && matchesHostLC && matchesProduct && matchesStatus && matchesAssignedMember;
+      return true;
     });
 
     setLeads(filteredLeads);
@@ -571,20 +577,20 @@ function OGXRealizationsPage({ crmTypeOverride }) {
   const sortData = (data, sortKey, sortOrder) => {
     return [...data].sort((a, b) => {
       const orderModifier = sortOrder === 'asc' ? 1 : -1;
-      
+
       // Helper function to safely compare values
       const safeCompare = (aVal, bVal) => {
         // Handle null/undefined values
         if (aVal == null && bVal == null) return 0;
         if (aVal == null) return -1;
         if (bVal == null) return 1;
-        
+
         // Convert to strings for comparison
         const aStr = String(aVal);
         const bStr = String(bVal);
         return aStr.localeCompare(bStr);
       };
-      
+
       // Helper function for numeric comparison
       const numericCompare = (aVal, bVal) => {
         const aNum = Number(aVal);
@@ -594,7 +600,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
         if (isNaN(bNum)) return 1;
         return aNum - bNum;
       };
-      
+
       if (sortKey === 'id') {
         return numericCompare(a.id, b.id) * orderModifier;
       } else if (sortKey === 'fullName') {
@@ -640,7 +646,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
   const handleSelectLead = (leadId) => {
     const lead = leads.find(l => l.id === leadId);
     const expaPersonId = lead?.expa_person_id || lead?.expaPerson_id || leadId;
-    
+
     setSelectedLeads((prev) => {
       if (prev.includes(expaPersonId)) {
         return prev.filter((id) => id !== expaPersonId);
@@ -768,34 +774,32 @@ function OGXRealizationsPage({ crmTypeOverride }) {
             <td>${lead.hostMC || '-'}</td>
             <td>${lead.hostLC || '-'}</td>
             <td>
-              <span class="MuiChip-root" style="background-color: ${
-                lead.programme?.toLowerCase() === 'gv'
-                  ? '#F85A40'
-                  : lead.programme?.toLowerCase() === 'gta'
-                    ? '#0CB9C1'
-                    : lead.programme?.toLowerCase() === 'gte'
-                      ? '#F48924'
-                      : '#e0e0e0'
-              } !important; color: white !important; border: none !important; padding: 4px 8px !important; border-radius: 16px !important; font-size: 11px !important; font-weight: 600 !important; display: inline-flex !important; align-items: center !important; margin: 1px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;">
+              <span class="MuiChip-root" style="background-color: ${lead.programme?.toLowerCase() === 'gv'
+              ? '#F85A40'
+              : lead.programme?.toLowerCase() === 'gta'
+                ? '#0CB9C1'
+                : lead.programme?.toLowerCase() === 'gte'
+                  ? '#F48924'
+                  : '#e0e0e0'
+            } !important; color: white !important; border: none !important; padding: 4px 8px !important; border-radius: 16px !important; font-size: 11px !important; font-weight: 600 !important; display: inline-flex !important; align-items: center !important; margin: 1px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;">
                 ${lead.programme || '-'}
               </span>
             </td>
             <td>
-              <span class="MuiChip-root" style="background-color: ${
-                lead.status?.toLowerCase() === 'approved'
-                  ? '#4caf50'
-                  : lead.status?.toLowerCase() === 'realized'
-                    ? '#1976d2'
-                    : lead.status?.toLowerCase() === 'finished'
-                      ? '#ffc107'
-                      : lead.status?.toLowerCase() === 'completed'
+              <span class="MuiChip-root" style="background-color: ${lead.status?.toLowerCase() === 'approved'
+              ? '#4caf50'
+              : lead.status?.toLowerCase() === 'realized'
+                ? '#1976d2'
+                : lead.status?.toLowerCase() === 'finished'
+                  ? '#ffc107'
+                  : lead.status?.toLowerCase() === 'completed'
+                    ? '#ff9800'
+                    : lead.status?.toLowerCase() === 'rejected'
+                      ? '#f44336'
+                      : lead.status?.toLowerCase() === 'on hold'
                         ? '#ff9800'
-                        : lead.status?.toLowerCase() === 'rejected'
-                          ? '#f44336'
-                          : lead.status?.toLowerCase() === 'on hold'
-                            ? '#ff9800'
-                            : '#e0e0e0'
-              } !important; color: white !important; border: none !important; padding: 4px 8px !important; border-radius: 16px !important; font-size: 11px !important; font-weight: 600 !important; display: inline-flex !important; align-items: center !important; margin: 1px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;">
+                        : '#e0e0e0'
+            } !important; color: white !important; border: none !important; padding: 4px 8px !important; border-radius: 16px !important; font-size: 11px !important; font-weight: 600 !important; display: inline-flex !important; align-items: center !important; margin: 1px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;">
                 ${lead.status || '-'}
               </span>
             </td>

@@ -6,7 +6,7 @@ import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 const API_BASE_URL =
   process.env.REACT_APP_FASTAPI_BASE ||
   process.env.REACT_APP_API_BASE_URL ||
-  'http://localhost:8000/api/v1';
+  'https://accelerator.aiesec.eg/api/v1';
 
 // Create axios instance
 const api = axios.create({
@@ -29,12 +29,12 @@ api.interceptors.request.use(
       delete config.headers.Authorization;
       console.warn('⚠️ [leadsApi] No access token found. Request may fail if authentication is required.');
     }
-    
+
     // Add cache-busting headers to prevent browser caching
     config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
     config.headers['Pragma'] = 'no-cache';
     config.headers['Expires'] = '0';
-    
+
     // Log request details for debugging (only in dev mode to reduce noise)
     if (process.env.NODE_ENV === 'development') {
       console.log('🔍 [leadsApi] Request config:', {
@@ -46,7 +46,7 @@ api.interceptors.request.use(
         withCredentials: config.withCredentials
       });
     }
-    
+
     return config;
   },
   (error) => {
@@ -62,7 +62,7 @@ api.interceptors.response.use(
   (error) => {
     // Attach friendly message to the error object
     error.friendlyMessage = getFriendlyErrorMessage(error);
-    
+
     if (error.response) {
       console.error('❌ [leadsApi] Response error:', {
         status: error.response.status,
@@ -72,7 +72,7 @@ api.interceptors.response.use(
     } else {
       console.error('❌ [leadsApi] Network/Setup error:', error.friendlyMessage);
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -103,11 +103,11 @@ export const leadsApi = {
       const token = getCrmAccessToken();
       console.log('🔍 [leadsApi] Has token:', !!token);
       console.log('🔍 [leadsApi] Token preview:', token ? `${token.substring(0, 20)}...` : 'none');
-      
+
       // Add cache-busting and ensure fresh request
       // NOTE: Backend redirects `/leads` -> `/leads/` with a 307 that may downgrade to http
       // if proxy headers aren't set correctly. Call `/leads/` directly to avoid redirect.
-      const { data } = await api.get('/leads/', { 
+      const { data } = await api.get('/leads/', {
         params: {
           ...params,
           _t: Date.now() // Cache busting parameter
@@ -127,7 +127,7 @@ export const leadsApi = {
         console.error('❌ [leadsApi] Response status:', error.response.status);
         console.error('❌ [leadsApi] Response data:', error.response.data);
         console.error('❌ [leadsApi] Response headers:', error.response.headers);
-        
+
         // Handle specific error cases
         if (error.response.status === 401) {
           console.error('❌ [leadsApi] Authentication failed - token may be expired or invalid');
@@ -317,7 +317,7 @@ export const leadsApi = {
       throw error;
     }
   },
-    getFollowUps: async (leadId) => {
+  getFollowUps: async (leadId) => {
     try {
       // Call backend endpoint
       const response = await api.get(`/leads/${leadId}/followups`);
@@ -342,7 +342,7 @@ export const leadsApi = {
     }
   },
 
-    updateFollowUp: async (epId, followUpId, updateData) => {
+  updateFollowUp: async (epId, followUpId, updateData) => {
     try {
       // Call backend endpoint to update follow-up
       const payload = updateData && typeof updateData === 'object'

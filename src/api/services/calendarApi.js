@@ -9,7 +9,7 @@ import { getCrmAccessToken } from '../../utils/crmToken';
 const API_BASE =
   process.env.REACT_APP_FASTAPI_BASE ||
   process.env.REACT_APP_API_BASE_URL ||
-  'http://localhost:8000/api/v1';
+  'https://accelerator.aiesec.eg/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE,

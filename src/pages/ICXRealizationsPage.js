@@ -93,6 +93,7 @@ import { fetchActiveMembers } from '../api/services/membersAPI';
 import { useAuth } from '../context/AuthContext';
 import Cookies from 'js-cookie';
 import { getCrmAccessToken } from '../utils/crmToken';
+import { matchSearchTerm } from '../utils/searchUtils';
 // Constants for the page
 const homeMCs = [
   'Egypt',
@@ -291,7 +292,7 @@ function ICXRealizationsPage() {
    const { currentUser, isAdmin, login } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('');
-  const [selectedLanguage, setSelectedLanguage] = useState('');
+  const [selectedHomeLC, setSelectedHomeLC] = useState('');
   const [selectedHostLC, setSelectedHostLC] = useState('');
   const [selectedExchangeType, setSelectedExchangeType] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
@@ -445,7 +446,7 @@ function ICXRealizationsPage() {
   // Add useEffect to trigger search when filters change
   useEffect(() => {
     handleSearch();
-  }, [searchTerm, selectedCountry, selectedLanguage, selectedExchangeType, selectedStatus]);
+  }, [searchTerm, selectedCountry, selectedHomeLC, selectedExchangeType, selectedStatus]);
 
   useEffect(() => {
     const leadId = selectedLead?.id;
@@ -593,45 +594,68 @@ const getTeamUnderCurrentUser = (members) => {
 
   const handleSearch = (searchDateFilter = dateRange) => {
     const filteredLeads = originalLeads.filter((lead) => {
-      // Apply date filter if field and dates are set
-      if (searchDateFilter?.field && searchDateFilter?.startDate && searchDateFilter?.endDate) {
-        const leadDate = new Date(lead[searchDateFilter.field]);
-        if (leadDate < searchDateFilter.startDate || leadDate > searchDateFilter.endDate) {
+      if (!lead) return false;
+
+      // 1. Date range filter
+      if (
+        searchDateFilter?.field &&
+        searchDateFilter?.startDate &&
+        searchDateFilter?.endDate
+      ) {
+        const leadDateStr = lead[searchDateFilter.field] || lead.created_at || lead.updated_at;
+        if (!leadDateStr) return false;
+        
+        const leadDate = new Date(leadDateStr);
+        if (isNaN(leadDate.getTime())) return false;
+
+        const start = new Date(searchDateFilter.startDate);
+        const end = new Date(searchDateFilter.endDate);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+
+        if (leadDate < start || leadDate > end) {
           return false;
         }
       }
 
-      // Rest of your existing search filters
-      if (!lead) return false;
+      // 2. Search term filter
+      const searchFields = [
+        'id', 'opportunityId', 'oppId', 'opportunity_id', 'expa_person_id',
+        'fullName', 'full_name', 'phone', 'contact_number', 'email'
+      ];
+      if (!matchSearchTerm(lead, searchTerm, searchFields)) {
+        return false;
+      }
 
-      // Search term filter
-      const matchesSearch = 
-        (lead.id?.toString() || '').includes(searchTerm) ||
-        (lead.opportunityId?.toString() || '').includes(searchTerm) ||
-        (lead.oppId?.toString() || '').includes(searchTerm) ||
-        (lead.opportunity_id?.toString() || '').includes(searchTerm) ||
-        (lead.fullName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (lead.phone?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        `${getCountryCode(lead.homeMC || '')} ${lead.phone || ''}`.toLowerCase().includes(searchTerm.toLowerCase());
+      // 3. Home MC filter
+      if (selectedCountry && selectedCountry !== 'Show All' && lead.homeMC !== selectedCountry) {
+        return false;
+      }
 
-      // Home MC filter
-      const matchesMC = selectedCountry === 'Show All' || !selectedCountry || lead.homeMC === selectedCountry;
+      // 4. Home LC filter
+      if (selectedHomeLC && selectedHomeLC !== 'Show All' && lead.homeLC !== selectedHomeLC) {
+        return false;
+      }
 
-      // Home LC filter
-      const matchesLC = selectedLanguage === 'Show All' || !selectedLanguage || lead.homeLC === selectedLanguage;
+      // 5. Host LC filter
+      if (selectedHostLC && selectedHostLC !== 'Show All' && lead.hostLC !== selectedHostLC) {
+        return false;
+      }
 
-      // Host LC filter
-      const matchesHostLC = selectedHostLC === 'Show All' || !selectedHostLC || lead.hostLC === selectedHostLC;
+      // 6. Product filter
+      if (selectedExchangeType && lead.programme !== selectedExchangeType) {
+        return false;
+      }
 
-      // Product filter
-      const matchesProduct = !selectedExchangeType || lead.programme === selectedExchangeType;
+      // 7. Status filter
+      if (selectedStatus && selectedStatus !== 'Show All') {
+        const leadStatus = (lead.status || '').toLowerCase();
+        if (leadStatus !== selectedStatus.toLowerCase()) {
+          return false;
+        }
+      }
 
-      // Status filter - make it case insensitive
-      const matchesStatus = selectedStatus === 'Show All' || 
-                          !selectedStatus || 
-                          (lead.status && lead.status.toLowerCase() === selectedStatus.toLowerCase());
-
-      return matchesSearch && matchesMC && matchesLC && matchesHostLC && matchesProduct && matchesStatus;
+      return true;
     });
 
     setLeads(filteredLeads);
@@ -1177,9 +1201,9 @@ const getTeamUnderCurrentUser = (members) => {
             <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth>
                 <Autocomplete
-                  value={selectedLanguage}
+                  value={selectedHomeLC}
                   onChange={(event, newValue) => {
-                    setSelectedLanguage(newValue);
+                    setSelectedHomeLC(newValue);
                   }}
                   options={['Show All', ...uniqueHomeLCs]}
                   renderInput={(params) => (

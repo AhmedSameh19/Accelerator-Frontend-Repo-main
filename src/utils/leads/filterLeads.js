@@ -1,3 +1,5 @@
+import { matchSearchTerm } from '../searchUtils';
+
 export const filterLeads = ({
   leads,
   searchTerm,
@@ -44,15 +46,12 @@ export const filterLeads = ({
     return Number.isNaN(d.getTime()) ? null : d;
   };
 
-  let filtered = (leads || []).filter((lead) =>
-    String(getLeadId(lead) ?? '').includes(searchTerm) ||
-    (lead.full_name && lead.full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (lead.name && lead.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (lead.email && lead.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (lead.phone && String(lead.phone).includes(searchTerm))
+  // 1. Apply Search Filter
+  let filtered = (leads || []).filter((lead) => 
+    matchSearchTerm(lead, searchTerm, ['expa_person_id', 'id', 'full_name', 'name', 'email', 'phone'])
   );
 
-  // Apply date filtering if date range is set
+  // 2. Apply Date Filter
   if (dateRange?.startDate && dateRange?.endDate) {
     const field = dateRange.field || 'created_at'; // default: signup date
 
@@ -75,55 +74,54 @@ export const filterLeads = ({
     }
   }
 
-  // Apply status filtering - map AIESEC API status to our filter values
+  // 3. Apply Status Filter - prioritize expa_status/status
   if (statusFilter) {
     filtered = filtered.filter((lead) => {
-      // New backend shape (expa_status)
-      if (lead.expa_status) {
-        return String(lead.expa_status).toLowerCase() === String(statusFilter).toLowerCase();
+      const currentStatus = normalizeLower(lead.expa_status ?? lead.status);
+      const targetStatus = normalizeLower(statusFilter);
+
+      // Direct match if we have a status field
+      if (currentStatus) {
+        return currentStatus === targetStatus;
       }
 
-      // iCX leads backend shape (status)
-      if (lead.status) {
-        return String(lead.status).toLowerCase() === String(statusFilter).toLowerCase();
-      }
-
+      // Fallback: Check if a specific date exists for that status (Legacy OGX)
       const statusDateMapping = {
         applied: 'date_applied',
         accepted: 'date_matched',
         approved: 'date_approved',
         realized: 'date_realized',
         finished: 'experience_end_date',
+        completed: 'experience_end_date', // finished/completed are often used interchangeably
       };
 
-      const dateField = statusDateMapping[statusFilter];
-
+      const dateField = statusDateMapping[targetStatus];
       if (dateField) {
-        const hasDate =
-          lead[dateField] && lead[dateField] !== '-' && lead[dateField] !== '';
-        return hasDate;
+        const dateVal = lead[dateField];
+        return dateVal && dateVal !== '-' && dateVal !== '';
       }
 
-      if (statusFilter === 'open') {
-        const hasAnyDate =
-          lead.date_applied ||
-          lead.date_matched ||
-          lead.date_approved ||
-          lead.date_realized ||
-          lead.experience_end_date;
-        const isOpen =
-          !hasAnyDate || hasAnyDate === '-' || hasAnyDate === '';
-        return isOpen;
+      // "Open" logic fallback
+      if (targetStatus === 'open') {
+        const hasNoStatusDates =
+          !lead.date_applied &&
+          !lead.date_matched &&
+          !lead.date_approved &&
+          !lead.date_realized &&
+          !lead.experience_end_date;
+        return hasNoStatusDates;
       }
 
-      if (statusFilter === 'rejected') {
-        return String(lead.status || '').toLowerCase() === 'rejected';
+      // "Rejected" fallback
+      if (targetStatus === 'rejected') {
+        return normalizeLower(lead.status) === 'rejected';
       }
 
       return false;
     });
   }
 
+  // 4. Apply Secondary Filters
   if (contactStatusFilter) {
     filtered = filtered.filter((lead) => {
       const dbValue = getLeadContactStatus(lead);

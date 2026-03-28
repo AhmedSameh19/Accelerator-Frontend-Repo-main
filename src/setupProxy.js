@@ -9,7 +9,7 @@ try {
   /* optional */
 }
 
-const proxyTarget = process.env.REACT_APP_PROXY_TARGET || 'http://localhost:8000';
+const proxyTarget = process.env.REACT_APP_PROXY_TARGET || 'https://accelerator.aiesec.eg';
 
 module.exports = function (app) {
   app.use(
