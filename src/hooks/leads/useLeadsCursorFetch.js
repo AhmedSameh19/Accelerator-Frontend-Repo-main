@@ -5,31 +5,22 @@ import { leadsApi } from '../../api/services/leadsApi';
 export function useLeadsCursorFetch({ homeLcId, hostLcId, mode } = {}) {
   const fetchSeqRef = useRef(0);
   const inFlightRef = useRef(false);
-  const nextPageRef = useRef(1);
   const pendingRef = useRef(null);
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState(null);
+
+  // -- Server-Side Pagination State --
+  const [page, setPage] = useState(0); // MUI uses 0-indexed pages
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [totalItems, setTotalItems] = useState(0);
 
   const effectiveMode = mode === 'icx' ? 'icx' : 'default';
   const effectiveLcId = effectiveMode === 'icx' ? hostLcId : homeLcId;
 
-  const fetchNextPage = useCallback(
-    async ({ reset } = { reset: false }) => {
+  const fetchLeads = useCallback(
+    async ({ searchTerm } = {}) => {
       if (!effectiveLcId) {
-        console.warn('⚠️ [useLeadsCursorFetch] office LC id is missing:', {
-          mode: effectiveMode,
-          homeLcId,
-          hostLcId,
-          effectiveLcId,
-          type: typeof effectiveLcId,
-          value: effectiveLcId,
-        });
-        console.warn('💡 [useLeadsCursorFetch] Cannot fetch leads without LC ID. Check user LC configuration.');
-        nextPageRef.current = 1;
-        pendingRef.current = null;
-        setHasMore(false);
         setLeads([]);
         setLoading(false);
         setError(new Error('LC ID is required to fetch leads. Please ensure your user account has an LC assigned.'));
@@ -37,9 +28,7 @@ export function useLeadsCursorFetch({ homeLcId, hostLcId, mode } = {}) {
       }
 
       if (inFlightRef.current) {
-        // Don't bump the sequence while a request is in-flight (React 18 StrictMode can
-        // call effects twice in dev). Instead, remember the latest requested action.
-        pendingRef.current = { reset: Boolean(reset) };
+        pendingRef.current = { searchTerm };
         return;
       }
 
@@ -49,34 +38,27 @@ export function useLeadsCursorFetch({ homeLcId, hostLcId, mode } = {}) {
       try {
         setLoading(true);
         setError(null);
-        if (reset) {
-          nextPageRef.current = 1;
-          setHasMore(false);
-          setLeads([]);
-        }
 
-        const limit = 20;
         let pageData;
         try {
           if (effectiveMode === 'icx') {
             pageData = await leadsApi.getICXLeads({
               host_lc_id: effectiveLcId,
-              limit,
-              page: nextPageRef.current,
+              limit: rowsPerPage,
+              page: page + 1,
+              search: searchTerm || undefined
             });
           } else {
             pageData = await leadsApi.getLeads({
               home_lc_id: effectiveLcId,
-              limit,
-              page: nextPageRef.current,
+              limit: rowsPerPage,
+              page: page + 1,
+              search: searchTerm || undefined
             });
           }
         } catch (e) {
           console.error('❌ [useLeadsCursorFetch] Error fetching leads:', e);
-          if (fetchSeqRef.current === fetchSeq) {
-            setError(e);
-            setHasMore(false);
-          }
+          if (fetchSeqRef.current === fetchSeq) setError(e);
           return;
         }
 
@@ -85,19 +67,13 @@ export function useLeadsCursorFetch({ homeLcId, hostLcId, mode } = {}) {
         // Handle different response structures
         const rows = pageData?.data || pageData?.items || pageData?.leads || (Array.isArray(pageData) ? pageData : []);
 
-        setLeads((prev) => {
-          if (fetchSeqRef.current !== fetchSeq) return prev;
-          return reset ? rows : [...prev, ...rows];
-        });
-
-        if (pageData?.pagination) {
-            setHasMore(pageData.pagination.hasNextPage);
-            nextPageRef.current = pageData.pagination.hasNextPage ? nextPageRef.current + 1 : null;
+        if (pageData?.pagination?.totalItems !== undefined) {
+          setTotalItems(pageData.pagination.totalItems);
         } else {
-            // Fallback for old endpoints / mock data
-            setHasMore(rows.length === limit);
-            nextPageRef.current = rows.length === limit ? nextPageRef.current + 1 : null;
+          setTotalItems(rows.length === rowsPerPage ? (page + 1) * rowsPerPage + 1 : page * rowsPerPage + rows.length);
         }
+
+        setLeads(rows);
       } finally {
         inFlightRef.current = false;
         if (fetchSeqRef.current === fetchSeq) setLoading(false);
@@ -106,28 +82,31 @@ export function useLeadsCursorFetch({ homeLcId, hostLcId, mode } = {}) {
         if (fetchSeqRef.current === fetchSeq && pendingRef.current) {
           const next = pendingRef.current;
           pendingRef.current = null;
-          // Fire-and-forget; state updates are guarded by fetchSeq.
-          void fetchNextPage(next);
+          void fetchLeads(next);
         }
       }
     },
-    [homeLcId],
+    [effectiveLcId, effectiveMode, page, rowsPerPage],
   );
 
-  const refresh = useCallback(async () => {
-    await fetchNextPage({ reset: true });
-  }, [fetchNextPage]);
-
-  const loadMore = useCallback(async () => {
-    if (!effectiveLcId) return;
-    if (!nextPageRef.current) return;
-    await fetchNextPage({ reset: false });
-  }, [fetchNextPage, effectiveLcId]);
+  const refresh = useCallback(async ({ searchTerm } = {}) => {
+    await fetchLeads({ searchTerm });
+  }, [fetchLeads]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  return { leads, loading, refresh, loadMore, hasMore, error };
+  return { 
+    leads, 
+    loading, 
+    refresh, 
+    error,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+    totalItems
+  };
 }
 

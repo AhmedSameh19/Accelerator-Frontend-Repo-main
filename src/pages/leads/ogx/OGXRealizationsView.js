@@ -15,8 +15,11 @@ import OGXRealizationsTable from './OGXRealizationsTable';
 
 export default function OGXRealizationsView({
   fetchLeads,
-  hasMore,
-  loadMore,
+  page,
+  setPage,
+  rowsPerPage,
+  setRowsPerPage,
+  totalItems,
   loading,
   selectedLeads,
   handleAssignClick,
@@ -121,8 +124,11 @@ export default function OGXRealizationsView({
         <OGXRealizationsTable
           leads={leads}
           fetchLeads={fetchLeads}
-          hasMore={hasMore}
-          loadMore={loadMore}
+          page={page}
+          setPage={setPage}
+          rowsPerPage={rowsPerPage}
+          setRowsPerPage={setRowsPerPage}
+          totalItems={totalItems}
           loading={loading}
           selectedLeads={selectedLeads}
           order={order}

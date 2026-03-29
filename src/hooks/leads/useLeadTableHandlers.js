@@ -1,11 +1,26 @@
 import { useState } from 'react';
 import leadsApi from '../../api/services/leadsApi';
 
-export function useLeadTableHandlers({ onLoadMore, hasMore, loading, leads, isICX = false }) {
+export function useLeadTableHandlers({ 
+  onLoadMore, 
+  hasMore, 
+  loading, 
+  leads, 
+  isICX = false,
+  page: externalPage,
+  setPage: externalSetPage,
+  rowsPerPage: externalRowsPerPage,
+  setRowsPerPage: externalSetRowsPerPage
+}) {
   const [selectedLead, setSelectedLead] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [localPage, setLocalPage] = useState(0);
+  const [localRowsPerPage, setLocalRowsPerPage] = useState(10);
+
+  const page = externalPage !== undefined ? externalPage : localPage;
+  const setPage = externalSetPage || setLocalPage;
+  const rowsPerPage = externalRowsPerPage !== undefined ? externalRowsPerPage : localRowsPerPage;
+  const setRowsPerPage = externalSetRowsPerPage || setLocalRowsPerPage;
   const [refreshKey, setRefreshKey] = useState(0);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState('');

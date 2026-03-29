@@ -80,14 +80,14 @@ api.interceptors.response.use(
 // Leads API functions
 export const leadsApi = {
   // Get all leads with optional filters
-  getLeads: async ({ home_lc_id, limit = 50, page = 1 } = {}) => {
+  getLeads: async ({ home_lc_id, limit = 50, page = 1, search } = {}) => {
     if (home_lc_id == null) throw new Error('home_lc_id is required');
 
-    const params = { home_lc_id: Number(home_lc_id), limit: Number(limit), page: Number(page) };
+    const params = { home_lc_id: Number(home_lc_id), limit: Number(limit), page: Number(page), search: search || undefined };
 
     try {
       const { data } = await api.get('/leads/', {
-        params: { ...params, page, _t: Date.now() },
+        params: { ...params, _t: Date.now() },
         headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
       });
       return data;
@@ -118,14 +118,14 @@ export const leadsApi = {
     }
   },
 
-  getICXLeads: async ({ host_lc_id, limit = 50, page = 1 } = {}) => {
+  getICXLeads: async ({ host_lc_id, limit = 50, page = 1, search } = {}) => {
     if (host_lc_id == null) throw new Error('host_lc_id is required');
 
-    const params = { host_lc_id: String(host_lc_id), limit: Number(limit), page: Number(page) };
+    const params = { host_lc_id: String(host_lc_id), limit: Number(limit), page: Number(page), search: search || undefined };
 
     try {
       const { data } = await api.get('/icx/leads/', {
-        params: { ...params, page, _t: Date.now() },
+        params: { ...params, _t: Date.now() },
         headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
       });
       return data;

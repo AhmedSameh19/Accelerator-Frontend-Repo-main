@@ -22,7 +22,18 @@ import { getAssignedMemberId } from './LeadTable/utils';
 import { useLeadTableHandlers } from '../../hooks/leads/useLeadTableHandlers';
 import { useCRMType } from '../../context/CRMTypeContext';
 
-function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMore }) {
+function LeadTable({ 
+  leads, 
+  members, 
+  loading = false, 
+  hasMore = false, 
+  onLoadMore,
+  page: externalPage,
+  setPage: externalSetPage,
+  rowsPerPage: externalRowsPerPage,
+  setRowsPerPage: externalSetRowsPerPage,
+  totalItems
+}) {
   const theme = useTheme();
   const { crmType } = useCRMType();
   const isICX = crmType === 'iCX';
@@ -50,7 +61,17 @@ function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMor
     handleBulkAssignClick,
     handleBulkAssignClose,
     handleBulkAssignConfirm
-  } = useLeadTableHandlers({ onLoadMore, hasMore, loading, leads, isICX });
+  } = useLeadTableHandlers({ 
+    onLoadMore, 
+    hasMore, 
+    loading, 
+    leads, 
+    isICX,
+    page: externalPage,
+    setPage: externalSetPage,
+    rowsPerPage: externalRowsPerPage,
+    setRowsPerPage: externalSetRowsPerPage
+  });
 
   // Apply filter to leads
   const actuallyFilteredLeads = Array.isArray(leads)
@@ -171,9 +192,9 @@ function LeadTable({ leads, members, loading = false, hasMore = false, onLoadMor
           </TableBody>
         </Table>
       <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
+        rowsPerPageOptions={[5, 10, 20, 50, 100]}
         component="div"
-        count={hasMoreEffective ? -1 : actuallyFilteredLeads.length}
+        count={totalItems !== undefined ? totalItems : (hasMoreEffective ? -1 : actuallyFilteredLeads.length)}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={handleChangePage}

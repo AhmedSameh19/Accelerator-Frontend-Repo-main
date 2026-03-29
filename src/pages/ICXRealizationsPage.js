@@ -10,6 +10,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   Paper,
   IconButton,
@@ -330,11 +331,14 @@ function ICXRealizationsPage() {
   const [selectedLeadsSet, setSelectedLeadsSet] = useState(new Set());
   const membersFetched = useRef(false);
   const [members, setActiveMembers] = useState([]);
-  const [hasMore, setHasMore] = useState(false);
-  const nextPageRef = useRef(1);
+  
+  // -- Server-Side Pagination State --
+  const [page, setPage] = useState(0); // MUI uses 0-indexed pages
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [totalItems, setTotalItems] = useState(0);
 
   // Move fetchLeads outside useEffect so it can be called from the button
-  const fetchLeads = useCallback(async ({ reset = false } = {}) => {
+  const fetchLeads = useCallback(async () => {
     try {
       setLoading(true);
       const hostLcId = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
@@ -345,15 +349,21 @@ function ICXRealizationsPage() {
         return;
       }
 
-      if (reset) {
-        nextPageRef.current = 1;
-        setHasMore(false);
-      }
-      if (!nextPageRef.current) return;
-
       console.log('Fetching ICX realizations...');
-      const pageData = await getICXRealizations({ hostLcId, page: nextPageRef.current, limit: 50 });
+      const pageData = await getICXRealizations({ 
+        hostLcId, 
+        page: page + 1, 
+        limit: rowsPerPage,
+        search: searchTerm || undefined 
+      });
       const items = pageData?.data || pageData?.items || pageData?.leads || (Array.isArray(pageData) ? pageData : []);
+
+      if (pageData?.pagination?.totalItems !== undefined) {
+        setTotalItems(pageData.pagination.totalItems);
+      } else {
+        // Fallback if pagination metadata is missing
+        setTotalItems(items.length === rowsPerPage ? (page + 1) * rowsPerPage + 1 : page * rowsPerPage + items.length);
+      }
 
       const normalized = (items || []).map((r) => ({
         ...r,
@@ -384,19 +394,11 @@ function ICXRealizationsPage() {
         assignedMember: r.assigned_member_name ?? r.assignedMember,
       }));
 
-      setLeads(prev => reset ? normalized : [...prev, ...normalized]);
-      setOriginalLeads(prev => reset ? normalized : [...prev, ...normalized]);
+      setLeads(normalized);
+      setOriginalLeads(normalized);
 
-      if (pageData?.pagination) {
-        setHasMore(pageData.pagination.hasNextPage);
-        nextPageRef.current = pageData.pagination.hasNextPage ? nextPageRef.current + 1 : null;
-      } else {
-        setHasMore(normalized.length === 50);
-        nextPageRef.current = normalized.length === 50 ? nextPageRef.current + 1 : null;
-      }
-
-      if (reset && normalized.length > 0) {
-        showSuccess(`Successfully loaded initial realizations`);
+      if (normalized.length > 0 && page === 0) {
+        showSuccess(`Successfully loaded realizations`);
       }
 
       setError(null);
@@ -413,29 +415,22 @@ function ICXRealizationsPage() {
         setError(friendlyMsg);
       }
       
-      if (reset) {
-        setLeads([]);
-        setOriginalLeads([]);
-      }
+      setLeads([]);
+      setOriginalLeads([]);
     } finally {
       setLoading(false);
     }
-  }, [currentUser, isAdmin, showSuccess, showError, showWarning]);
-
-  const loadMore = useCallback(() => {
-    if (!nextPageRef.current || loading) return;
-    return fetchLeads({ reset: false });
-  }, [fetchLeads, loading]);
+  }, [currentUser, isAdmin, showSuccess, showError, showWarning, page, rowsPerPage, searchTerm]);
 
   const handleRefresh = useCallback(() => {
-    fetchLeads({ reset: true });
+    fetchLeads();
   }, [fetchLeads]);
 
-  // useEffect for initial load
+  // Fetch when page, rowsPerPage, or auth changes
   useEffect(() => {
     if (!currentUser && !isAdmin) return;
-    fetchLeads({ reset: true });
-  }, [currentUser, isAdmin, fetchLeads]);
+    fetchLeads();
+  }, [fetchLeads, currentUser, isAdmin]);
 
     useEffect(() => {
       const lcCode = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
@@ -475,6 +470,7 @@ function ICXRealizationsPage() {
 
   // Add useEffect to trigger search when filters change
   useEffect(() => {
+    setPage(0);
     handleSearch();
   }, [searchTerm, selectedCountry, selectedHomeLC, selectedExchangeType, selectedStatus]);
 
@@ -1783,18 +1779,18 @@ const getTeamUnderCurrentUser = (members) => {
               </TableBody>
             </Table>
         </TableContainer>
-        {hasMore && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-            <Button
-              variant="outlined"
-              onClick={loadMore}
-              disabled={loading}
-              sx={{ minWidth: 200 }}
-            >
-              {loading ? <CircularProgress size={24} /> : 'Load More'}
-            </Button>
-          </Box>
-        )}
+        <TablePagination
+          rowsPerPageOptions={[20, 50, 100]}
+          component="div"
+          count={totalItems}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={(e, newPage) => setPage(newPage)}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+        />
       </CardContent>
     </Card>
 

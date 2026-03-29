@@ -5,8 +5,6 @@ import {
   CardContent,
   Checkbox,
   Chip,
-  CircularProgress,
-  Button,
   IconButton,
   Paper,
   Table,
@@ -14,6 +12,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TableSortLabel,
   Typography,
@@ -29,8 +28,11 @@ import { getProgrammeChipSx, getStatusChipSx } from './ogxChipStyles';
 export default function OGXRealizationsTable({
   leads,
   fetchLeads,
-  hasMore,
-  loadMore,
+  page,
+  setPage,
+  rowsPerPage,
+  setRowsPerPage,
+  totalItems,
   loading,
   selectedLeads,
   order,
@@ -454,18 +456,18 @@ export default function OGXRealizationsTable({
             </TableBody>
           </Table>
         </TableContainer>
-        {hasMore && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-            <Button
-              variant="outlined"
-              onClick={loadMore}
-              disabled={loading}
-              sx={{ minWidth: 200 }}
-            >
-              {loading ? <CircularProgress size={24} /> : 'Load More'}
-            </Button>
-          </Box>
-        )}
+        <TablePagination
+          rowsPerPageOptions={[20, 50, 100]}
+          component="div"
+          count={totalItems}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={(e, newPage) => setPage(newPage)}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+        />
       </CardContent>
     </Card>
   );

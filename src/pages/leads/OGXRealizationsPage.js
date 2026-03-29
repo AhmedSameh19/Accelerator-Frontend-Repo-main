@@ -126,8 +126,11 @@ function OGXRealizationsPage({ crmTypeOverride }) {
   const [error, setError] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const nextPageRef = React.useRef(1);
+  
+  // -- Server-Side Pagination State --
+  const [page, setPage] = useState(0); // MUI uses 0-indexed pages
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [totalItems, setTotalItems] = useState(0);
 
   // ---------------------------------------------------------------------------
   // DIALOG STATE
@@ -181,7 +184,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
    * Fetch OGX realizations from the API
    * Uses MC_EGYPT_CODE for admins, otherwise user's LC code
    */
-  const fetchLeads = useCallback(async ({ reset = false } = {}) => {
+  const fetchLeads = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -193,38 +196,33 @@ function OGXRealizationsPage({ crmTypeOverride }) {
         setOriginalLeads([]);
         return;
       }
-      
-      if (reset) {
-        nextPageRef.current = 1;
-        setHasMore(false);
-      }
 
-      if (!nextPageRef.current) return;
-
-      const pageData = await getRealizations({ lcCode, page: nextPageRef.current, limit: 50 });
+      const pageData = await getRealizations({ 
+        lcCode, 
+        page: page + 1, 
+        limit: rowsPerPage,
+        search: searchTerm || undefined 
+      });
       const newLeads = pageData?.data || pageData?.items || pageData?.leads || (Array.isArray(pageData) ? pageData : []);
 
-      setLeads((prev) => reset ? newLeads : [...prev, ...newLeads]);
-      setOriginalLeads((prev) => reset ? newLeads : [...prev, ...newLeads]);
-
-      if (pageData?.pagination) {
-        setHasMore(pageData.pagination.hasNextPage);
-        nextPageRef.current = pageData.pagination.hasNextPage ? nextPageRef.current + 1 : null;
+      if (pageData?.pagination?.totalItems !== undefined) {
+        setTotalItems(pageData.pagination.totalItems);
       } else {
-        setHasMore(newLeads.length === 50);
-        nextPageRef.current = newLeads.length === 50 ? nextPageRef.current + 1 : null;
+        // Fallback if pagination metadata is missing
+        setTotalItems(newLeads.length === rowsPerPage ? (page + 1) * rowsPerPage + 1 : page * rowsPerPage + newLeads.length);
       }
 
+      setLeads(newLeads);
+      setOriginalLeads(newLeads);
+
       if (!pageData || (Array.isArray(pageData) && pageData.length === 0) || newLeads.length === 0) {
-        if (reset) showInfo('No realizations found. They will appear here once available.');
+        if (page === 0) showInfo('No realizations found. They will appear here once available.');
       }
     } catch (err) {
       console.error('Error fetching OGX realizations:', err);
       setError('Unable to load realizations');
-      if (reset) {
-        setLeads([]);
-        setOriginalLeads([]);
-      }
+      setLeads([]);
+      setOriginalLeads([]);
 
       let userMessage = err.friendlyMessage || 'Unable to load realizations. Please try again.';
       if (err?.response?.status === 401 || err?.response?.status === 403) {
@@ -239,20 +237,15 @@ function OGXRealizationsPage({ crmTypeOverride }) {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, currentUser, showWarning, showInfo]);
-
-  const loadMore = useCallback(() => {
-    if (!nextPageRef.current || loading) return;
-    return fetchLeads({ reset: false });
-  }, [fetchLeads, loading]);
+  }, [isAdmin, currentUser, showWarning, showInfo, page, rowsPerPage, searchTerm]);
 
   // ---------------------------------------------------------------------------
   // EFFECTS
   // ---------------------------------------------------------------------------
 
-  // Fetch leads on mount
+  // Fetch leads on mount and when dependencies change
   useEffect(() => {
-    fetchLeads({ reset: true });
+    fetchLeads();
   }, [fetchLeads]);
 
   // Load preparation state from localStorage
@@ -372,8 +365,9 @@ function OGXRealizationsPage({ crmTypeOverride }) {
   // FILTER HANDLERS
   // ===========================================================================
 
-  // Re-run search when filters change
+  // Re-run search and reset pagination when filters change
   useEffect(() => {
+    setPage(0);
     handleSearch();
   }, [searchTerm, selectedCountry, selectedExchangeType, selectedStatus, selectedHostLC, selectedAssignedMember]);
 
@@ -852,9 +846,12 @@ function OGXRealizationsPage({ crmTypeOverride }) {
 
   return (
     <OGXRealizationsView
-      fetchLeads={() => fetchLeads({ reset: true })}
-      hasMore={hasMore}
-      loadMore={loadMore}
+      fetchLeads={fetchLeads}
+      page={page}
+      setPage={setPage}
+      rowsPerPage={rowsPerPage}
+      setRowsPerPage={setRowsPerPage}
+      totalItems={totalItems}
       loading={loading}
       selectedLeads={selectedLeads}
       handleAssignClick={handleAssignClick}
