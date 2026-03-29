@@ -168,7 +168,7 @@ const PortraitLink = memo(function PortraitLink({ person }) {
           left: 0,
           right: 0,
           bottom: 0,
-          zIndex: 6,
+          zIndex: 10,
           px: 1.5,
           py: 1.25,
           background: 'linear-gradient(0deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.52) 60%, rgba(0,0,0,0) 100%)',
