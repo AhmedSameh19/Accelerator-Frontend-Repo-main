@@ -3,7 +3,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { sortData as sortDataUtil } from '../../utils/sortUtils';
+import { sortData as sortDataUtil } from '../utils/sortUtils';
 
 /**
  * Custom hook for table sorting

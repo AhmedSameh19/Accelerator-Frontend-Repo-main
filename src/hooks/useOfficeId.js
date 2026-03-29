@@ -4,9 +4,9 @@
  */
 
 import { useMemo } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { getOfficeId } from '../../utils/officeUtils';
-import { MC_EGYPT_CODE } from '../../lcCodes';
+import { useAuth } from '../context/AuthContext';
+import { getOfficeId } from '../utils/officeUtils';
+import { MC_EGYPT_CODE } from '../lcCodes';
 
 /**
  * Custom hook to get the current user's office/LC ID

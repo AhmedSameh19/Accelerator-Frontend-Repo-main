@@ -1,16 +1,12 @@
-import React, { useEffect } from 'react';
-import { useNotifications } from '../context/NotificationsContext';
+import React from 'react';
+import useUpcomingNotifications from '../hooks/useUpcomingNotifications';
 
+/**
+ * Runs once when the app boots (inside AuthProvider so user cookies are available).
+ * Fetches upcoming/overdue follow-ups and scheduled company visits for the
+ * current user and injects them into NotificationsContext.
+ */
 export default function NotificationInitializer() {
-  const { addNotification } = useNotifications();
-
-  useEffect(() => {
-    addNotification({
-      title: 'Welcome Message',
-      message: 'Wello and Otify love you ❤️',
-      type: 'success',
-    });
-  }, [addNotification]);
-
+  useUpcomingNotifications();
   return null;
 }

@@ -412,5 +412,20 @@ const marketResearchAPI = {
       throw error;
     }
   },
+
+  /**
+   * Fetch all upcoming + past scheduled visits from the dedicated endpoint.
+   * Returns: [{ id, company_name, visit_date, source }]
+   */
+  getScheduledVisits: async () => {
+    try {
+      const response = await backendApi.get('/market-research/scheduled-visits');
+      const data = response.data;
+      return Array.isArray(data) ? data : (data?.data ?? []);
+    } catch (error) {
+      console.error('Error fetching scheduled visits:', error);
+      return [];
+    }
+  },
 };
 export default marketResearchAPI;

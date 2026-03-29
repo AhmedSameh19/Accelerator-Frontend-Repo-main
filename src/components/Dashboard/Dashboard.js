@@ -276,7 +276,7 @@ export default function Dashboard() {
   const icx = stats?.icx;
   const mr = stats?.market_research;
 
-  const lcName = currentUser?.home_lc_name || `LC ${lcId}`;
+  const lcName = currentUser?.lc || localStorage.getItem('userLC') || `LC`;
   const firstName = currentUser?.name?.split(' ')[0] || 'User';
 
   return (
