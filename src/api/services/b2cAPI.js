@@ -57,19 +57,19 @@ export const b2cAPI = {
   addComment: async (leadId, comment, createdBy = null) => {
     // Get user ID from multiple sources (cookies, localStorage, or parameter)
     let personId = createdBy;
-    
+
     if (!personId) {
       // Try cookies first (multiple possible names)
       // Clean and validate cookie values
       const personIdCookie = Cookies.get('person_id');
       const expaPersonIdCookie = Cookies.get('expa_person_id');
       const userIdCookie = Cookies.get('person_id');
-      
+
       // Use the first valid non-empty value
       personId = [personIdCookie, expaPersonIdCookie, userIdCookie]
         .find(id => id && id !== 'null' && id !== 'undefined' && id.trim() !== '');
     }
-    
+
     // If not in cookies, try localStorage
     if (!personId && typeof window !== 'undefined') {
       try {
@@ -86,7 +86,7 @@ export const b2cAPI = {
         console.warn('Failed to parse user from localStorage:', e);
       }
     }
-    
+
     // Log available sources for debugging
     if (!personId) {
       const allCookies = typeof document !== 'undefined' ? document.cookie.split(';').reduce((acc, cookie) => {
@@ -96,7 +96,7 @@ export const b2cAPI = {
         }
         return acc;
       }, {}) : {};
-      
+
       console.warn('⚠️ No member ID found. Checking available sources:', {
         cookies: {
           person_id: Cookies.get('person_id'),
@@ -106,7 +106,7 @@ export const b2cAPI = {
         allRelevantCookies: allCookies,
         localStorage: typeof window !== 'undefined' ? localStorage.getItem('user') : 'N/A'
       });
-      
+
       // Provide helpful debugging info
       console.info('💡 To fix this issue:');
       console.info('   1. Open browser DevTools (F12)');
@@ -116,54 +116,54 @@ export const b2cAPI = {
       console.info('   5. If values are "null" or "undefined" (as strings), delete them');
       console.info('   6. Log out and log back in to refresh cookies');
     }
-    
+
     // Backend requires created_by to be a valid member expa_person_id
     if (!personId) {
       throw new Error('Member ID (created_by) is required. Please ensure you are logged in. If the problem persists, try clearing your browser cookies and logging back in.');
     }
-    
+
     // Ensure it's a string (backend expects string) and clean it
     const memberId = String(personId).trim();
-    
+
     if (!memberId || memberId === 'null' || memberId === 'undefined' || memberId === '') {
       throw new Error('Invalid member ID format. Please clear your browser cookies and log back in.');
     }
-    
+
     // Build payload according to backend API
     const payload = {
       text: comment,
       created_by: memberId
     };
-    
+
     const endpoint = `/b2c/${leadId}/comments`;
-    
+
     try {
-      console.log('🔍 Attempting to add B2C comment:', { 
-        endpoint, 
-        leadId, 
+      console.log('🔍 Attempting to add B2C comment:', {
+        endpoint,
+        leadId,
         payload,
         hasToken: !!getCrmAccessToken(),
         memberId
       });
-      
+
       const response = await api.post(endpoint, payload);
-      
+
       if (response.status >= 400) {
         throw new Error(`Server error: ${response.status} ${response.statusText}`);
       }
-      
+
       console.log('✅ B2C comment added successfully:', response.data);
       return response.data;
     } catch (error) {
       lastError = error;
       console.error('❌ Error adding B2C comment:', error);
-      
+
       // If it's a 500 error, the endpoint or payload might be wrong
       // But we'll still throw the error so the user knows
       if (error.response) {
         const status = error.response.status;
         const errorData = error.response.data;
-        
+
         // Log the actual backend error message in a more readable format
         console.group('🔴 Backend Error Details');
         console.error('Status:', status);
@@ -181,7 +181,7 @@ export const b2cAPI = {
         }
         console.error('Full Error Response:', error.response);
         console.groupEnd();
-        
+
         // Extract meaningful error message - try multiple possible fields
         let message = 'Internal server error';
         if (errorData) {
@@ -203,7 +203,7 @@ export const b2cAPI = {
             message = JSON.stringify(errorData);
           }
         }
-        
+
         // Handle specific error cases
         if (status === 404 && message.includes('Member not found')) {
           message = 'Your member account was not found. Please contact support.';
@@ -216,12 +216,12 @@ export const b2cAPI = {
         } else if (status === 500 && message === 'Internal server error') {
           message = 'Server error. Please check backend logs or try again later.';
         }
-        
+
         // If we still don't have a good message, use the status text
         if (message === 'Internal server error' && error.response.statusText) {
           message = `${error.response.statusText} (${status})`;
         }
-        
+
         const serverError = new Error(message);
         serverError.status = status;
         serverError.response = error.response;
@@ -241,15 +241,15 @@ export const b2cAPI = {
       if (!expaPersonId) {
         throw new Error('expa_person_id is required to mark a lead back to process');
       }
-      
+
       const payload = { expa_person_id: expaPersonId };
-      
+
       console.log('🔍 [b2cAPI] Adding lead to back-to-process:', {
         endpoint: '/b2c/back-to-process',
         payload,
         hasToken: !!getCrmAccessToken()
       });
-      
+
       const response = await api.post(`/b2c/back-to-process`, payload);
       console.log('✅ [b2cAPI] Lead added to back-to-process successfully:', response.data);
       return response.data;
@@ -271,7 +271,7 @@ export const b2cAPI = {
       }
       console.error('Full Error Response:', error.response);
       console.groupEnd();
-      
+
       // Handle specific error cases
       if (error.response?.status === 404) {
         const errorMsg = error.response?.data?.detail || 'Lead not found';
@@ -289,7 +289,7 @@ export const b2cAPI = {
         const errorMsg = error.response?.data?.detail || 'Internal server error';
         throw new Error(errorMsg);
       }
-      
+
       // For other errors, extract message and throw
       let message = 'Failed to add lead to back-to-process';
       if (error.response?.data) {
@@ -306,34 +306,34 @@ export const b2cAPI = {
       } else if (error.message) {
         message = error.message;
       }
-      
+
       throw new Error(message);
     }
   },
-  getBackToProcess: async (homeLcId, limit = 1000, fetchAll = true) => {
+  getBackToProcess: async (homeLcId, limit = 500, fetchAll = true) => {
     try {
       if (!homeLcId) {
         throw new Error('home_lc_id is required to fetch back to process EPs');
       }
-      
+
       // If fetchAll is true, use a very high limit to get all results
       // Note: Backend only supports 'limit' parameter, not 'skip' for pagination
       if (fetchAll) {
         // Try with a very high limit to get all results in one request
         // If backend has a max limit, we'll get as many as possible
-        const veryHighLimit = 100000;
+        const veryHighLimit = 500;
         const response = await api.get(`/b2c/back-to-process/${homeLcId}`, {
           params: { limit: veryHighLimit },
         });
-        
+
         const result = Array.isArray(response.data) ? response.data : [];
         console.log(`✅ [b2cAPI] getBackToProcess returning ${result.length} EPs for LC ${homeLcId} (limit: ${veryHighLimit})`);
-        
+
         // If we got exactly the limit, warn that there might be more
         if (result.length === veryHighLimit) {
           console.warn(`⚠️ [b2cAPI] Got exactly ${veryHighLimit} results. There might be more EPs that weren't fetched.`);
         }
-        
+
         return result;
       } else {
         // Single request with specified limit
@@ -369,43 +369,43 @@ export const b2cAPI = {
     }
   },
   // Get back to process EPs for multiple LCs (for admins or to get all EPs)
-  getAllBackToProcess: async (homeLcIds, limit = 1000, fetchAll = true) => {
+  getAllBackToProcess: async (homeLcIds, limit = 500, fetchAll = true) => {
     try {
       if (!Array.isArray(homeLcIds) || homeLcIds.length === 0) {
         throw new Error('home_lc_ids array is required');
       }
-      
+
       console.log(`🔍 [b2cAPI] getAllBackToProcess fetching from ${homeLcIds.length} LCs (fetchAll: ${fetchAll})`);
-      
+
       // Fetch from all provided LC IDs and combine results
       // Use fetchAll=true to get all results from each LC
-      const promises = homeLcIds.map(lcId => 
+      const promises = homeLcIds.map(lcId =>
         b2cAPI.getBackToProcess(lcId, limit, fetchAll).catch(err => {
           console.warn(`⚠️ Failed to fetch back to process for LC ${lcId}:`, err);
           return []; // Return empty array on error for this LC
         })
       );
-      
+
       const results = await Promise.all(promises);
       console.log(`🔍 [b2cAPI] getAllBackToProcess received results from ${results.length} LCs`);
       console.log(`🔍 [b2cAPI] Results per LC:`, results.map((r, i) => ({ lcId: homeLcIds[i], count: r.length })));
-      
+
       // Flatten and deduplicate by expa_person_id
       const allEps = results.flat();
       console.log(`🔍 [b2cAPI] Total EPs before deduplication: ${allEps.length}`);
-      
+
       const uniqueEps = Array.from(
         new Map(allEps.map(ep => [ep.expa_person_id, ep])).values()
       );
       console.log(`🔍 [b2cAPI] Total EPs after deduplication: ${uniqueEps.length}`);
-      
+
       // Sort by inserted_at desc (most recent first)
       const sorted = uniqueEps.sort((a, b) => {
         const dateA = new Date(a.inserted_at || a.created_at || 0);
         const dateB = new Date(b.inserted_at || b.created_at || 0);
         return dateB - dateA;
       });
-      
+
       console.log(`✅ [b2cAPI] getAllBackToProcess returning ${sorted.length} unique EPs`);
       return sorted;
     } catch (e) {
@@ -454,14 +454,14 @@ export const b2cAPI = {
     if (reason !== undefined && reason !== null) {
       payload.reason = reason;
     }
-    
+
     console.log('🔍 [b2cAPI] Updating customer interview status:', {
       leadId,
       endpoint: `/b2c/${leadId}/status`,
       payload,
       hasToken: !!getCrmAccessToken()
     });
-    
+
     try {
       const response = await api.patch(`/b2c/${leadId}/status`, payload);
       console.log('✅ [b2cAPI] Customer interview status updated successfully:', response.data);
@@ -484,7 +484,7 @@ export const b2cAPI = {
       }
       console.error('Full Error Response:', error.response);
       console.groupEnd();
-      
+
       // If endpoint doesn't exist (404) or server error (500), throw with details
       if (error.response?.status === 404) {
         const errorMsg = `Customer interview status endpoint not found (404). Please check if the backend endpoint exists: PATCH /b2c/${leadId}/status`;
@@ -496,7 +496,7 @@ export const b2cAPI = {
         console.error(errorMsg);
         throw new Error(errorMsg);
       }
-      
+
       // For other errors, extract message and throw
       let message = 'Failed to update customer interview status';
       if (error.response?.data) {
@@ -511,7 +511,7 @@ export const b2cAPI = {
           message = errorData.detail;
         }
       }
-      
+
       throw new Error(message);
     }
   }
