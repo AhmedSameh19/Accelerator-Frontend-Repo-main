@@ -130,8 +130,8 @@ function LeadTable({
                 }}
               >
                 <Checkbox
-                  indeterminate={selectedLeads.length > 0 && selectedLeads.length < actuallyFilteredLeads.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).length}
-                  checked={actuallyFilteredLeads.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).length > 0 && selectedLeads.length === actuallyFilteredLeads.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).length}
+                  indeterminate={selectedLeads.length > 0 && selectedLeads.length < actuallyFilteredLeads.length}
+                  checked={actuallyFilteredLeads.length > 0 && selectedLeads.length === actuallyFilteredLeads.length}
                   onChange={handleSelectAllWithFiltered}
                 />
               </TableCell>
@@ -167,7 +167,6 @@ function LeadTable({
               </TableRow>
             ) : (
               actuallyFilteredLeads
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map(lead => {
                 const selectionId = isICX
                   ? (lead.application_id ?? lead.expa_person_id)

@@ -85,7 +85,6 @@ export function useLeadTableHandlers({
   const handleSelectAll = (event, filteredLeads) => {
     if (event.target.checked) {
       const newSelected = filteredLeads
-        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
         .map((lead) => getLeadSelectionId(lead))
         .filter((id) => id != null);
       setSelectedLeads(newSelected);
