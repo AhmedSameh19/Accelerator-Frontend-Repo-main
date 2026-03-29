@@ -15,6 +15,8 @@ import OGXRealizationsTable from './OGXRealizationsTable';
 
 export default function OGXRealizationsView({
   fetchLeads,
+  hasMore,
+  loadMore,
   loading,
   selectedLeads,
   handleAssignClick,
@@ -119,6 +121,9 @@ export default function OGXRealizationsView({
         <OGXRealizationsTable
           leads={leads}
           fetchLeads={fetchLeads}
+          hasMore={hasMore}
+          loadMore={loadMore}
+          loading={loading}
           selectedLeads={selectedLeads}
           order={order}
           orderBy={orderBy}

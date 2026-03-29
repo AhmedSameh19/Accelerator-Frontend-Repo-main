@@ -86,28 +86,11 @@ export const leadsApi = {
     const params = { home_lc_id: Number(home_lc_id), limit: Number(limit), page: Number(page) };
 
     try {
-      let allLeads = [];
-      let currentPage = page;
-      let hasNextPage = true;
-
-      while (hasNextPage) {
-        const { data } = await api.get('/leads/', {
-          params: { ...params, page: currentPage, _t: Date.now() },
-          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
-        });
-
-        if (data && data.data) {
-          allLeads = allLeads.concat(data.data);
-          hasNextPage = data.pagination?.hasNextPage || false;
-          currentPage++;
-        } else if (Array.isArray(data)) {
-          allLeads = allLeads.concat(data);
-          hasNextPage = false;
-        } else {
-          hasNextPage = false;
-        }
-      }
-      return allLeads;
+      const { data } = await api.get('/leads/', {
+        params: { ...params, page, _t: Date.now() },
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+      });
+      return data;
     } catch (error) {
       console.error('❌ [leadsApi] Error fetching leads:', error);
       if (error.response) {
@@ -141,28 +124,11 @@ export const leadsApi = {
     const params = { host_lc_id: String(host_lc_id), limit: Number(limit), page: Number(page) };
 
     try {
-      let allLeads = [];
-      let currentPage = page;
-      let hasNextPage = true;
-
-      while (hasNextPage) {
-        const { data } = await api.get('/icx/leads/', {
-          params: { ...params, page: currentPage, _t: Date.now() },
-          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
-        });
-
-        if (data && data.data) {
-          allLeads = allLeads.concat(data.data);
-          hasNextPage = data.pagination?.hasNextPage || false;
-          currentPage++;
-        } else if (Array.isArray(data)) {
-          allLeads = allLeads.concat(data);
-          hasNextPage = false;
-        } else {
-          hasNextPage = false;
-        }
-      }
-      return allLeads;
+      const { data } = await api.get('/icx/leads/', {
+        params: { ...params, page, _t: Date.now() },
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+      });
+      return data;
     } catch (error) {
       console.error('❌ [leadsApi] Error fetching iCX leads:', error);
       throw error;

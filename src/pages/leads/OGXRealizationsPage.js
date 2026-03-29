@@ -126,6 +126,8 @@ function OGXRealizationsPage({ crmTypeOverride }) {
   const [error, setError] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const nextPageRef = React.useRef(1);
 
   // ---------------------------------------------------------------------------
   // DIALOG STATE
@@ -179,7 +181,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
    * Fetch OGX realizations from the API
    * Uses MC_EGYPT_CODE for admins, otherwise user's LC code
    */
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async ({ reset = false } = {}) => {
     try {
       setLoading(true);
       setError(null);
@@ -191,22 +193,39 @@ function OGXRealizationsPage({ crmTypeOverride }) {
         setOriginalLeads([]);
         return;
       }
+      
+      if (reset) {
+        nextPageRef.current = 1;
+        setHasMore(false);
+      }
 
-      const data = await getRealizations(lcCode);
-      console.log('Fetched OGX realizations:', data);
-      setLeads(data || []);
-      setOriginalLeads(data || []);
+      if (!nextPageRef.current) return;
 
-      if (!data || data.length === 0) {
-        showInfo('No realizations found. They will appear here once available.');
+      const pageData = await getRealizations({ lcCode, page: nextPageRef.current, limit: 50 });
+      const newLeads = pageData?.data || pageData?.items || pageData?.leads || (Array.isArray(pageData) ? pageData : []);
+
+      setLeads((prev) => reset ? newLeads : [...prev, ...newLeads]);
+      setOriginalLeads((prev) => reset ? newLeads : [...prev, ...newLeads]);
+
+      if (pageData?.pagination) {
+        setHasMore(pageData.pagination.hasNextPage);
+        nextPageRef.current = pageData.pagination.hasNextPage ? nextPageRef.current + 1 : null;
+      } else {
+        setHasMore(newLeads.length === 50);
+        nextPageRef.current = newLeads.length === 50 ? nextPageRef.current + 1 : null;
+      }
+
+      if (!pageData || (Array.isArray(pageData) && pageData.length === 0) || newLeads.length === 0) {
+        if (reset) showInfo('No realizations found. They will appear here once available.');
       }
     } catch (err) {
       console.error('Error fetching OGX realizations:', err);
       setError('Unable to load realizations');
-      setLeads([]);
-      setOriginalLeads([]);
+      if (reset) {
+        setLeads([]);
+        setOriginalLeads([]);
+      }
 
-      // User-friendly error messages based on error type
       let userMessage = err.friendlyMessage || 'Unable to load realizations. Please try again.';
       if (err?.response?.status === 401 || err?.response?.status === 403) {
         userMessage = 'Your session has expired. Please log in again.';
@@ -220,7 +239,12 @@ function OGXRealizationsPage({ crmTypeOverride }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAdmin, currentUser, showWarning, showInfo]);
+
+  const loadMore = useCallback(() => {
+    if (!nextPageRef.current || loading) return;
+    return fetchLeads({ reset: false });
+  }, [fetchLeads, loading]);
 
   // ---------------------------------------------------------------------------
   // EFFECTS
@@ -228,8 +252,15 @@ function OGXRealizationsPage({ crmTypeOverride }) {
 
   // Fetch leads on mount
   useEffect(() => {
-    fetchLeads();
-  }, []);
+    fetchLeads({ reset: true });
+  }, [fetchLeads]);
+
+  // Auto-fetch next pages in background
+  useEffect(() => {
+    if (hasMore && !loading) {
+      loadMore();
+    }
+  }, [hasMore, loading, loadMore]);
 
   // Load preparation state from localStorage
   useEffect(() => {
@@ -828,7 +859,9 @@ function OGXRealizationsPage({ crmTypeOverride }) {
 
   return (
     <OGXRealizationsView
-      fetchLeads={fetchLeads}
+      fetchLeads={() => fetchLeads({ reset: true })}
+      hasMore={hasMore}
+      loadMore={loadMore}
       loading={loading}
       selectedLeads={selectedLeads}
       handleAssignClick={handleAssignClick}

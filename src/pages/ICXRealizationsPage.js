@@ -330,9 +330,11 @@ function ICXRealizationsPage() {
   const [selectedLeadsSet, setSelectedLeadsSet] = useState(new Set());
   const membersFetched = useRef(false);
   const [members, setActiveMembers] = useState([]);
+  const [hasMore, setHasMore] = useState(false);
+  const nextPageRef = useRef(1);
 
   // Move fetchLeads outside useEffect so it can be called from the button
-  const fetchLeads = useCallback(async () => {
+  const fetchLeads = useCallback(async ({ reset = false } = {}) => {
     try {
       setLoading(true);
       const hostLcId = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
@@ -343,8 +345,15 @@ function ICXRealizationsPage() {
         return;
       }
 
+      if (reset) {
+        nextPageRef.current = 1;
+        setHasMore(false);
+      }
+      if (!nextPageRef.current) return;
+
       console.log('Fetching ICX realizations...');
-      const items = await getICXRealizations(hostLcId);
+      const pageData = await getICXRealizations({ hostLcId, page: nextPageRef.current, limit: 50 });
+      const items = pageData?.data || pageData?.items || pageData?.leads || (Array.isArray(pageData) ? pageData : []);
 
       const normalized = (items || []).map((r) => ({
         ...r,
@@ -375,10 +384,20 @@ function ICXRealizationsPage() {
         assignedMember: r.assigned_member_name ?? r.assignedMember,
       }));
 
-      setLeads(normalized);
-      setOriginalLeads(normalized);
+      setLeads(prev => reset ? normalized : [...prev, ...normalized]);
+      setOriginalLeads(prev => reset ? normalized : [...prev, ...normalized]);
 
-      showSuccess(`Successfully loaded ${normalized.length} Expected Realizations`);
+      if (pageData?.pagination) {
+        setHasMore(pageData.pagination.hasNextPage);
+        nextPageRef.current = pageData.pagination.hasNextPage ? nextPageRef.current + 1 : null;
+      } else {
+        setHasMore(normalized.length === 50);
+        nextPageRef.current = normalized.length === 50 ? nextPageRef.current + 1 : null;
+      }
+
+      if (reset && normalized.length > 0) {
+        showSuccess(`Successfully loaded initial realizations`);
+      }
 
       setError(null);
     } catch (err) {
@@ -394,18 +413,36 @@ function ICXRealizationsPage() {
         setError(friendlyMsg);
       }
       
-      setLeads([]);
-      setOriginalLeads([]);
+      if (reset) {
+        setLeads([]);
+        setOriginalLeads([]);
+      }
     } finally {
       setLoading(false);
     }
   }, [currentUser, isAdmin, showSuccess, showError, showWarning]);
 
+  const loadMore = useCallback(() => {
+    if (!nextPageRef.current || loading) return;
+    return fetchLeads({ reset: false });
+  }, [fetchLeads, loading]);
+
+  const handleRefresh = useCallback(() => {
+    fetchLeads({ reset: true });
+  }, [fetchLeads]);
+
   // useEffect for initial load
   useEffect(() => {
     if (!currentUser && !isAdmin) return;
-    fetchLeads();
+    fetchLeads({ reset: true });
   }, [currentUser, isAdmin, fetchLeads]);
+
+  // Auto-fetch next pages in background
+  useEffect(() => {
+    if (hasMore && !loading) {
+      loadMore();
+    }
+  }, [hasMore, loading, loadMore]);
 
     useEffect(() => {
       const lcCode = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
@@ -860,12 +897,6 @@ const getTeamUnderCurrentUser = (members) => {
     sortData(leads, orderBy, order),
     [leads, orderBy, order]
   );
-
-  // Update the handlePrint function
-  const handleRefresh = () => {
-    console.log('Refreshing ICX realizations data...');
-    fetchLeads();
-  };
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
@@ -1758,9 +1789,21 @@ const getTeamUnderCurrentUser = (members) => {
                 )}
               </TableBody>
             </Table>
-          </TableContainer>
-        </CardContent>
-      </Card>
+        </TableContainer>
+        {hasMore && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={loadMore}
+              disabled={loading}
+              sx={{ minWidth: 200 }}
+            >
+              {loading ? <CircularProgress size={24} /> : 'Load More'}
+            </Button>
+          </Box>
+        )}
+      </CardContent>
+    </Card>
 
       {/* Add/Edit Lead Dialog */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>

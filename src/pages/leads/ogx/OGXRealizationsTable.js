@@ -5,6 +5,8 @@ import {
   CardContent,
   Checkbox,
   Chip,
+  CircularProgress,
+  Button,
   IconButton,
   Paper,
   Table,
@@ -27,6 +29,9 @@ import { getProgrammeChipSx, getStatusChipSx } from './ogxChipStyles';
 export default function OGXRealizationsTable({
   leads,
   fetchLeads,
+  hasMore,
+  loadMore,
+  loading,
   selectedLeads,
   order,
   orderBy,
@@ -449,6 +454,18 @@ export default function OGXRealizationsTable({
             </TableBody>
           </Table>
         </TableContainer>
+        {hasMore && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={loadMore}
+              disabled={loading}
+              sx={{ minWidth: 200 }}
+            >
+              {loading ? <CircularProgress size={24} /> : 'Load More'}
+            </Button>
+          </Box>
+        )}
       </CardContent>
     </Card>
   );
