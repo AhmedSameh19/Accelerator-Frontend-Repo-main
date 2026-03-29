@@ -26,30 +26,31 @@ import {
 import Cookies from 'js-cookie';
 import { useAuth } from '../../context/AuthContext';
 import dashboardAPI from '../../api/services/dashboardAPI';
+import { LC_CODES, MC_EGYPT_CODE } from '../../lcCodes';
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const PALETTE = {
-  blue:   '#037EF3',
-  green:  '#00C16E',
-  amber:  '#FFC845',
-  red:    '#F85A40',
+  blue: '#037EF3',
+  green: '#00C16E',
+  amber: '#FFC845',
+  red: '#F85A40',
   purple: '#7C3AED',
-  teal:   '#0EA5E9',
-  pink:   '#EC4899',
+  teal: '#0EA5E9',
+  pink: '#EC4899',
 };
 
 const STATUS_COLORS = {
-  lead:       PALETTE.blue,
-  contacted:  PALETTE.teal,
-  visited:    PALETTE.amber,
+  lead: PALETTE.blue,
+  contacted: PALETTE.teal,
+  visited: PALETTE.amber,
   opportunity: PALETTE.purple,
-  realized:   PALETTE.green,
+  realized: PALETTE.green,
   realized_v2: PALETTE.green,
-  pending:    PALETTE.amber,
-  completed:  PALETTE.green,
-  approved:   PALETTE.green,
-  rejected:   PALETTE.red,
-  unknown:    '#94a3b8',
+  pending: PALETTE.amber,
+  completed: PALETTE.green,
+  approved: PALETTE.green,
+  rejected: PALETTE.red,
+  unknown: '#94a3b8',
 };
 
 function colorFor(status) {
@@ -231,18 +232,22 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
+
+  function getOfficeId(currentUser) {
+    if (currentUser?.current_offices?.[0]?.id) {
+      return currentUser.current_offices[0].id;
+    }
+    const lcName = currentUser?.lc || localStorage.getItem('userLC');
+    if (lcName && Array.isArray(LC_CODES)) {
+      const found = LC_CODES.find(lc => lc.name === lcName);
+      if (found) return found.id;
+    }
+    return null;
+  }
+
+  const lcId = parseInt(getOfficeId(currentUser));
   // Resolve LC ID from various storage mechanisms
-  const lcId = parseInt(
-    Cookies.get('lc_id') ||
-    Cookies.get('home_lc_id') ||
-    Cookies.get('userLC') ||
-    localStorage.getItem('lc_id') ||
-    localStorage.getItem('home_lc_id') ||
-    localStorage.getItem('userLC') ||
-    currentUser?.home_lc_id ||
-    '1609',
-    10
-  );
+
 
   const load = useCallback(async (invalidate = false) => {
     try {
