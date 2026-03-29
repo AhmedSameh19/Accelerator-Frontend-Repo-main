@@ -437,13 +437,6 @@ function ICXRealizationsPage() {
     fetchLeads({ reset: true });
   }, [currentUser, isAdmin, fetchLeads]);
 
-  // Auto-fetch next pages in background
-  useEffect(() => {
-    if (hasMore && !loading) {
-      loadMore();
-    }
-  }, [hasMore, loading, loadMore]);
-
     useEffect(() => {
       const lcCode = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
       const startDate = dateRange.startDate

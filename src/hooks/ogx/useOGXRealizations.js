@@ -91,13 +91,6 @@ export function useOGXRealizations() {
     refresh();
   }, [refresh]);
 
-  // Auto-fetch next pages in background
-  useEffect(() => {
-    if (hasMore && !loading) {
-      loadMore();
-    }
-  }, [hasMore, loading, loadMore]);
-
   return {
     leads,
     originalLeads,

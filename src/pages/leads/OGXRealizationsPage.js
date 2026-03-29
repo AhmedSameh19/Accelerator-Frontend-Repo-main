@@ -255,13 +255,6 @@ function OGXRealizationsPage({ crmTypeOverride }) {
     fetchLeads({ reset: true });
   }, [fetchLeads]);
 
-  // Auto-fetch next pages in background
-  useEffect(() => {
-    if (hasMore && !loading) {
-      loadMore();
-    }
-  }, [hasMore, loading, loadMore]);
-
   // Load preparation state from localStorage
   useEffect(() => {
     try {

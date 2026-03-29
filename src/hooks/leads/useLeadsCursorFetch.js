@@ -128,13 +128,6 @@ export function useLeadsCursorFetch({ homeLcId, hostLcId, mode } = {}) {
     refresh();
   }, [refresh]);
 
-  // Auto-fetch next pages in background
-  useEffect(() => {
-    if (hasMore && !loading) {
-      loadMore();
-    }
-  }, [hasMore, loading, loadMore]);
-
   return { leads, loading, refresh, loadMore, hasMore, error };
 }
 
