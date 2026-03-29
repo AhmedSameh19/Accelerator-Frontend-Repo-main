@@ -64,13 +64,13 @@ function OGXB2CLeadsPage() {
   const { currentUser, isAdmin } = useAuth();
   const { members, fetchMembers, hasFetched: membersFetched } = useTeamMembersContext();
   const { showSuccess, showError, showWarning, showInfo } = useSnackbarContext();
-  
+
   // ---------------------------------------------------------------------------
   // FORM STATE
   // ---------------------------------------------------------------------------
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  
+
   // ---------------------------------------------------------------------------
   // FILTER STATE
   // ---------------------------------------------------------------------------
@@ -85,7 +85,7 @@ function OGXB2CLeadsPage() {
   // ===========================================================================
   // OFFICE ID RESOLUTION
   // ===========================================================================
-  
+
   /**
    * Get the office/LC ID for API calls
    * Tries multiple sources in order of priority
@@ -96,21 +96,21 @@ function OGXB2CLeadsPage() {
     // Try multiple sources for LC/office information
     let officeId = null;
     let lcName = null;
-    
+
     // 1. Try current_offices from user object
     if (currentUser?.current_offices?.[0]?.id) {
       officeId = currentUser.current_offices[0].id;
       console.log('🔍 [LeadsPage] Found office ID from current_offices:', officeId);
       return officeId;
     }
-    
+
     // 2. Try LC name from various sources
-    lcName = currentUser?.lc || 
-             currentUser?.userLC || 
-             localStorage.getItem('userLC') ||
-             Cookies.get('userLC') ||
-             null;
-    
+    lcName = currentUser?.lc ||
+      currentUser?.userLC ||
+      localStorage.getItem('userLC') ||
+      Cookies.get('userLC') ||
+      null;
+
     console.log('🔍 [LeadsPage] LC name from various sources:', {
       currentUser_lc: currentUser?.lc,
       currentUser_userLC: currentUser?.userLC,
@@ -118,11 +118,11 @@ function OGXB2CLeadsPage() {
       cookie_userLC: Cookies.get('userLC'),
       finalLcName: lcName
     });
-    
+
     // 3. Try to find LC ID from LC_CODES
     if (lcName && Array.isArray(LC_CODES)) {
-      const found = LC_CODES.find((lc) => 
-        lc.name === lcName || 
+      const found = LC_CODES.find((lc) =>
+        lc.name === lcName ||
         lc.name?.toLowerCase() === lcName?.toLowerCase() ||
         lc.id?.toString() === lcName?.toString()
       );
@@ -133,7 +133,7 @@ function OGXB2CLeadsPage() {
         console.warn('⚠️ [LeadsPage] LC name not found in LC_CODES:', lcName, 'Available LCs:', LC_CODES.map(lc => lc.name));
       }
     }
-    
+
     console.warn('⚠️ [LeadsPage] Could not determine office/LC ID. Returning null.');
     return null;
   }, [currentUser]);
@@ -163,7 +163,17 @@ function OGXB2CLeadsPage() {
   // DATA FETCHING
   // ===========================================================================
 
-  const { leads, loading, refresh, loadMore, hasMore, error } = useLeadsCursorFetch({ homeLcId });
+  const {
+    leads,
+    loading,
+    refresh,
+    error,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+    totalItems
+  } = useLeadsCursorFetch({ homeLcId });
 
   // Fetch team members if not already fetched (from TeamMembersContext cache)
   useEffect(() => {
@@ -174,7 +184,7 @@ function OGXB2CLeadsPage() {
 
   /** Lead IDs for status fetching */
   const leadIds = useMemo(() => (leads || []).map((l) => l?.expa_person_id).filter(Boolean), [leads]);
-  
+
   /** Lead statuses mapped by ID */
   const { statusById: leadStatusById } = useLeadStatuses(leadIds);
 
@@ -267,9 +277,12 @@ function OGXB2CLeadsPage() {
     <LeadsPageView
       loading={loading}
       onRefresh={refresh}
-      onLoadMore={loadMore}
-      hasMore={hasMore}
       error={error}
+      page={page}
+      setPage={setPage}
+      rowsPerPage={rowsPerPage}
+      setRowsPerPage={setRowsPerPage}
+      totalItems={totalItems}
       dateRange={dateRange}
       onDateFilterChange={handleDateFilterChange}
       onClearFilter={clearDateFilter}

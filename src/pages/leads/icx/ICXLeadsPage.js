@@ -57,7 +57,17 @@ export default function ICXLeadsPage() {
   // iCX uses host_lc_id
   const hostLcId = useMemo(() => getOfficeId(currentUser), [currentUser]);
 
-  const { leads, loading, refresh, loadMore, hasMore, error } = useLeadsCursorFetch({
+  const { 
+    leads, 
+    loading, 
+    refresh, 
+    error,
+    page,
+    setPage,
+    rowsPerPage,
+    setRowsPerPage,
+    totalItems
+  } = useLeadsCursorFetch({
     hostLcId,
     mode: 'icx',
   });
@@ -111,9 +121,12 @@ export default function ICXLeadsPage() {
     <LeadsPageView
       loading={loading}
       onRefresh={refresh}
-      onLoadMore={loadMore}
-      hasMore={hasMore}
       error={error}
+      page={page}
+      setPage={setPage}
+      rowsPerPage={rowsPerPage}
+      setRowsPerPage={setRowsPerPage}
+      totalItems={totalItems}
       dateRange={dateRange}
       onDateFilterChange={handleDateFilterChange}
       onClearFilter={clearDateFilter}

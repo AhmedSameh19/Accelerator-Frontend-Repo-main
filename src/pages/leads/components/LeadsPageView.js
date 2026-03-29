@@ -11,8 +11,11 @@ import LeadsFiltersPanel from './LeadsFiltersPanel';
 export default function LeadsPageView({
   loading,
   onRefresh,
-  onLoadMore,
-  hasMore,
+  page,
+  setPage,
+  rowsPerPage,
+  setRowsPerPage,
+  totalItems,
   error,
   dateRange,
   onDateFilterChange,
@@ -85,8 +88,11 @@ export default function LeadsPageView({
           leads={leads}
           members={members}
           loading={loading}
-          hasMore={hasMore}
-          onLoadMore={onLoadMore}
+          page={page}
+          setPage={setPage}
+          rowsPerPage={rowsPerPage}
+          setRowsPerPage={setRowsPerPage}
+          totalItems={totalItems}
           onEdit={onEdit}
         />
       </Box>
