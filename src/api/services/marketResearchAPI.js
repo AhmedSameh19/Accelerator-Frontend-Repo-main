@@ -243,11 +243,32 @@ const marketResearchAPI = {
   getFromBackend: async (params = {}) => {
     try {
       const limit = Math.min(params.limit ?? 100, 100);
-      const page = params.offset !== undefined ? Math.floor(params.offset / limit) + 1 : 1;
-      const requestParams = { limit, page };
-      if (params.lc_id != null) requestParams.lc_id = params.lc_id;
-      const response = await backendApi.get('/market-research', { params: requestParams, timeout: 45000 });
-      return response.data;
+      const startPage = params.offset !== undefined ? Math.floor(params.offset / limit) + 1 : 1;
+      const lc_id = params.lc_id;
+
+      let allItems = [];
+      let currentPage = startPage;
+      let hasNextPage = true;
+
+      while (hasNextPage) {
+        const response = await backendApi.get('/market-research', {
+          params: { limit, page: currentPage, lc_id },
+          timeout: 45000
+        });
+        const data = response.data;
+
+        if (data && data.data) {
+          allItems = allItems.concat(data.data);
+          hasNextPage = data.pagination?.hasNextPage || false;
+          currentPage++;
+        } else if (Array.isArray(data)) {
+          allItems = allItems.concat(data);
+          hasNextPage = false;
+        } else {
+          hasNextPage = false;
+        }
+      }
+      return allItems;
     } catch (error) {
       console.error('Error fetching market research from backend:', error);
       throw error;

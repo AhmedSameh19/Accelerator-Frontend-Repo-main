@@ -86,29 +86,28 @@ export const leadsApi = {
     const params = { home_lc_id: Number(home_lc_id), limit: Number(limit), page: Number(page) };
 
     try {
-      console.log('🔍 [leadsApi] Fetching leads with params:', params);
-      console.log('🔍 [leadsApi] API URL:', `${API_BASE_URL}/leads/`);
-      const token = getCrmAccessToken();
-      console.log('🔍 [leadsApi] Has token:', !!token);
-      console.log('🔍 [leadsApi] Token preview:', token ? `${token.substring(0, 20)}...` : 'none');
+      let allLeads = [];
+      let currentPage = page;
+      let hasNextPage = true;
 
-      // Add cache-busting and ensure fresh request
-      // NOTE: Backend redirects `/leads` -> `/leads/` with a 307 that may downgrade to http
-      // if proxy headers aren't set correctly. Call `/leads/` directly to avoid redirect.
-      const { data } = await api.get('/leads/', {
-        params: {
-          ...params,
-          _t: Date.now() // Cache busting parameter
-        },
-        // Prevent browser caching
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
+      while (hasNextPage) {
+        const { data } = await api.get('/leads/', {
+          params: { ...params, page: currentPage, _t: Date.now() },
+          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+        });
+
+        if (data && data.data) {
+          allLeads = allLeads.concat(data.data);
+          hasNextPage = data.pagination?.hasNextPage || false;
+          currentPage++;
+        } else if (Array.isArray(data)) {
+          allLeads = allLeads.concat(data);
+          hasNextPage = false;
+        } else {
+          hasNextPage = false;
         }
-      });
-      console.log('🔍 [leadsApi] Response data:', data);
-      return data;
+      }
+      return allLeads;
     } catch (error) {
       console.error('❌ [leadsApi] Error fetching leads:', error);
       if (error.response) {
@@ -136,31 +135,34 @@ export const leadsApi = {
     }
   },
 
-  // Get iCX leads (applications) scoped by host LC
-  // Backend: GET /api/v1/icx/leads?host_lc_id=...&cursor_created_at=...&cursor_application_id=...
   getICXLeads: async ({ host_lc_id, limit = 50, page = 1 } = {}) => {
     if (host_lc_id == null) throw new Error('host_lc_id is required');
 
     const params = { host_lc_id: String(host_lc_id), limit: Number(limit), page: Number(page) };
 
     try {
-      console.log('🔍 [leadsApi] Fetching iCX leads with params:', params);
-      console.log('🔍 [leadsApi] API URL:', `${API_BASE_URL}/icx/leads/`);
+      let allLeads = [];
+      let currentPage = page;
+      let hasNextPage = true;
 
-      // Same redirect caveat as `/leads`.
-      const { data } = await api.get('/icx/leads/', {
-        params: {
-          ...params,
-          _t: Date.now(),
-        },
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-        },
-      });
+      while (hasNextPage) {
+        const { data } = await api.get('/icx/leads/', {
+          params: { ...params, page: currentPage, _t: Date.now() },
+          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+        });
 
-      return data;
+        if (data && data.data) {
+          allLeads = allLeads.concat(data.data);
+          hasNextPage = data.pagination?.hasNextPage || false;
+          currentPage++;
+        } else if (Array.isArray(data)) {
+          allLeads = allLeads.concat(data);
+          hasNextPage = false;
+        } else {
+          hasNextPage = false;
+        }
+      }
+      return allLeads;
     } catch (error) {
       console.error('❌ [leadsApi] Error fetching iCX leads:', error);
       throw error;
