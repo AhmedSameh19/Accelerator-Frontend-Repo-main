@@ -86,7 +86,6 @@ import { EventEmitter } from 'events';
 import { useAuth } from '../context/AuthContext';
 import { LC_CODES, MC_EGYPT_CODE } from '../lcCodes';
 import marketResearchAPI from '../api/services/marketResearchAPI';
-import podioAPI from '../api/services/podioAPI';
 import { getSyncPersonId } from '../api/services/membersAPI';
 import Cookies from 'js-cookie';
 import { getCrmAccessToken } from '../utils/crmToken';
@@ -633,14 +632,6 @@ function MarketResearchPage() {
     if (!showAllLCs && officeId == null) return;
     initialLoadDone.current = true;
     fetchCompanies();
-    Promise.race([
-      podioAPI.getStatus().catch(() => ({ authenticated: false })),
-      new Promise((resolve) => setTimeout(() => resolve({ authenticated: false }), 8000)),
-    ]).then((status) => {
-      if (status?.authenticated || status?.authorized) return;
-      if (!usePodioData) return;
-      podioAPI.getAuthUrl().then(({ authUrl }) => { if (authUrl) window.location.href = authUrl; }).catch(() => {});
-    });
   }, [usePodioData, currentUser, showAllLCs]);
   useEffect(() => {
     const officeId = getOfficeId(currentUser);
