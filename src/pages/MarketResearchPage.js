@@ -424,7 +424,9 @@ function MarketResearchPage() {
             offset,
             ...(lcId != null && { lc_id: lcId }),
           });
-          const rawItems = backendResponse?.items ?? backendResponse?.data?.items ?? backendResponse?.data ?? [];
+          const rawItems = Array.isArray(backendResponse)
+            ? backendResponse
+            : (backendResponse?.items ?? backendResponse?.data?.items ?? backendResponse?.data ?? []);
           const items = Array.isArray(rawItems) ? rawItems : [];
           parsedCompanies = items.map(mapBackendItemToCompany);
           // Merge saved interaction status and funnel from localStorage so list shows correct step/status

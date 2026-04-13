@@ -268,7 +268,8 @@ const marketResearchAPI = {
           hasNextPage = false;
         }
       }
-      return allItems;
+      // Envelope shape: MarketResearchPage expects .data (not a bare array).
+      return { data: allItems };
     } catch (error) {
       console.error('Error fetching market research from backend:', error);
       throw error;
