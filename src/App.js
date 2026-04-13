@@ -8,9 +8,11 @@ import { TeamMembersProvider } from './context/TeamMembersContext';
 import ChickenInvaders from './components/EasterEgg/ChickenInvaders';
 import useEasterEgg from './hooks/useEasterEgg';
 import NotificationInitializer from './app/NotificationInitializer';
+import MembersInitializer from './app/MembersInitializer';
 import ErrorBoundary from './app/ErrorBoundary';
 import { router } from './routes/router';
 import { appTheme } from './theme/appTheme';
+
 
 import { SnackbarProvider } from './context/SnackbarContext';
 
@@ -26,6 +28,7 @@ function App() {
             <NotificationInitializer />
             <AuthProvider>
               <TeamMembersProvider>
+                <MembersInitializer />
                 <CRMTypeProvider>
                   <RouterProvider router={router} />
                   {showGame && <ChickenInvaders onClose={() => setShowGame(false)} />}

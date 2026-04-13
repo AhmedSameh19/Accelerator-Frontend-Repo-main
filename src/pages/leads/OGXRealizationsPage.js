@@ -263,12 +263,7 @@ function OGXRealizationsPage({ crmTypeOverride }) {
     localStorage.setItem('prepState', JSON.stringify(prepState));
   }, [prepState]);
 
-  // Fetch team members if not already fetched
-  useEffect(() => {
-    if (!membersFetched && currentUser) {
-      fetchMembers(currentUser, isAdmin);
-    }
-  }, [currentUser, isAdmin, membersFetched, fetchMembers]);
+
 
   // ===========================================================================
   // PROFILE HANDLERS

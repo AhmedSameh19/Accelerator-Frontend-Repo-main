@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback,useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -90,11 +90,10 @@ import PreparationStepsTab from '../components/PreparationStepsTab';
 import PostExperienceTab from '../components/PostExperienceTab';
 import DateRangeFilter from '../components/DateRangeFilter';
 import { LC_CODES, MC_EGYPT_CODE } from '../lcCodes';
-import { fetchActiveMembers } from '../api/services/membersAPI';
 import { useAuth } from '../context/AuthContext';
 import Cookies from 'js-cookie';
-import { getCrmAccessToken } from '../utils/crmToken';
 import { matchSearchTerm } from '../utils/searchUtils';
+import { useTeamMembersContext } from '../context/TeamMembersContext';
 // Constants for the page
 const homeMCs = [
   'Egypt',
@@ -176,11 +175,11 @@ const formatDate = (dateString) => {
   if (!dateString) return '-';
   const date = new Date(dateString);
   if (isNaN(date.getTime())) return '-';
-  
+
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
-  
+
   return `${day}-${month}-${year}`;
 };
 
@@ -231,7 +230,7 @@ const sortData = (data, orderBy, order) => {
     } else if (orderBy === 'daysTillRealization') {
       aValue = calculateDaysTillRealization(a.apdDate, a.slotStartDate);
       bValue = calculateDaysTillRealization(b.apdDate, b.slotStartDate);
-      
+
       // Handle special cases for days
       if (aValue === '-') aValue = -Infinity;
       if (bValue === '-') bValue = -Infinity;
@@ -290,13 +289,14 @@ function getOfficeId(currentUser) {
 function ICXRealizationsPage() {
   const { crmType } = useCRMType();
   const theme = useTheme();
-   const { currentUser, isAdmin, login } = useAuth();
+  const { currentUser, isAdmin, login } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('');
   const [selectedHomeLC, setSelectedHomeLC] = useState('');
   const [selectedHostLC, setSelectedHostLC] = useState('');
   const [selectedExchangeType, setSelectedExchangeType] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
+  const { members, fetchMembers, hasFetched: membersFetched } = useTeamMembersContext();
   const [leads, setLeads] = useState([]);
   const [originalLeads, setOriginalLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -329,9 +329,7 @@ function ICXRealizationsPage() {
   const [selectedMember, setSelectedMember] = useState('');
   const [bulkAssignDialogOpen, setBulkAssignDialogOpen] = useState(false);
   const [selectedLeadsSet, setSelectedLeadsSet] = useState(new Set());
-  const membersFetched = useRef(false);
-  const [members, setActiveMembers] = useState([]);
-  
+
   // -- Server-Side Pagination State --
   const [page, setPage] = useState(0); // MUI uses 0-indexed pages
   const [rowsPerPage, setRowsPerPage] = useState(50);
@@ -350,11 +348,11 @@ function ICXRealizationsPage() {
       }
 
       console.log('Fetching ICX realizations...');
-      const pageData = await getICXRealizations({ 
-        hostLcId, 
-        page: page + 1, 
+      const pageData = await getICXRealizations({
+        hostLcId,
+        page: page + 1,
         limit: rowsPerPage,
-        search: searchTerm || undefined 
+        search: searchTerm || undefined
       });
       const items = pageData?.data || pageData?.items || pageData?.leads || (Array.isArray(pageData) ? pageData : []);
 
@@ -404,7 +402,7 @@ function ICXRealizationsPage() {
       setError(null);
     } catch (err) {
       console.error('Error fetching leads:', err);
-      
+
       // Handle authentication errors specifically
       if (err.message && err.message.includes('Authentication required')) {
         showWarning('Please log in to access realizations data');
@@ -414,7 +412,7 @@ function ICXRealizationsPage() {
         showError(friendlyMsg);
         setError(friendlyMsg);
       }
-      
+
       setLeads([]);
       setOriginalLeads([]);
     } finally {
@@ -432,28 +430,11 @@ function ICXRealizationsPage() {
     fetchLeads();
   }, [fetchLeads, currentUser, isAdmin]);
 
-    useEffect(() => {
-      const lcCode = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
-      const startDate = dateRange.startDate
-        ? dateRange.startDate.toISOString().split("T")[0]
-        : "2025-08-01";
-      const personId = Cookies.get("person_id");
-      if (!isAdmin && !lcCode) {
-        setLeads([]);
-        showError("No office assigned to your account. Cannot fetch leads.");
-        setLoading(false);
-        return;
-      }
-    
-      // Fetch active members
-    
-      if (lcCode) {
-        if (!membersFetched.current) {
-          currentMembers(lcCode, personId); // 👈 only once
-          membersFetched.current = true;
-        }
-      }
-    }, [dateRange, currentUser, isAdmin]);
+  useEffect(() => {
+    if (!membersFetched && currentUser) {
+      fetchMembers(currentUser, isAdmin);
+    }
+  }, [currentUser, isAdmin, membersFetched, fetchMembers]);
   // Filter prepState to only keep entries for current leads, but only after prepState is loaded
   useEffect(() => {
     setPrepState(prev => {
@@ -516,106 +497,7 @@ function ICXRealizationsPage() {
     // Trigger search with new date filter
     handleSearch(dateFilter);
   };
-const getTeamUnderCurrentUser = (members) => {
-  const currentUserId = Cookies.get("person_id");
-  const userRole = Cookies.get("userRole"); // assuming you store the role in cookies
-  if (!currentUserId) return [];
 
-  // ✅ If user is LCVP → return all members (TLs + TMs)
-  if (userRole && userRole.toUpperCase().includes("LCVP")) {
-    const allMembers = [];
-
-    // flatten all TLs and TMs under LCVP
-    for (const member of members.children || []) {
-      allMembers.push({
-        id: member.id,
-        role: member.role,
-        person: member.person
-      });
-
-      for (const child of member.children || []) {
-        allMembers.push({
-          id: child.id,
-          role: child.role,
-          person: child.person
-        });
-      }
-    }
-
-    // sort TL first, then TM
-    allMembers.sort((a, b) => {
-      const order = { TL: 1, TM: 2 };
-      const aRole = a.role.toUpperCase().includes("TL") ? "TL" : "TM";
-      const bRole = b.role.toUpperCase().includes("TL") ? "TL" : "TM";
-      return order[aRole] - order[bRole];
-    });
-
-    return allMembers;
-  }
-
-  // 🔹 If not LCVP → find their TL/TM team
-  let targetNode = null;
-
-  const findNode = (node) => {
-    if (node.user_id == currentUserId) {
-      targetNode = node;
-      return;
-    }
-    for (const child of node.children || []) {
-      findNode(child);
-      if (targetNode) return;
-    }
-  };
-
-  for (const member of members.children || []) {
-    findNode(member);
-    if (targetNode) break;
-  }
-
-  if (!targetNode) {
-    console.warn("Current user not found in hierarchy");
-    return [];
-  }
-
-  const children = targetNode.children?.map(child => ({
-    id: child.id,
-    role: child.role,
-    person: child.person
-  })) || [];
-
-  children.sort((a, b) => {
-    const order = { TL: 1, TM: 2 };
-    const aRole = a.role.toUpperCase().includes("TL") ? "TL" : "TM";
-    const bRole = b.role.toUpperCase().includes("TL") ? "TL" : "TM";
-    return order[aRole] - order[bRole];
-  });
-
-  return children;
-};
-
-
-  const currentMembers = async (lcCode, token) => {
-    try {
-      const members = await fetchActiveMembers(lcCode, token);
-      console.log("Fetched Active Members: ", members);
-      const filteredMembers = members.filter(member => {
-      const position = member.role;
-      const parentTitle = member.function.toUpperCase();
-
-      const isLCVP = position === 'LCVP' ;
-      const isUnderOG = parentTitle?.includes('IGTA') || parentTitle?.includes('IGTE') || parentTitle?.includes('IGV')|| parentTitle?.includes('ICX');
-
-      return isLCVP && isUnderOG;
-    });
-    console.log(filteredMembers[0])
-    const teamMembers = getTeamUnderCurrentUser(filteredMembers[0]);
-    console.log("Team Members under VP: ", teamMembers);
-    setActiveMembers(teamMembers);
-    } catch (error) {
-      console.error('Error fetching active members:', error);
-      showError('Failed to fetch active members');
-    }
-  };
 
 
   const handleSearch = (searchDateFilter = dateRange) => {
@@ -630,7 +512,7 @@ const getTeamUnderCurrentUser = (members) => {
       ) {
         const leadDateStr = lead[searchDateFilter.field] || lead.created_at || lead.updated_at;
         if (!leadDateStr) return false;
-        
+
         const leadDate = new Date(leadDateStr);
         if (isNaN(leadDate.getTime())) return false;
 
@@ -789,13 +671,13 @@ const getTeamUnderCurrentUser = (members) => {
 
   const copyToClipboard = (text, title, lead) => {
     let textToCopy = '';
-    
+
     if (title === 'Phone Number' && text && lead) {
       textToCopy = `${getCountryCode(lead.homeMC)} ${text}`;
     } else if (title === 'Email' && text) {
       textToCopy = text;
     }
-    
+
     if (textToCopy) {
       navigator.clipboard.writeText(textToCopy).then(() => {
         showSuccess('Copied to clipboard!');
@@ -841,12 +723,12 @@ const getTeamUnderCurrentUser = (members) => {
   const selectedLeads = useMemo(() => Array.from(selectedLeadsSet), [selectedLeadsSet]);
 
   // Memoize checkbox states
-  const isAllSelected = useMemo(() => 
+  const isAllSelected = useMemo(() =>
     leads.length > 0 && selectedLeadsSet.size === leads.length,
     [leads.length, selectedLeadsSet.size]
   );
 
-  const isIndeterminate = useMemo(() => 
+  const isIndeterminate = useMemo(() =>
     selectedLeadsSet.size > 0 && selectedLeadsSet.size < leads.length,
     [leads.length, selectedLeadsSet.size]
   );
@@ -882,7 +764,7 @@ const getTeamUnderCurrentUser = (members) => {
   ), [selectedLeadsSet, handleSelectLead]);
 
   // Memoize the sorted data
-  const sortedData = useMemo(() => 
+  const sortedData = useMemo(() =>
     sortData(leads, orderBy, order),
     [leads, orderBy, order]
   );
@@ -890,10 +772,10 @@ const getTeamUnderCurrentUser = (members) => {
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     const tableContainer = document.querySelector('.MuiTableContainer-root');
-    
+
     // Create a deep clone of the table
     const tableClone = tableContainer.cloneNode(true);
-    
+
     // Remove all sorting-related elements and copy buttons
     const headers = tableClone.querySelectorAll('th');
     headers.forEach(header => {
@@ -923,12 +805,12 @@ const getTeamUnderCurrentUser = (members) => {
     chips.forEach(chip => {
       const label = chip.textContent.toLowerCase();
       let bgColor = '#e0e0e0';
-      
+
       // Product colors
       if (label === 'gv') bgColor = '#F85A40';
       else if (label === 'gta') bgColor = '#0CB9C1';
       else if (label === 'gte') bgColor = '#F48924';
-      
+
       // Status colors
       else if (label === 'approved') bgColor = '#4caf50';
       else if (label === 'realized') bgColor = '#1976d2';
@@ -936,7 +818,7 @@ const getTeamUnderCurrentUser = (members) => {
       else if (label === 'completed') bgColor = '#ff9800';
       else if (label === 'rejected') bgColor = '#f44336';
       else if (label === 'on hold') bgColor = '#ff9800';
-      
+
       chip.style.cssText = `
         background-color: ${bgColor} !important;
         color: white !important;
@@ -963,11 +845,11 @@ const getTeamUnderCurrentUser = (members) => {
     // Filter rows based on selected leads if any are selected
     const tbody = tableClone.querySelector('tbody');
     const rows = Array.from(tbody.querySelectorAll('tr'));
-    
+
     if (selectedLeadsSet.size > 0) {
       // Remove all rows first
       rows.forEach(row => row.remove());
-      
+
       // Add only the selected rows
       leads.forEach(lead => {
         if (selectedLeadsSet.has(lead.id)) {
@@ -981,11 +863,10 @@ const getTeamUnderCurrentUser = (members) => {
             <td>${lead.homeLC || '-'}</td>
             <td>${lead.homeMC || '-'}</td>
             <td>
-              <span class="MuiChip-root" style="background-color: ${
-                lead.programme?.toLowerCase() === 'gv' ? '#F85A40' :
-                lead.programme?.toLowerCase() === 'gta' ? '#0CB9C1' :
+              <span class="MuiChip-root" style="background-color: ${lead.programme?.toLowerCase() === 'gv' ? '#F85A40' :
+              lead.programme?.toLowerCase() === 'gta' ? '#0CB9C1' :
                 lead.programme?.toLowerCase() === 'gte' ? '#F48924' : '#e0e0e0'
-              } !important; color: white !important; border: none !important; padding: 4px 8px !important; border-radius: 16px !important; font-size: 11px !important; font-weight: 600 !important; display: inline-flex !important; align-items: center !important; margin: 1px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;">
+            } !important; color: white !important; border: none !important; padding: 4px 8px !important; border-radius: 16px !important; font-size: 11px !important; font-weight: 600 !important; display: inline-flex !important; align-items: center !important; margin: 1px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;">
                 ${lead.programme || '-'}
               </span>
             </td>
@@ -1050,8 +931,8 @@ const getTeamUnderCurrentUser = (members) => {
     <Box>
       {/* Error Display */}
       {error && (
-        <Alert 
-          severity="error" 
+        <Alert
+          severity="error"
           sx={{ mb: 2 }}
           action={
             <Button color="inherit" size="small" onClick={() => setError(null)}>
@@ -1073,7 +954,8 @@ const getTeamUnderCurrentUser = (members) => {
             color="primary"
             startIcon={<PrintIcon />}
             onClick={handlePrint}
-            sx={{ width: { xs: '100%', sm: 'auto' } ,
+            sx={{
+              width: { xs: '100%', sm: 'auto' },
               position: 'relative',
               '&::after': selectedLeads.length > 0 ? {
                 content: `"${selectedLeads.length}"`,
@@ -1100,25 +982,26 @@ const getTeamUnderCurrentUser = (members) => {
               variant="contained"
               startIcon={<AssignmentIndIcon />}
               onClick={() => setBulkAssignDialogOpen(true)}
-              sx={{ width: { xs: '100%', sm: 'auto' } ,
-              position: 'relative',
-              '&::after': selectedLeads.length > 0 ? {
-                content: `"${selectedLeads.length}"`,
-                position: 'absolute',
-                top: -8,
-                right: -8,
-                backgroundColor: '#f44336',
-                color: 'white',
-                borderRadius: '50%',
-                width: 20,
-                height: 20,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.75rem',
-                fontWeight: 'bold',
-              } : {}
-            }}
+              sx={{
+                width: { xs: '100%', sm: 'auto' },
+                position: 'relative',
+                '&::after': selectedLeads.length > 0 ? {
+                  content: `"${selectedLeads.length}"`,
+                  position: 'absolute',
+                  top: -8,
+                  right: -8,
+                  backgroundColor: '#f44336',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: 20,
+                  height: 20,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.75rem',
+                  fontWeight: 'bold',
+                } : {}
+              }}
             >
               Assign Selected
             </Button>
@@ -1152,10 +1035,10 @@ const getTeamUnderCurrentUser = (members) => {
                     <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
                   ),
                   endAdornment: searchTerm && (
-                    <IconButton 
-                      size="small" 
+                    <IconButton
+                      size="small"
                       onClick={() => setSearchTerm('')}
-                      sx={{ 
+                      sx={{
                         color: 'text.secondary',
                         '&:hover': { color: 'primary.main' }
                       }}
@@ -1391,7 +1274,7 @@ const getTeamUnderCurrentUser = (members) => {
                 </Select>
               </FormControl>
             </Grid>
-         
+
 
           </Grid>
         </CardContent>
@@ -1399,8 +1282,8 @@ const getTeamUnderCurrentUser = (members) => {
 
       <Card sx={{ mb: { xs: 2, sm: 3 } }}>
         <CardContent sx={{ p: { xs: 1, sm: 2 }, overflowX: 'auto' }}>
-          <TableContainer 
-            component={Paper} 
+          <TableContainer
+            component={Paper}
             elevation={0}
             sx={{
               overflowX: 'auto',
@@ -1412,25 +1295,25 @@ const getTeamUnderCurrentUser = (members) => {
             <Table sx={{ whiteSpace: 'nowrap' }}>
               <TableHead>
                 <TableRow>
-                  <TableCell 
+                  <TableCell
                     padding="checkbox"
-                    sx={{ 
-                      position: 'sticky', 
-                      left: 0, 
-                      bgcolor: '#F4F6F9', 
+                    sx={{
+                      position: 'sticky',
+                      left: 0,
+                      bgcolor: '#F4F6F9',
                       zIndex: 3,
                       borderRight: '1px solid rgba(224, 224, 224, 1)'
                     }}
                   >
                     {SelectAllCheckbox}
                   </TableCell>
-                  <TableCell sx={{ 
+                  <TableCell sx={{
                     whiteSpace: 'nowrap',
                     fontSize: { xs: '0.75rem', sm: '0.875rem' },
                     py: { xs: 1, sm: 2 },
-                    position: 'sticky', 
-                    left: 48, 
-                    bgcolor: '#F4F6F9', 
+                    position: 'sticky',
+                    left: 48,
+                    bgcolor: '#F4F6F9',
                     zIndex: 3,
                     borderRight: '1px solid rgba(224, 224, 224, 1)'
                   }}>
@@ -1442,13 +1325,13 @@ const getTeamUnderCurrentUser = (members) => {
                       EP_OP ID
                     </TableSortLabel>
                   </TableCell>
-                  <TableCell sx={{ 
+                  <TableCell sx={{
                     whiteSpace: 'nowrap',
                     fontSize: { xs: '0.75rem', sm: '0.875rem' },
                     py: { xs: 1, sm: 2 },
-                    position: 'sticky', 
-                    left: 140, 
-                    bgcolor: '#F4F6F9', 
+                    position: 'sticky',
+                    left: 140,
+                    bgcolor: '#F4F6F9',
                     zIndex: 3,
                     borderRight: '1px solid rgba(224, 224, 224, 1)'
                   }}>
@@ -1460,7 +1343,7 @@ const getTeamUnderCurrentUser = (members) => {
                       Name
                     </TableSortLabel>
                   </TableCell>
-                  <TableCell sx={{ 
+                  <TableCell sx={{
                     whiteSpace: 'nowrap',
                     fontSize: { xs: '0.75rem', sm: '0.875rem' },
                     py: { xs: 1, sm: 2 }
@@ -1473,7 +1356,7 @@ const getTeamUnderCurrentUser = (members) => {
                       Phone Number
                     </TableSortLabel>
                   </TableCell>
-                  <TableCell sx={{ 
+                  <TableCell sx={{
                     whiteSpace: 'nowrap',
                     fontSize: { xs: '0.75rem', sm: '0.875rem' },
                     py: { xs: 1, sm: 2 }
@@ -1486,7 +1369,7 @@ const getTeamUnderCurrentUser = (members) => {
                       Host LC
                     </TableSortLabel>
                   </TableCell>
-                  <TableCell sx={{ 
+                  <TableCell sx={{
                     whiteSpace: 'nowrap',
                     fontSize: { xs: '0.75rem', sm: '0.875rem' },
                     py: { xs: 1, sm: 2 }
@@ -1598,33 +1481,33 @@ const getTeamUnderCurrentUser = (members) => {
                   </TableRow>
                 ) : (
                   sortedData.map((lead) => (
-                    <TableRow 
+                    <TableRow
                       key={lead.id}
                       hover
                       onClick={() => handleOpenProfile(lead)}
-                      sx={{ 
+                      sx={{
                         cursor: 'pointer',
                         '&:hover': {
                           bgcolor: theme.palette.action.hover
                         }
                       }}
                     >
-                      <TableCell 
+                      <TableCell
                         padding="checkbox"
-                        sx={{ 
-                          position: 'sticky', 
-                          left: 0, 
-                          bgcolor: 'background.paper', 
+                        sx={{
+                          position: 'sticky',
+                          left: 0,
+                          bgcolor: 'background.paper',
                           zIndex: 1,
                           borderRight: '1px solid rgba(224, 224, 224, 1)'
                         }}
                       >
                         <LeadCheckbox leadId={lead.id} />
                       </TableCell>
-                      <TableCell sx={{ 
-                        position: 'sticky', 
-                        left: 48, 
-                        bgcolor: 'background.paper', 
+                      <TableCell sx={{
+                        position: 'sticky',
+                        left: 48,
+                        bgcolor: 'background.paper',
                         zIndex: 1,
                         borderRight: '1px solid rgba(224, 224, 224, 1)'
                       }}>
@@ -1632,17 +1515,17 @@ const getTeamUnderCurrentUser = (members) => {
                           {lead.id}
                         </Typography>
                       </TableCell>
-                      <TableCell sx={{ 
-                        position: 'sticky', 
-                        left: 140, 
-                        bgcolor: 'background.paper', 
+                      <TableCell sx={{
+                        position: 'sticky',
+                        left: 140,
+                        bgcolor: 'background.paper',
                         zIndex: 1,
                         borderRight: '1px solid rgba(224, 224, 224, 1)'
                       }}>
-                        <Typography 
-                          variant="body2" 
+                        <Typography
+                          variant="body2"
                           title={lead.fullName}
-                          sx={{ 
+                          sx={{
                             fontWeight: 600,
                             maxWidth: { xs: '120px', sm: '220px' },
                             overflow: 'hidden',
@@ -1653,7 +1536,7 @@ const getTeamUnderCurrentUser = (members) => {
                           {lead.fullName}
                         </Typography>
                       </TableCell>
-                      <TableCell sx={{ 
+                      <TableCell sx={{
                         fontSize: { xs: '0.75rem', sm: '0.875rem' },
                         py: { xs: 1, sm: 2 }
                       }}>
@@ -1678,7 +1561,7 @@ const getTeamUnderCurrentUser = (members) => {
                           </IconButton>
                         </Box>
                       </TableCell>
-                      <TableCell sx={{ 
+                      <TableCell sx={{
                         fontSize: { xs: '0.75rem', sm: '0.875rem' },
                         py: { xs: 1, sm: 2 }
                       }}>
@@ -1686,7 +1569,7 @@ const getTeamUnderCurrentUser = (members) => {
                           {lead.hostLC}
                         </Typography>
                       </TableCell>
-                      <TableCell sx={{ 
+                      <TableCell sx={{
                         fontSize: { xs: '0.75rem', sm: '0.875rem' },
                         py: { xs: 1, sm: 2 }
                       }}>
@@ -1709,8 +1592,8 @@ const getTeamUnderCurrentUser = (members) => {
                           label={lead.programme}
                           sx={{
                             bgcolor: lead.programme?.toLowerCase() === 'gv' ? '#F85A40' :
-                                    lead.programme?.toLowerCase() === 'gta' ? '#0CB9C1' :
-                                    lead.programme?.toLowerCase() === 'gte' ? '#F48924' : '#e0e0e0',
+                              lead.programme?.toLowerCase() === 'gta' ? '#0CB9C1' :
+                                lead.programme?.toLowerCase() === 'gte' ? '#F48924' : '#e0e0e0',
                             color: '#fff',
                             fontWeight: 700,
                             fontSize: '0.875rem'
@@ -1721,23 +1604,23 @@ const getTeamUnderCurrentUser = (members) => {
                         <Chip
                           label={lead.status}
                           sx={{
-                              bgcolor: lead.status?.toLowerCase() === 'approved' ? '#4caf50' :
-                                      lead.status?.toLowerCase() === 'realized' ? '#1976d2' :
-                                      lead.status?.toLowerCase() === 'finished' ? '#ffc107' :
-                                      lead.status?.toLowerCase() === 'completed' ? '#ff9800' :
-                                      lead.status?.toLowerCase() === 'rejected' ? '#f44336' :
+                            bgcolor: lead.status?.toLowerCase() === 'approved' ? '#4caf50' :
+                              lead.status?.toLowerCase() === 'realized' ? '#1976d2' :
+                                lead.status?.toLowerCase() === 'finished' ? '#ffc107' :
+                                  lead.status?.toLowerCase() === 'completed' ? '#ff9800' :
+                                    lead.status?.toLowerCase() === 'rejected' ? '#f44336' :
                                       lead.status?.toLowerCase() === 'on hold' ? '#ff9800' : '#e0e0e0',
-                              color: '#fff',
-                              fontWeight: 700,
-                              fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                              px: 2
+                            color: '#fff',
+                            fontWeight: 700,
+                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                            px: 2
                           }}
                         />
                       </TableCell>
                       <TableCell>
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
+                        <Typography
+                          variant="body2"
+                          sx={{
                             color: (theme) => {
                               const days = calculateDaysTillRealization(lead.apdDate, lead.slotStartDate);
                               if (days === '-') return theme.palette.text.secondary;
@@ -1778,21 +1661,21 @@ const getTeamUnderCurrentUser = (members) => {
                 )}
               </TableBody>
             </Table>
-        </TableContainer>
-        <TablePagination
-          rowsPerPageOptions={[20, 50, 100]}
-          component="div"
-          count={totalItems}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={(e, newPage) => setPage(newPage)}
-          onRowsPerPageChange={(e) => {
-            setRowsPerPage(parseInt(e.target.value, 10));
-            setPage(0);
-          }}
-        />
-      </CardContent>
-    </Card>
+          </TableContainer>
+          <TablePagination
+            rowsPerPageOptions={[20, 50, 100]}
+            component="div"
+            count={totalItems}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={(e, newPage) => setPage(newPage)}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+          />
+        </CardContent>
+      </Card>
 
       {/* Add/Edit Lead Dialog */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
@@ -1919,9 +1802,9 @@ const getTeamUnderCurrentUser = (members) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button 
-            onClick={handleSaveLead} 
-            variant="contained" 
+          <Button
+            onClick={handleSaveLead}
+            variant="contained"
             color="primary"
             startIcon={<SaveIcon />}
           >
@@ -1969,30 +1852,30 @@ const getTeamUnderCurrentUser = (members) => {
                 </Typography>
                 <Stack spacing={1}>
                   <Box display="flex" alignItems="center" gap={1} justifyContent={{ xs: 'center', sm: 'flex-start' }}>
-                  <Chip
-                    label={selectedLead.status}
-                    sx={{
-                      bgcolor:
-                        selectedLead.status?.toLowerCase() === 'approved' ? '#43a047' :
-                        selectedLead.status?.toLowerCase() === 'rejected' ? '#e53935' :
-                        selectedLead.status?.toLowerCase() === 'on hold' ? '#fbc02d' :
-                        '#1976d2',
-                      color: '#fff',
-                      fontWeight: 700,
+                    <Chip
+                      label={selectedLead.status}
+                      sx={{
+                        bgcolor:
+                          selectedLead.status?.toLowerCase() === 'approved' ? '#43a047' :
+                            selectedLead.status?.toLowerCase() === 'rejected' ? '#e53935' :
+                              selectedLead.status?.toLowerCase() === 'on hold' ? '#fbc02d' :
+                                '#1976d2',
+                        color: '#fff',
+                        fontWeight: 700,
                         fontSize: { xs: '0.875rem', sm: '1rem' },
-                      px: 2
-                    }}
-                  />
+                        px: 2
+                      }}
+                    />
                   </Box>
                   <Box display="flex" alignItems="center" gap={1} justifyContent={{ xs: 'center', sm: 'flex-start' }}>
                     <Typography variant="body1" sx={{ color: '#e3f2fd', display: 'flex', alignItems: 'center', gap: 1, minWidth: { xs: 'auto', sm: 120 } }}>
-                    <FlagIcon fontSize="small" />
+                      <FlagIcon fontSize="small" />
                       Sending:
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#e3f2fd' }}>
-                    {selectedLead.homeLC} • {selectedLead.homeMC}
-                  </Typography>
-                </Box>
+                      {selectedLead.homeLC} • {selectedLead.homeMC}
+                    </Typography>
+                  </Box>
                   <Box display="flex" alignItems="center" gap={1} justifyContent={{ xs: 'center', sm: 'flex-start' }}>
                     <Typography variant="body1" sx={{ color: '#e3f2fd', display: 'flex', alignItems: 'center', gap: 1, minWidth: { xs: 'auto', sm: 120 } }}>
                       <LocationIcon fontSize="small" />
@@ -2004,8 +1887,8 @@ const getTeamUnderCurrentUser = (members) => {
                   </Box>
                 </Stack>
               </Box>
-              <IconButton 
-                onClick={handleCloseProfile} 
+              <IconButton
+                onClick={handleCloseProfile}
                 size="medium"
                 sx={{
                   bgcolor: 'rgba(255,255,255,0.8)',
@@ -2029,11 +1912,11 @@ const getTeamUnderCurrentUser = (members) => {
 
           {/* Tabs for profile sections */}
           <Box sx={{ borderBottom: 1, borderColor: 'divider', background: 'white', px: { xs: 1, sm: 3 } }}>
-            <Tabs 
-              value={tab} 
-              onChange={(e, newValue) => setTab(newValue)} 
-              textColor="primary" 
-              indicatorColor="primary" 
+            <Tabs
+              value={tab}
+              onChange={(e, newValue) => setTab(newValue)}
+              textColor="primary"
+              indicatorColor="primary"
               variant="fullWidth"
               sx={{
                 '& .MuiTab-root': {
@@ -2224,568 +2107,568 @@ const getTeamUnderCurrentUser = (members) => {
                   updateStandardsFn={patchICXRealizationsStandards}
                 />
                 {false && (
-              <Box sx={{ p: 4, color: 'text.secondary' }}>
-                <Typography variant="h6" color="primary" sx={{ mb: 3, fontWeight: 700 }}>Preparation Steps</Typography>
-                <Stack spacing={3}>
-                  {/* #1 PSG */}
-                  <Card elevation={2} sx={{ borderRadius: 3 }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <AssignmentIndIcon color="primary" /> #1 PSG
-                      </Typography>
-                      <MUIList dense>
-                        <ListItem alignItems="flex-start">
-                          <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
-                            <Checkbox
-                              checked={!!prepState[selectedLead.id]?.iceBroken}
-                              onChange={e => setPrepState(prev => ({
-                                ...prev,
-                                [selectedLead.id]: {
-                                  ...prev[selectedLead.id],
-                                  iceBroken: e.target.checked
-                                }
-                              }))}
-                              color="primary"
-                              sx={{ mr: 1 }}
-                            />
-                            <ListItemText primary="CXP manager contact EP to break the ice (4 months before realization date)" />
-                          </Box>
-                        </ListItem>
-                        <ListItem>
-                          <TextField
-                            label="Notes"
-                            size="small"
-                            fullWidth
-                            value={prepState[selectedLead.id]?.iceNotes || ''}
-                            onChange={e => setPrepState(prev => ({
-                              ...prev,
-                              [selectedLead.id]: {
-                                ...prev[selectedLead.id],
-                                iceNotes: e.target.value
-                              }
-                            }))}
-                            variant="outlined"
-                            sx={{ mt: 1 }}
-                          />
-                        </ListItem>
-                      </MUIList>
-                    </CardContent>
-                  </Card>
-                  {/* #2 OPS */}
-                  <Card elevation={2} sx={{ borderRadius: 3 }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <WorkIcon color="primary" /> #2 OPS
-                      </Typography>
-                      <MUIList dense>
-                        <ListItem>
-                          <ListItemIcon><InsertDriveFileIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                            <ListItemText primary="Passport (3 months before realization date)" />
-                            <Button
-                              variant="outlined"
-                              component="label"
-                              size="small"
-                              sx={{ minWidth: 120 }}
-                            >
-                              {prepState[selectedLead.id]?.passportFile ? 'Change File' : 'Upload File'}
-                              <input
-                                type="file"
-                                hidden
-                                accept="application/pdf,image/*"
-                                onChange={async e => {
-                                  const file = e.target.files[0];
-                                  if (file) {
-                                    try {
-                                      const base64Data = await fileToBase64(file);
-                                      const uploadDate = new Date();
-                                    setPrepState(prev => ({
-                                      ...prev,
-                                      [selectedLead.id]: {
-                                        ...prev[selectedLead.id],
-                                          passportFile: {
-                                            name: file.name,
-                                            type: file.type,
-                                            data: base64Data,
-                                            size: file.size,
-                                            uploadDate: uploadDate.toISOString()
-                                          },
-                                          passportUploadDate: uploadDate.toISOString()
-                                      }
-                                    }));
-                                    } catch (error) {
-                                      console.error('File conversion failed:', error);
+                  <Box sx={{ p: 4, color: 'text.secondary' }}>
+                    <Typography variant="h6" color="primary" sx={{ mb: 3, fontWeight: 700 }}>Preparation Steps</Typography>
+                    <Stack spacing={3}>
+                      {/* #1 PSG */}
+                      <Card elevation={2} sx={{ borderRadius: 3 }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <AssignmentIndIcon color="primary" /> #1 PSG
+                          </Typography>
+                          <MUIList dense>
+                            <ListItem alignItems="flex-start">
+                              <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
+                                <Checkbox
+                                  checked={!!prepState[selectedLead.id]?.iceBroken}
+                                  onChange={e => setPrepState(prev => ({
+                                    ...prev,
+                                    [selectedLead.id]: {
+                                      ...prev[selectedLead.id],
+                                      iceBroken: e.target.checked
                                     }
-                                  }
-                                }}
-                              />
-                            </Button>
-                            {prepState[selectedLead.id]?.passportFile && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                  <a
-                                    href={prepState[selectedLead.id].passportFile.data}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ color: '#1976d2', textDecoration: 'underline' }}
-                                  >
-                                    {prepState[selectedLead.id].passportFile.name}
-                                  </a>
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  Uploaded: {formatDateTime(new Date(prepState[selectedLead.id].passportUploadDate))}
-                                </Typography>
+                                  }))}
+                                  color="primary"
+                                  sx={{ mr: 1 }}
+                                />
+                                <ListItemText primary="CXP manager contact EP to break the ice (4 months before realization date)" />
                               </Box>
-                            )}
-                          </Box>
-                        </ListItem>
-                        <ListItem>
-                          <ListItemIcon><AttachMoneyIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                            <Checkbox
-                              checked={!!prepState[selectedLead.id]?.pocketMoneyCollected}
-                              onChange={e => setPrepState(prev => ({
-                                ...prev,
-                                [selectedLead.id]: {
-                                  ...prev[selectedLead.id],
-                                  pocketMoneyCollected: e.target.checked
-                                }
-                              }))}
-                              color="primary"
-                              sx={{ mr: 1 }}
-                            />
-                            <ListItemText primary="EP starts collecting pocket money for the experience (3 months before realization date)" />
-                          </Box>
-                        </ListItem>
-                      </MUIList>
-                    </CardContent>
-                  </Card>
-                  {/* #3 Health Insurance */}
-                  <Card elevation={2} sx={{ borderRadius: 3 }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <LocalHospitalIcon color="primary" /> #3 Health Insurance
-                      </Typography>
-                      <MUIList dense>
-                        <ListItem>
-                          <ListItemIcon><LocalHospitalIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                            <ListItemText primary="Health insurance" />
-                            <Button
-                              variant="outlined"
-                              component="label"
-                              size="small"
-                              sx={{ minWidth: 120 }}
-                            >
-                              {prepState[selectedLead.id]?.insuranceFile ? 'Change File' : 'Upload File'}
-                              <input
-                                type="file"
-                                hidden
-                                accept="application/pdf,image/*"
-                                onChange={async e => {
-                                  const file = e.target.files[0];
-                                  if (file) {
-                                    try {
-                                      const base64Data = await fileToBase64(file);
-                                      const uploadDate = new Date();
-                                    setPrepState(prev => ({
-                                      ...prev,
-                                      [selectedLead.id]: {
-                                        ...prev[selectedLead.id],
-                                          insuranceFile: {
-                                            name: file.name,
-                                            type: file.type,
-                                            data: base64Data,
-                                            size: file.size,
-                                            uploadDate: uploadDate.toISOString()
-                                          },
-                                          insuranceUploadDate: uploadDate.toISOString()
+                            </ListItem>
+                            <ListItem>
+                              <TextField
+                                label="Notes"
+                                size="small"
+                                fullWidth
+                                value={prepState[selectedLead.id]?.iceNotes || ''}
+                                onChange={e => setPrepState(prev => ({
+                                  ...prev,
+                                  [selectedLead.id]: {
+                                    ...prev[selectedLead.id],
+                                    iceNotes: e.target.value
+                                  }
+                                }))}
+                                variant="outlined"
+                                sx={{ mt: 1 }}
+                              />
+                            </ListItem>
+                          </MUIList>
+                        </CardContent>
+                      </Card>
+                      {/* #2 OPS */}
+                      <Card elevation={2} sx={{ borderRadius: 3 }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <WorkIcon color="primary" /> #2 OPS
+                          </Typography>
+                          <MUIList dense>
+                            <ListItem>
+                              <ListItemIcon><InsertDriveFileIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                                <ListItemText primary="Passport (3 months before realization date)" />
+                                <Button
+                                  variant="outlined"
+                                  component="label"
+                                  size="small"
+                                  sx={{ minWidth: 120 }}
+                                >
+                                  {prepState[selectedLead.id]?.passportFile ? 'Change File' : 'Upload File'}
+                                  <input
+                                    type="file"
+                                    hidden
+                                    accept="application/pdf,image/*"
+                                    onChange={async e => {
+                                      const file = e.target.files[0];
+                                      if (file) {
+                                        try {
+                                          const base64Data = await fileToBase64(file);
+                                          const uploadDate = new Date();
+                                          setPrepState(prev => ({
+                                            ...prev,
+                                            [selectedLead.id]: {
+                                              ...prev[selectedLead.id],
+                                              passportFile: {
+                                                name: file.name,
+                                                type: file.type,
+                                                data: base64Data,
+                                                size: file.size,
+                                                uploadDate: uploadDate.toISOString()
+                                              },
+                                              passportUploadDate: uploadDate.toISOString()
+                                            }
+                                          }));
+                                        } catch (error) {
+                                          console.error('File conversion failed:', error);
+                                        }
                                       }
-                                    }));
-                                    } catch (error) {
-                                      console.error('File conversion failed:', error);
-                                    }
-                                  }
-                                }}
-                              />
-                            </Button>
-                            {prepState[selectedLead.id]?.insuranceFile && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                  <a
-                                    href={prepState[selectedLead.id].insuranceFile.data}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ color: '#1976d2', textDecoration: 'underline' }}
-                                  >
-                                    {prepState[selectedLead.id].insuranceFile.name}
-                                  </a>
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  Uploaded: {formatDateTime(new Date(prepState[selectedLead.id].insuranceUploadDate))}
-                                </Typography>
+                                    }}
+                                  />
+                                </Button>
+                                {prepState[selectedLead.id]?.passportFile && (
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                      <a
+                                        href={prepState[selectedLead.id].passportFile.data}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: '#1976d2', textDecoration: 'underline' }}
+                                      >
+                                        {prepState[selectedLead.id].passportFile.name}
+                                      </a>
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Uploaded: {formatDateTime(new Date(prepState[selectedLead.id].passportUploadDate))}
+                                    </Typography>
+                                  </Box>
+                                )}
                               </Box>
-                            )}
-                          </Box>
-                        </ListItem>
-                      </MUIList>
-                    </CardContent>
-                  </Card>
-                  {/* #4 Expectation Settings */}
-                  <Card elevation={2} sx={{ borderRadius: 3 }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <SettingsIcon color="primary" /> #4 Expectation Settings
-                      </Typography>
-                      <MUIList dense>
-                        <ListItem>
-                          <ListItemIcon><SettingsIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                            <Checkbox
-                              checked={!!prepState[selectedLead.id]?.expectationSet}
-                              onChange={e => setPrepState(prev => ({
-                                ...prev,
-                                [selectedLead.id]: {
-                                  ...prev[selectedLead.id],
-                                  expectationSet: e.target.checked
-                                }
-                              }))}
-                              color="primary"
-                              sx={{ mr: 1 }}
-                            />
-                            <ListItemText primary="Expectation setting" />
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              size="small"
-                              sx={{ ml: 1, minWidth: 80 }}
-                              onClick={() => {/* Add send logic here */}}
-                            >
-                              Send
-                            </Button>
-                          </Box>
-                        </ListItem>
-                        <ListItem>
-                          <ListItemIcon><EmailIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                            <Checkbox
-                              checked={!!prepState[selectedLead.id]?.invitationSent}
-                              onChange={e => setPrepState(prev => ({
-                                ...prev,
-                                [selectedLead.id]: {
-                                  ...prev[selectedLead.id],
-                                  invitationSent: e.target.checked
-                                }
-                              }))}
-                              color="primary"
-                              sx={{ mr: 1 }}
-                            />
-                            <ListItemText primary="Invitation letter (soft copy 2 weeks after approval date)" />
-                          </Box>
-                        </ListItem>
-                        <ListItem>
-                          <ListItemIcon><EventAvailableIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                            <Checkbox
-                              checked={!!prepState[selectedLead.id]?.irConfirmed}
-                              onChange={e => setPrepState(prev => ({
-                                ...prev,
-                                [selectedLead.id]: {
-                                  ...prev[selectedLead.id],
-                                  irConfirmed: e.target.checked
-                                }
-                              }))}
-                              color="primary"
-                              sx={{ mr: 1 }}
-                            />
-                            <ListItemText primary="IR confirmed that the EP is going to apply for visa" />
-                          </Box>
-                        </ListItem>
-                      </MUIList>
-                    </CardContent>
-                  </Card>
-                  {/* #5 Visa */}
-                  <Card elevation={2} sx={{ borderRadius: 3 }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <FlightTakeoffIcon color="primary" /> #5 Visa
-                      </Typography>
-                      <MUIList dense>
-                        <ListItem>
-                          <ListItemIcon><InsertDriveFileIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                            <ListItemText primary="Visa" />
-                            <Button
-                              variant="outlined"
-                              component="label"
-                              size="small"
-                              sx={{ minWidth: 120 }}
-                            >
-                              {prepState[selectedLead.id]?.visaFile ? 'Change File' : 'Upload File'}
-                              <input
-                                type="file"
-                                hidden
-                                accept="application/pdf,image/*"
-                                onChange={async e => {
-                                  const file = e.target.files[0];
-                                  if (file) {
-                                    try {
-                                      const base64Data = await fileToBase64(file);
-                                      const uploadDate = new Date();
-                                    setPrepState(prev => ({
-                                      ...prev,
-                                      [selectedLead.id]: {
-                                        ...prev[selectedLead.id],
-                                          visaFile: {
-                                            name: file.name,
-                                            type: file.type,
-                                            data: base64Data,
-                                            size: file.size,
-                                            uploadDate: uploadDate.toISOString()
-                                          },
-                                          visaUploadDate: uploadDate.toISOString()
+                            </ListItem>
+                            <ListItem>
+                              <ListItemIcon><AttachMoneyIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                                <Checkbox
+                                  checked={!!prepState[selectedLead.id]?.pocketMoneyCollected}
+                                  onChange={e => setPrepState(prev => ({
+                                    ...prev,
+                                    [selectedLead.id]: {
+                                      ...prev[selectedLead.id],
+                                      pocketMoneyCollected: e.target.checked
+                                    }
+                                  }))}
+                                  color="primary"
+                                  sx={{ mr: 1 }}
+                                />
+                                <ListItemText primary="EP starts collecting pocket money for the experience (3 months before realization date)" />
+                              </Box>
+                            </ListItem>
+                          </MUIList>
+                        </CardContent>
+                      </Card>
+                      {/* #3 Health Insurance */}
+                      <Card elevation={2} sx={{ borderRadius: 3 }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <LocalHospitalIcon color="primary" /> #3 Health Insurance
+                          </Typography>
+                          <MUIList dense>
+                            <ListItem>
+                              <ListItemIcon><LocalHospitalIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                                <ListItemText primary="Health insurance" />
+                                <Button
+                                  variant="outlined"
+                                  component="label"
+                                  size="small"
+                                  sx={{ minWidth: 120 }}
+                                >
+                                  {prepState[selectedLead.id]?.insuranceFile ? 'Change File' : 'Upload File'}
+                                  <input
+                                    type="file"
+                                    hidden
+                                    accept="application/pdf,image/*"
+                                    onChange={async e => {
+                                      const file = e.target.files[0];
+                                      if (file) {
+                                        try {
+                                          const base64Data = await fileToBase64(file);
+                                          const uploadDate = new Date();
+                                          setPrepState(prev => ({
+                                            ...prev,
+                                            [selectedLead.id]: {
+                                              ...prev[selectedLead.id],
+                                              insuranceFile: {
+                                                name: file.name,
+                                                type: file.type,
+                                                data: base64Data,
+                                                size: file.size,
+                                                uploadDate: uploadDate.toISOString()
+                                              },
+                                              insuranceUploadDate: uploadDate.toISOString()
+                                            }
+                                          }));
+                                        } catch (error) {
+                                          console.error('File conversion failed:', error);
+                                        }
                                       }
-                                    }));
-                                    } catch (error) {
-                                      console.error('File conversion failed:', error);
-                                    }
-                                  }
-                                }}
-                              />
-                            </Button>
-                            {prepState[selectedLead.id]?.visaFile && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                  <a
-                                    href={prepState[selectedLead.id].visaFile.data}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ color: '#1976d2', textDecoration: 'underline' }}
-                                  >
-                                    {prepState[selectedLead.id].visaFile.name}
-                                  </a>
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  Uploaded: {formatDateTime(new Date(prepState[selectedLead.id].visaUploadDate))}
-                                </Typography>
+                                    }}
+                                  />
+                                </Button>
+                                {prepState[selectedLead.id]?.insuranceFile && (
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                      <a
+                                        href={prepState[selectedLead.id].insuranceFile.data}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: '#1976d2', textDecoration: 'underline' }}
+                                      >
+                                        {prepState[selectedLead.id].insuranceFile.name}
+                                      </a>
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Uploaded: {formatDateTime(new Date(prepState[selectedLead.id].insuranceUploadDate))}
+                                    </Typography>
+                                  </Box>
+                                )}
                               </Box>
-                            )}
-                          </Box>
-                        </ListItem>
-                        <ListItem>
-                          <ListItemIcon><FlightTakeoffIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                            <ListItemText primary="Flight Tickets" />
-                            <Button
-                              variant="outlined"
-                              component="label"
-                              size="small"
-                              sx={{ minWidth: 120 }}
-                            >
-                              {prepState[selectedLead.id]?.flightFile ? 'Change File' : 'Upload File'}
-                              <input
-                                type="file"
-                                hidden
-                                accept="application/pdf,image/*"
-                                onChange={async e => {
-                                  const file = e.target.files[0];
-                                  if (file) {
-                                    try {
-                                      const base64Data = await fileToBase64(file);
-                                      const uploadDate = new Date();
-                                    setPrepState(prev => ({
-                                      ...prev,
-                                      [selectedLead.id]: {
-                                        ...prev[selectedLead.id],
-                                          flightFile: {
-                                            name: file.name,
-                                            type: file.type,
-                                            data: base64Data,
-                                            size: file.size,
-                                            uploadDate: uploadDate.toISOString()
-                                          },
-                                          flightUploadDate: uploadDate.toISOString()
+                            </ListItem>
+                          </MUIList>
+                        </CardContent>
+                      </Card>
+                      {/* #4 Expectation Settings */}
+                      <Card elevation={2} sx={{ borderRadius: 3 }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <SettingsIcon color="primary" /> #4 Expectation Settings
+                          </Typography>
+                          <MUIList dense>
+                            <ListItem>
+                              <ListItemIcon><SettingsIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                                <Checkbox
+                                  checked={!!prepState[selectedLead.id]?.expectationSet}
+                                  onChange={e => setPrepState(prev => ({
+                                    ...prev,
+                                    [selectedLead.id]: {
+                                      ...prev[selectedLead.id],
+                                      expectationSet: e.target.checked
+                                    }
+                                  }))}
+                                  color="primary"
+                                  sx={{ mr: 1 }}
+                                />
+                                <ListItemText primary="Expectation setting" />
+                                <Button
+                                  variant="contained"
+                                  color="primary"
+                                  size="small"
+                                  sx={{ ml: 1, minWidth: 80 }}
+                                  onClick={() => {/* Add send logic here */ }}
+                                >
+                                  Send
+                                </Button>
+                              </Box>
+                            </ListItem>
+                            <ListItem>
+                              <ListItemIcon><EmailIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                                <Checkbox
+                                  checked={!!prepState[selectedLead.id]?.invitationSent}
+                                  onChange={e => setPrepState(prev => ({
+                                    ...prev,
+                                    [selectedLead.id]: {
+                                      ...prev[selectedLead.id],
+                                      invitationSent: e.target.checked
+                                    }
+                                  }))}
+                                  color="primary"
+                                  sx={{ mr: 1 }}
+                                />
+                                <ListItemText primary="Invitation letter (soft copy 2 weeks after approval date)" />
+                              </Box>
+                            </ListItem>
+                            <ListItem>
+                              <ListItemIcon><EventAvailableIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                                <Checkbox
+                                  checked={!!prepState[selectedLead.id]?.irConfirmed}
+                                  onChange={e => setPrepState(prev => ({
+                                    ...prev,
+                                    [selectedLead.id]: {
+                                      ...prev[selectedLead.id],
+                                      irConfirmed: e.target.checked
+                                    }
+                                  }))}
+                                  color="primary"
+                                  sx={{ mr: 1 }}
+                                />
+                                <ListItemText primary="IR confirmed that the EP is going to apply for visa" />
+                              </Box>
+                            </ListItem>
+                          </MUIList>
+                        </CardContent>
+                      </Card>
+                      {/* #5 Visa */}
+                      <Card elevation={2} sx={{ borderRadius: 3 }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <FlightTakeoffIcon color="primary" /> #5 Visa
+                          </Typography>
+                          <MUIList dense>
+                            <ListItem>
+                              <ListItemIcon><InsertDriveFileIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                                <ListItemText primary="Visa" />
+                                <Button
+                                  variant="outlined"
+                                  component="label"
+                                  size="small"
+                                  sx={{ minWidth: 120 }}
+                                >
+                                  {prepState[selectedLead.id]?.visaFile ? 'Change File' : 'Upload File'}
+                                  <input
+                                    type="file"
+                                    hidden
+                                    accept="application/pdf,image/*"
+                                    onChange={async e => {
+                                      const file = e.target.files[0];
+                                      if (file) {
+                                        try {
+                                          const base64Data = await fileToBase64(file);
+                                          const uploadDate = new Date();
+                                          setPrepState(prev => ({
+                                            ...prev,
+                                            [selectedLead.id]: {
+                                              ...prev[selectedLead.id],
+                                              visaFile: {
+                                                name: file.name,
+                                                type: file.type,
+                                                data: base64Data,
+                                                size: file.size,
+                                                uploadDate: uploadDate.toISOString()
+                                              },
+                                              visaUploadDate: uploadDate.toISOString()
+                                            }
+                                          }));
+                                        } catch (error) {
+                                          console.error('File conversion failed:', error);
+                                        }
                                       }
-                                    }));
-                                    } catch (error) {
-                                      console.error('File conversion failed:', error);
-                                    }
-                                  }
-                                }}
-                              />
-                            </Button>
-                            {prepState[selectedLead.id]?.flightFile && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                  <a
-                                    href={prepState[selectedLead.id].flightFile.data}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ color: '#1976d2', textDecoration: 'underline' }}
-                                  >
-                                    {prepState[selectedLead.id].flightFile.name}
-                                  </a>
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  Uploaded: {formatDateTime(new Date(prepState[selectedLead.id].flightUploadDate))}
-                                </Typography>
+                                    }}
+                                  />
+                                </Button>
+                                {prepState[selectedLead.id]?.visaFile && (
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                      <a
+                                        href={prepState[selectedLead.id].visaFile.data}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: '#1976d2', textDecoration: 'underline' }}
+                                      >
+                                        {prepState[selectedLead.id].visaFile.name}
+                                      </a>
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Uploaded: {formatDateTime(new Date(prepState[selectedLead.id].visaUploadDate))}
+                                    </Typography>
+                                  </Box>
+                                )}
                               </Box>
-                            )}
-                          </Box>
-                        </ListItem>
-                      </MUIList>
-                    </CardContent>
-                  </Card>
-                  {/* Communication */}
-                  <Card elevation={2} sx={{ borderRadius: 3 }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <ChatIcon color="primary" /> Communication
-                      </Typography>
-                      <MUIList dense>
-                        <ListItem>
-                          <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                            <Checkbox
-                              checked={!!prepState[selectedLead.id]?.tenDaysBefore}
-                              onChange={e => setPrepState(prev => ({
-                                ...prev,
-                                [selectedLead.id]: {
-                                  ...prev[selectedLead.id],
-                                  tenDaysBefore: e.target.checked
-                                }
-                              }))}
-                              color="primary"
-                              sx={{ mr: 1 }}
-                            />
-                            <ListItemText primary="10 days before Realization" />
-                          </Box>
-                        </ListItem>
-                        <ListItem>
-                          <ListItemIcon><AccessTimeIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                            <Checkbox
-                              checked={!!prepState[selectedLead.id]?.twentyFourBefore}
-                              onChange={e => setPrepState(prev => ({
-                                ...prev,
-                                [selectedLead.id]: {
-                                  ...prev[selectedLead.id],
-                                  twentyFourBefore: e.target.checked
-                                }
-                              }))}
-                              color="primary"
-                              sx={{ mr: 1 }}
-                            />
-                            <ListItemText primary="24 hours before arrival" />
-                          </Box>
-                        </ListItem>
-                        <ListItem>
-                          <ListItemIcon><EventAvailableIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                            <Checkbox
-                              checked={!!prepState[selectedLead.id]?.epArrived}
-                              onChange={e => setPrepState(prev => ({
-                                ...prev,
-                                [selectedLead.id]: {
-                                  ...prev[selectedLead.id],
-                                  epArrived: e.target.checked
-                                }
-                              }))}
-                              color="primary"
-                              sx={{ mr: 1 }}
-                            />
-                            <ListItemText primary="EP Arrived" />
-                          </Box>
-                        </ListItem>
-                      </MUIList>
-                    </CardContent>
-                  </Card>
-                  {/* #6 Arrival Pickup */}
-                  <Card elevation={2} sx={{ borderRadius: 3 }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <DirectionsCarIcon color="primary" /> #6 Arrival Pickup
-                      </Typography>
-                      <MUIList dense>
-                        <ListItem>
-                          <ListItemIcon><DirectionsCarIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                            <Checkbox
-                              checked={!!prepState[selectedLead.id]?.pickupDone}
-                              onChange={e => setPrepState(prev => ({
-                                ...prev,
-                                [selectedLead.id]: {
-                                  ...prev[selectedLead.id],
-                                  pickupDone: e.target.checked
-                                }
-                              }))}
-                              color="primary"
-                              sx={{ mr: 1 }}
-                            />
-                            <ListItemText primary="Pick up done" />
-                          </Box>
-                        </ListItem>
-                      </MUIList>
-                    </CardContent>
-                  </Card>
-                  {/* #7 Accommodation */}
-                  <Card elevation={2} sx={{ borderRadius: 3 }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <HomeIcon color="primary" /> #7 Accommodation
-                      </Typography>
-                      <MUIList dense>
-                        <ListItem>
-                          <ListItemIcon><HomeIcon color="action" /></ListItemIcon>
-                          <TextField
-                            label="Accommodation place"
-                            size="small"
-                            fullWidth
-                            value={prepState[selectedLead.id]?.accommodationPlace || ''}
-                            onChange={e => setPrepState(prev => ({
-                              ...prev,
-                              [selectedLead.id]: {
-                                ...prev[selectedLead.id],
-                                accommodationPlace: e.target.value
-                              }
-                            }))}
-                            variant="outlined"
-                          />
-                        </ListItem>
-                      </MUIList>
-                    </CardContent>
-                  </Card>
-                  {/* #8 IPS */}
-                  <Card elevation={2} sx={{ borderRadius: 3 }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <SchoolIcon color="primary" /> #8 IPS
-                      </Typography>
-                      <MUIList dense>
-                        <ListItem>
-                          <ListItemIcon><SchoolIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                            <Checkbox
-                              checked={!!prepState[selectedLead.id]?.ipsDone}
-                              onChange={e => setPrepState(prev => ({
-                                ...prev,
-                                [selectedLead.id]: {
-                                  ...prev[selectedLead.id],
-                                  ipsDone: e.target.checked
-                                }
-                              }))}
-                              color="primary"
-                              sx={{ mr: 1 }}
-                            />
-                            <ListItemText primary="IPS is done" />
-                          </Box>
-                        </ListItem>
-                      </MUIList>
-                    </CardContent>
-                  </Card>
-                </Stack>
-              </Box>
+                            </ListItem>
+                            <ListItem>
+                              <ListItemIcon><FlightTakeoffIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                                <ListItemText primary="Flight Tickets" />
+                                <Button
+                                  variant="outlined"
+                                  component="label"
+                                  size="small"
+                                  sx={{ minWidth: 120 }}
+                                >
+                                  {prepState[selectedLead.id]?.flightFile ? 'Change File' : 'Upload File'}
+                                  <input
+                                    type="file"
+                                    hidden
+                                    accept="application/pdf,image/*"
+                                    onChange={async e => {
+                                      const file = e.target.files[0];
+                                      if (file) {
+                                        try {
+                                          const base64Data = await fileToBase64(file);
+                                          const uploadDate = new Date();
+                                          setPrepState(prev => ({
+                                            ...prev,
+                                            [selectedLead.id]: {
+                                              ...prev[selectedLead.id],
+                                              flightFile: {
+                                                name: file.name,
+                                                type: file.type,
+                                                data: base64Data,
+                                                size: file.size,
+                                                uploadDate: uploadDate.toISOString()
+                                              },
+                                              flightUploadDate: uploadDate.toISOString()
+                                            }
+                                          }));
+                                        } catch (error) {
+                                          console.error('File conversion failed:', error);
+                                        }
+                                      }
+                                    }}
+                                  />
+                                </Button>
+                                {prepState[selectedLead.id]?.flightFile && (
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                      <a
+                                        href={prepState[selectedLead.id].flightFile.data}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: '#1976d2', textDecoration: 'underline' }}
+                                      >
+                                        {prepState[selectedLead.id].flightFile.name}
+                                      </a>
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Uploaded: {formatDateTime(new Date(prepState[selectedLead.id].flightUploadDate))}
+                                    </Typography>
+                                  </Box>
+                                )}
+                              </Box>
+                            </ListItem>
+                          </MUIList>
+                        </CardContent>
+                      </Card>
+                      {/* Communication */}
+                      <Card elevation={2} sx={{ borderRadius: 3 }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <ChatIcon color="primary" /> Communication
+                          </Typography>
+                          <MUIList dense>
+                            <ListItem>
+                              <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                                <Checkbox
+                                  checked={!!prepState[selectedLead.id]?.tenDaysBefore}
+                                  onChange={e => setPrepState(prev => ({
+                                    ...prev,
+                                    [selectedLead.id]: {
+                                      ...prev[selectedLead.id],
+                                      tenDaysBefore: e.target.checked
+                                    }
+                                  }))}
+                                  color="primary"
+                                  sx={{ mr: 1 }}
+                                />
+                                <ListItemText primary="10 days before Realization" />
+                              </Box>
+                            </ListItem>
+                            <ListItem>
+                              <ListItemIcon><AccessTimeIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                                <Checkbox
+                                  checked={!!prepState[selectedLead.id]?.twentyFourBefore}
+                                  onChange={e => setPrepState(prev => ({
+                                    ...prev,
+                                    [selectedLead.id]: {
+                                      ...prev[selectedLead.id],
+                                      twentyFourBefore: e.target.checked
+                                    }
+                                  }))}
+                                  color="primary"
+                                  sx={{ mr: 1 }}
+                                />
+                                <ListItemText primary="24 hours before arrival" />
+                              </Box>
+                            </ListItem>
+                            <ListItem>
+                              <ListItemIcon><EventAvailableIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                                <Checkbox
+                                  checked={!!prepState[selectedLead.id]?.epArrived}
+                                  onChange={e => setPrepState(prev => ({
+                                    ...prev,
+                                    [selectedLead.id]: {
+                                      ...prev[selectedLead.id],
+                                      epArrived: e.target.checked
+                                    }
+                                  }))}
+                                  color="primary"
+                                  sx={{ mr: 1 }}
+                                />
+                                <ListItemText primary="EP Arrived" />
+                              </Box>
+                            </ListItem>
+                          </MUIList>
+                        </CardContent>
+                      </Card>
+                      {/* #6 Arrival Pickup */}
+                      <Card elevation={2} sx={{ borderRadius: 3 }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <DirectionsCarIcon color="primary" /> #6 Arrival Pickup
+                          </Typography>
+                          <MUIList dense>
+                            <ListItem>
+                              <ListItemIcon><DirectionsCarIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                                <Checkbox
+                                  checked={!!prepState[selectedLead.id]?.pickupDone}
+                                  onChange={e => setPrepState(prev => ({
+                                    ...prev,
+                                    [selectedLead.id]: {
+                                      ...prev[selectedLead.id],
+                                      pickupDone: e.target.checked
+                                    }
+                                  }))}
+                                  color="primary"
+                                  sx={{ mr: 1 }}
+                                />
+                                <ListItemText primary="Pick up done" />
+                              </Box>
+                            </ListItem>
+                          </MUIList>
+                        </CardContent>
+                      </Card>
+                      {/* #7 Accommodation */}
+                      <Card elevation={2} sx={{ borderRadius: 3 }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <HomeIcon color="primary" /> #7 Accommodation
+                          </Typography>
+                          <MUIList dense>
+                            <ListItem>
+                              <ListItemIcon><HomeIcon color="action" /></ListItemIcon>
+                              <TextField
+                                label="Accommodation place"
+                                size="small"
+                                fullWidth
+                                value={prepState[selectedLead.id]?.accommodationPlace || ''}
+                                onChange={e => setPrepState(prev => ({
+                                  ...prev,
+                                  [selectedLead.id]: {
+                                    ...prev[selectedLead.id],
+                                    accommodationPlace: e.target.value
+                                  }
+                                }))}
+                                variant="outlined"
+                              />
+                            </ListItem>
+                          </MUIList>
+                        </CardContent>
+                      </Card>
+                      {/* #8 IPS */}
+                      <Card elevation={2} sx={{ borderRadius: 3 }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <SchoolIcon color="primary" /> #8 IPS
+                          </Typography>
+                          <MUIList dense>
+                            <ListItem>
+                              <ListItemIcon><SchoolIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                                <Checkbox
+                                  checked={!!prepState[selectedLead.id]?.ipsDone}
+                                  onChange={e => setPrepState(prev => ({
+                                    ...prev,
+                                    [selectedLead.id]: {
+                                      ...prev[selectedLead.id],
+                                      ipsDone: e.target.checked
+                                    }
+                                  }))}
+                                  color="primary"
+                                  sx={{ mr: 1 }}
+                                />
+                                <ListItemText primary="IPS is done" />
+                              </Box>
+                            </ListItem>
+                          </MUIList>
+                        </CardContent>
+                      </Card>
+                    </Stack>
+                  </Box>
                 )}
               </>
             )}
@@ -2808,47 +2691,47 @@ const getTeamUnderCurrentUser = (members) => {
                   updateStandardsFn={patchICXRealizationsStandards}
                 />
                 {false && (
-              <Box sx={{ p: 4, color: 'text.secondary' }}>
-                <Typography variant="h6" color="primary" sx={{ mb: 3, fontWeight: 700 }}>Post Experience</Typography>
-                <Stack spacing={3}>
-                  {/* #18 Debrief with AIESEC */}
-                  <Card elevation={2} sx={{ borderRadius: 3 }}>
-                    <CardContent>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <ChatIcon color="primary" /> #18 Debrief with AIESEC
-                      </Typography>
-                      <MUIList dense>
-                        <ListItem>
-                          <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                            <Checkbox
-                              checked={!!prepState[selectedLead.id]?.debriefCompleted}
-                              onChange={e => setPrepState(prev => ({
-                                ...prev,
-                                [selectedLead.id]: {
-                                  ...prev[selectedLead.id],
-                                  debriefCompleted: e.target.checked
-                                }
-                              }))}
-                              color="primary"
-                              sx={{ mr: 1 }}
-                            />
-                            <ListItemText primary="EP finished the debriefing space" />
-                          </Box>
-                        </ListItem>
-                      </MUIList>
-                    </CardContent>
-                  </Card>
-                </Stack>
-              </Box>
+                  <Box sx={{ p: 4, color: 'text.secondary' }}>
+                    <Typography variant="h6" color="primary" sx={{ mb: 3, fontWeight: 700 }}>Post Experience</Typography>
+                    <Stack spacing={3}>
+                      {/* #18 Debrief with AIESEC */}
+                      <Card elevation={2} sx={{ borderRadius: 3 }}>
+                        <CardContent>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1976d2', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <ChatIcon color="primary" /> #18 Debrief with AIESEC
+                          </Typography>
+                          <MUIList dense>
+                            <ListItem>
+                              <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                                <Checkbox
+                                  checked={!!prepState[selectedLead.id]?.debriefCompleted}
+                                  onChange={e => setPrepState(prev => ({
+                                    ...prev,
+                                    [selectedLead.id]: {
+                                      ...prev[selectedLead.id],
+                                      debriefCompleted: e.target.checked
+                                    }
+                                  }))}
+                                  color="primary"
+                                  sx={{ mr: 1 }}
+                                />
+                                <ListItemText primary="EP finished the debriefing space" />
+                              </Box>
+                            </ListItem>
+                          </MUIList>
+                        </CardContent>
+                      </Card>
+                    </Stack>
+                  </Box>
                 )}
               </>
             )}
           </DialogContent>
 
-          <DialogActions 
-            sx={{ 
-              p: 2, 
+          <DialogActions
+            sx={{
+              p: 2,
               gap: 1,
               position: 'relative',
               overflow: 'hidden',
@@ -2900,8 +2783,8 @@ const getTeamUnderCurrentUser = (members) => {
                 label="Select Member"
               >
                 {members.map((member) => (
-                  <MenuItem key={member.id} value={member.id}>
-                    {member.person}
+                  <MenuItem key={member.expa_person_id} value={member.expa_person_id}>
+                    {member.full_name}
                   </MenuItem>
                 ))}
               </Select>
@@ -2910,10 +2793,10 @@ const getTeamUnderCurrentUser = (members) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setBulkAssignDialogOpen(false)}>Cancel</Button>
-          <Button 
+          <Button
             onClick={async () => {
               if (selectedMember) {
-                const member = members.find(m => m.id === selectedMember);
+                const member = members.find(m => m.expa_person_id === selectedMember);
                 if (member) {
                   await handleAssignMember(member);
                   setSelectedMember('');

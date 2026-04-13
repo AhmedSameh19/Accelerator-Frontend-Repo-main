@@ -87,10 +87,11 @@ import { useAuth } from '../context/AuthContext';
 import { LC_CODES, MC_EGYPT_CODE } from '../lcCodes';
 import marketResearchAPI from '../api/services/marketResearchAPI';
 import podioAPI from '../api/services/podioAPI';
-import { fetchActiveMembersRecursive, fetchMembersByLc, getSyncPersonId } from '../api/services/membersAPI';
+import { getSyncPersonId } from '../api/services/membersAPI';
 import Cookies from 'js-cookie';
 import { getCrmAccessToken } from '../utils/crmToken';
 import { getLCNameById, getLCIdByName } from '../utils/officeUtils';
+import { useTeamMembersContext } from '../context/TeamMembersContext';
 const industries = [
   'Technology',
   'Healthcare',
@@ -236,10 +237,9 @@ function MarketResearchPage() {
   const [usePodioData, setUsePodioData] = useState(true); // Toggle between Podio and local data
   const [showAllLCs, setShowAllLCs] = useState(false); // When true, fetch without lc_id to show all companies
   const [lastFetchPageSize, setLastFetchPageSize] = useState(0); // For "Load more": when >= page size there may be more
-  const membersFetched = useRef(false);
   const [opportunityRaisedSlots, setOpportunityRaisedSlots] = useState('');
   const [opportunityRaisedNotes, setOpportunityRaisedNotes] = useState('');
-  const [members, setActiveMembers] = useState([]);
+  const { members, fetchMembers, hasFetched: membersFetched } = useTeamMembersContext();
   const accountTypes = useMemo(() => {
     // Derive distinct account types from loaded companies so the dropdown only shows real values
     const set = new Set();
@@ -296,145 +296,11 @@ function MarketResearchPage() {
     return () => { cancelled = true; };
   }, [openProfileDialog, selectedCompany?.id, usePodioData]);
 
-const getTeamUnderCurrentUser = (members) => {
-  const currentUserId = Cookies.get("person_id");
-  const userRole = Cookies.get("userRole");
-  if (!currentUserId || !members || members.length === 0) return [];
-
-  // 🧩 Helper: recursively flatten all children (TL + TM)
-  const flattenTeam = (nodes, list = []) => {
-    for (const node of nodes || []) {
-      list.push({
-        id: node.id,
-        role: node.role,
-        person: node.person
-      });
-      if (node.children && node.children.length > 0) {
-        flattenTeam(node.children, list);
-      }
-    }
-    return list;
-  };
-
-  // ✅ Case 1: If user is LCVP → flatten all TLs + TMs across *all* LCVPs
-  if (userRole && userRole.toUpperCase().includes("LCVP")) {
-    let allMembers = [];
-    for (const vp of members) {
-      allMembers = flattenTeam(vp.children || [], allMembers);
-    }
-
-    // sort TL first, TM second
-    allMembers.sort((a, b) => {
-      const order = { TL: 1, TM: 2 };
-      const aRole = a.role.toUpperCase().includes("TL") ? "TL" : "TM";
-      const bRole = b.role.toUpperCase().includes("TL") ? "TL" : "TM";
-      return order[aRole] - order[bRole];
-    });
-
-    return allMembers;
-  }
-
-  // ✅ Case 2: If user is TL or TM → show only their direct children
-  let targetNode = null;
-
-  const findNode = (node) => {
-    if (node.user_id == currentUserId) {
-      targetNode = node;
-      return;
-    }
-    for (const child of node.children || []) {
-      findNode(child);
-      if (targetNode) return;
-    }
-  };
-
-  for (const vp of members) {
-    findNode(vp);
-    if (targetNode) break;
-  }
-
-  if (!targetNode) {
-    console.warn("Current user not found in hierarchy");
-    return [];
-  }
-
-  const children = (targetNode.children || []).map(child => ({
-    id: child.id,
-    role: child.role,
-    person: child.person
-  }));
-
-  children.sort((a, b) => {
-    const order = { TL: 1, TM: 2 };
-    const aRole = a.role.toUpperCase().includes("TL") ? "TL" : "TM";
-    const bRole = b.role.toUpperCase().includes("TL") ? "TL" : "TM";
-    return order[aRole] - order[bRole];
-  });
-
-  return children;
-};
-
- 
-
-
-// Fetch TLs, TMs, LCVPs that report to the logged-in user. Uses by-lc/reports-to (no EXPA) first
-  // so assign works when EXPA returns 502; only uses token for resolving person id.
-  const currentMembers = useCallback(async (lcCode, token) => {
-    if (!lcCode) {
-      setActiveMembers([]);
-      return;
-    }
-    try {
-      const personId = Cookies.get('person_id') || (token ? await getSyncPersonId(token) : null) || null;
-      let members = [];
-      if (personId) {
-        members = await fetchActiveMembersRecursive(lcCode, personId);
-      }
-      // Fallback: if no one reports to you in EXPA (e.g. org structure not set), show all LC members
-      if (!members || members.length === 0) {
-        members = await fetchMembersByLc(lcCode);
-      }
-      const mapped = (members || []).map((m) => ({
-        id: m.expa_person_id ?? m.member_id,
-        person: m.full_name ?? m.person,
-        role: m.role ?? '',
-      }));
-      setActiveMembers(mapped);
-    } catch (error) {
-      console.error('Error fetching active members:', error);
-      setActiveMembers([]);
-      showError('Failed to fetch members');
-    }
-  }, []);
-  // Update fetchLeads to accept lcCode as a parameter
- 
-useEffect(() => {
-  const lcCode = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
-  const token = currentUser?.token || getCrmAccessToken();
-
-  if (!isAdmin && !lcCode) {
-    showError("No office assigned to your account. Cannot fetch companies.");
-    return;
-  }
-
-  // Fetch members that report to the logged-in user (TLs, TMs, LCVPs) on page load
-  if (lcCode) {
-    if (!membersFetched.current) {
-      currentMembers(lcCode, token);
-      membersFetched.current = true;
-    }
-  }
-}, [currentUser, isAdmin, currentMembers]);
-
-  // When opening assign dialog, refetch members
   useEffect(() => {
-    if (!assignDialogOpen || !currentUser) return;
-    const lcCode = isAdmin ? MC_EGYPT_CODE : getOfficeId(currentUser);
-    const token = currentUser?.token || getCrmAccessToken();
-    if (lcCode) {
-      currentMembers(lcCode, token);
+    if (!membersFetched && currentUser) {
+      fetchMembers(currentUser, isAdmin);
     }
-  }, [assignDialogOpen, currentUser, isAdmin, currentMembers]);
+  }, [currentUser, isAdmin, membersFetched, fetchMembers]);
 
   // Map backend Podio response item to component company format
   const mapBackendItemToCompany = (item) => ({
@@ -4235,8 +4101,8 @@ useEffect(() => {
               label="Select Member"
             >
               {members.map((member) => (
-                <MenuItem key={member.id} value={member.id}>
-                  {member.person} ({member.role})
+                <MenuItem key={member.expa_person_id} value={member.expa_person_id}>
+                  {member.full_name} ({member.role})
                 </MenuItem>
               ))}
             </Select>
@@ -4270,8 +4136,8 @@ useEffect(() => {
                 label="Select Member"
               >
                 {members.map((member) => (
-                  <MenuItem key={member.id} value={member.id}>
-                    {member.person} ({member.role})
+                  <MenuItem key={member.expa_person_id} value={member.expa_person_id}>
+                    {member.full_name} ({member.role})
                   </MenuItem>
                 ))}
               </Select>

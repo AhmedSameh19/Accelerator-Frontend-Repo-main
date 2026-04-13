@@ -175,12 +175,7 @@ function OGXB2CLeadsPage() {
     totalItems
   } = useLeadsCursorFetch({ homeLcId });
 
-  // Fetch team members if not already fetched (from TeamMembersContext cache)
-  useEffect(() => {
-    if (!membersFetched && currentUser) {
-      fetchMembers(currentUser, isAdmin);
-    }
-  }, [currentUser, isAdmin, membersFetched, fetchMembers]);
+
 
   /** Lead IDs for status fetching */
   const leadIds = useMemo(() => (leads || []).map((l) => l?.expa_person_id).filter(Boolean), [leads]);
