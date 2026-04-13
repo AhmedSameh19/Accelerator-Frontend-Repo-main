@@ -1,10 +1,11 @@
 /**
  * Single CRM FastAPI base for local dev vs deploy.
- * Set REACT_APP_FASTAPI_BASE or REACT_APP_API_BASE_URL in .env (see .env.example).
+ * Set any of: REACT_APP_FASTAPI_BASE, REACT_APP_API_BASE_URL, REACT_APP_API_BASE (build-time).
  */
-const LOCAL_CRM = 'https://accelerator.aiesec.eg/api/v1';
+const DEFAULT_CRM_API = 'https://api-accelerator.aiesec.org.eg/api/v1';
 
 export const CRM_API_V1_BASE =
   process.env.REACT_APP_FASTAPI_BASE ||
   process.env.REACT_APP_API_BASE_URL ||
-  LOCAL_CRM;
+  process.env.REACT_APP_API_BASE ||
+  DEFAULT_CRM_API;
