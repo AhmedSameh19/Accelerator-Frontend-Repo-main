@@ -243,33 +243,21 @@ const marketResearchAPI = {
   getFromBackend: async (params = {}) => {
     try {
       const limit = Math.min(params.limit ?? 100, 100);
-      const startPage = params.offset !== undefined ? Math.floor(params.offset / limit) + 1 : 1;
+      // One HTTP request per call. Do not walk every page here — that hammered Podio and hit rate limits.
+      const page =
+        params.page ??
+        (params.offset != null && params.offset > 0
+          ? Math.floor(params.offset / limit) + 1
+          : 1);
       const lc_id = params.lc_id;
 
-      let allItems = [];
-      let currentPage = startPage;
-      let hasNextPage = true;
-
-      while (hasNextPage) {
-        const response = await backendApi.get('/market-research', {
-          params: { limit, page: currentPage, lc_id },
-          timeout: 45000
-        });
-        const data = response.data;
-
-        if (data && data.data) {
-          allItems = allItems.concat(data.data);
-          hasNextPage = data.pagination?.hasNextPage || false;
-          currentPage++;
-        } else if (Array.isArray(data)) {
-          allItems = allItems.concat(data);
-          hasNextPage = false;
-        } else {
-          hasNextPage = false;
-        }
-      }
-      // Envelope shape: MarketResearchPage expects .data (not a bare array).
-      return { data: allItems };
+      const response = await backendApi.get('/market-research', {
+        params: { limit, page, lc_id },
+        timeout: 45000
+      });
+      const data = response.data;
+      const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      return { data: items, pagination: data?.pagination };
     } catch (error) {
       console.error('Error fetching market research from backend:', error);
       throw error;
