@@ -6,7 +6,7 @@ export async function getProfile() {
   if (!token) return null;
 
   try {
-    const r = await fetch(`${API_BASE}/api/auth/profile`, {
+    const r = await fetch(`${API_BASE}/auth/profile`, {
       headers: { Authorization: `Bearer ${token}` },
       credentials: 'include'
     });

@@ -16,7 +16,7 @@ const normalizeBaseUrl = (input?: string) => {
 };
 const API_BASE_URL = normalizeBaseUrl(process.env.REACT_APP_API_BASE)
     || normalizeBaseUrl(process.env.REACT_APP_API_BASE_URL)
-    || 'https://api-accelerator.aiesec.org.eg';
+    || 'https://api-accelerator.aiesec.org.eg/api/v1';
 const AIESEC_API_URL = process.env.REACT_APP_AIESEC_API_URL as string;
 const CLIENT_ID = '0Bwg6JeTDUb6h0O9SHNkOwepr3W34gcwVjj_VsLr9vs';
 const REDIRECT_URI = process.env.REACT_APP_REDIRECT_URI as string;
@@ -36,7 +36,7 @@ export const isLoggedIn = async (): Promise<boolean> => {
 
 export const login = async (email: string, password: string) => {
     try {
-        const response = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password });
+        const response = await axios.post(`${API_BASE_URL}/auth/login`, { email, password });
         const { token, user } = response.data || {};
 
         // IMPORTANT: Save only the JWT token string, not the whole response object
@@ -73,7 +73,7 @@ export const logout = async (): Promise<void> => {
     try {
         // First, notify the backend to clear the server-side session
         try {
-            await axios.post(`${API_BASE_URL}/api/auth/logout`);
+            await axios.post(`${API_BASE_URL}/auth/logout`);
         } catch (error) {
             console.error('Error notifying backend of logout:', error);
             // Continue with client-side cleanup even if backend call fails

@@ -13,7 +13,7 @@ export default function PostLogin() {
       return;
     }
 
-    fetch(`${API_BASE}/api/auth/resolve-dashboard`, {
+    fetch(`${API_BASE}/auth/resolve-dashboard`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => (r.ok ? r.json() : Promise.reject()))
