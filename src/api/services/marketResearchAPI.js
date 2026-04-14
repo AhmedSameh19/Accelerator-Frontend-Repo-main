@@ -126,6 +126,15 @@ const marketResearchAPI = {
       throw error;
     }
   },
+  getBackendCompany: async (itemId) => {
+    try {
+      const response = await backendApi.get(`/market-research/${itemId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting backend market research item:', error);
+      throw error;
+    }
+  },
   getCompaniesVisits: async () => {
     try {
       console.log("id:ana henaaaaa");

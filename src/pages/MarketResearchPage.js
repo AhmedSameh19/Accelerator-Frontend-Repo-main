@@ -818,8 +818,10 @@ function MarketResearchPage() {
     };
 
     try {
-      const response = await marketResearchAPI.getCompany(company.id);
-      const fullCompanyData = response[0];
+      const response = usePodioData
+        ? await marketResearchAPI.getBackendCompany(company.id)
+        : await marketResearchAPI.getCompany(company.id);
+      const fullCompanyData = usePodioData ? response : response[0];
       let merged = mergeStoredFollowups(fullCompanyData || company);
       merged = mergeStoredProfile(merged);
       setSelectedCompany(merged);
