@@ -185,7 +185,7 @@ function EventForm({ open, initial, onSave, onClose }) {
         console.error('Error updating follow-up status:', error);
       }
     }
-    onSave(form);
+    await onSave(form);
   };
   
   return (
@@ -700,14 +700,23 @@ function CalendarPage() {
   };
 
   const handleFormSave = async (formData) => {
-    // Push new events to Google Calendar when connected so they sync (e.g. to mobile)
-    if (googleConnected && !editing && formData.title && formData.date && formData.time) {
+    // Push new events to Google Calendar when connected so they sync (e.g. to mobile).
+    // Keep this explicit so failures are visible instead of silently skipping.
+    const isNewEvent = !editing;
+    const title = (formData.title || '').trim();
+    const date = formData.date || '';
+    const time = formData.time || '';
+    const canSyncToGoogle = googleConnected && isNewEvent && Boolean(title && date && time);
+    if (googleConnected && isNewEvent && !canSyncToGoogle) {
+      setGoogleMessage('Missing title/date/time, so event was saved locally only');
+    }
+    if (canSyncToGoogle) {
       try {
-        const timeStr = formData.time.length === 5 ? formData.time + ':00' : formData.time;
-        const start = new Date(formData.date + 'T' + timeStr);
+        const timeStr = time.length === 5 ? `${time}:00` : time;
+        const start = new Date(`${date}T${timeStr}`);
         const end = new Date(start.getTime() + (Number(formData.duration) || 60) * 60 * 1000);
         await calendarApi.createGoogleEvent(
-          formData.title,
+          title,
           start.toISOString(),
           end.toISOString(),
           formData.description || ''
