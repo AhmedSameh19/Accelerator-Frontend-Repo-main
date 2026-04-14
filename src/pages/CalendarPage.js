@@ -16,10 +16,12 @@ import {
   Delete as DeleteIcon,
   CalendarMonth as CalendarMonthIcon
 } from '@mui/icons-material';
+import Cookies from 'js-cookie';
 import { followUpStatusEmitter } from './MarketResearchPage';
 import leadsApi from '../api/services/leadsApi';
 import marketResearchAPI from '../api/services/marketResearchAPI';
 import calendarApi from '../api/services/calendarApi';
+import { getLCIdByName } from '../utils/officeUtils';
 // Create a simple event emitter if the import fails
 const createEventEmitter = () => {
   const listeners = {};
@@ -532,6 +534,34 @@ function CalendarPage() {
   const [googleConnected, setGoogleConnected] = useState(false);
   const [googleMessage, setGoogleMessage] = useState(null);
 
+  const normalizeCompanyName = (name) => (name || '').trim().toLowerCase();
+
+  const getCurrentLcId = () => {
+    const raw = Cookies.get('userLC') || localStorage.getItem('userLC') || '';
+    if (!raw) return null;
+    if (/^\d+$/.test(raw)) return parseInt(raw, 10);
+    const fromName = getLCIdByName(raw);
+    return Number.isFinite(fromName) ? fromName : null;
+  };
+
+  const fetchLcCompanyNames = async (lcId) => {
+    const names = new Set();
+    let page = 1;
+    let hasNextPage = true;
+    while (hasNextPage) {
+      const res = await marketResearchAPI.getFromBackend({ limit: 100, page, lc_id: lcId });
+      const rows = Array.isArray(res?.data) ? res.data : [];
+      rows.forEach((item) => {
+        const n = normalizeCompanyName(item?.company_name);
+        if (n) names.add(n);
+      });
+      hasNextPage = res?.pagination?.hasNextPage === true;
+      page += 1;
+      if (page > 50) break; // safety guard
+    }
+    return names;
+  };
+
   // Handle Google OAuth callback from URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -745,6 +775,17 @@ function CalendarPage() {
       const month = currentDate.getMonth();
       const year = currentDate.getFullYear();
       try {
+        const currentLcId = getCurrentLcId();
+        let allowedLcCompanyNames = null;
+        if (currentLcId != null) {
+          try {
+            allowedLcCompanyNames = await fetchLcCompanyNames(currentLcId);
+          } catch (err) {
+            console.error('Failed to fetch LC company names for calendar filtering:', err);
+            allowedLcCompanyNames = new Set();
+          }
+        }
+
         // Google Calendar connection status (FastAPI)
         let gcalConnected = false;
         try {
@@ -802,6 +843,11 @@ function CalendarPage() {
         let scheduledVisits = [];
         try {
           scheduledVisits = await calendarApi.getScheduledVisits();
+          if (allowedLcCompanyNames instanceof Set) {
+            scheduledVisits = (scheduledVisits || []).filter((v) =>
+              allowedLcCompanyNames.has(normalizeCompanyName(v.company_name))
+            );
+          }
         } catch (_) {}
 
         const formattedScheduledVisits = (scheduledVisits || []).map(v => {
@@ -864,9 +910,15 @@ function CalendarPage() {
                 assignedTo: [company.created_by || 'You'],
                 entityId: company.id,
                 entityType: 'company',
-                status: company.visit || 'pending'
+                status: company.visit || 'pending',
+                companyName: company.name || company.companyName || ''
               };
             });
+          if (allowedLcCompanyNames instanceof Set) {
+            formattedCompanyVisits = formattedCompanyVisits.filter((ev) =>
+              allowedLcCompanyNames.has(normalizeCompanyName(ev.companyName))
+            );
+          }
 
           formattedCompanyFollowUps = (companiesResponse || []).flatMap(company => {
             if (!company.followups || company.followups.length === 0) return [];
@@ -919,6 +971,11 @@ function CalendarPage() {
                 });
               }
             } catch (_) {}
+          }
+          if (allowedLcCompanyNames instanceof Set) {
+            formattedCompanyFollowUps = formattedCompanyFollowUps.filter((ev) =>
+              allowedLcCompanyNames.has(normalizeCompanyName(ev.companyName))
+            );
           }
         } catch (err) {
           console.error('Error loading follow-ups/companies:', err);
