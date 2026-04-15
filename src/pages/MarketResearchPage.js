@@ -381,6 +381,7 @@ function MarketResearchPage() {
 
   // Page size for Podio requests (smaller = faster, less timeout risk)
   const PODIO_PAGE_SIZE = 100;
+  const MY_LC_MAX_PAGES = 50;
   const MARKET_RESEARCH_ASSIGNMENTS_KEY = 'market_research_assignments';
 
   const getStoredAssignments = () => {
@@ -405,6 +406,33 @@ function MarketResearchPage() {
     });
   };
 
+  const normalizeLcName = (value) => (value || '').toString().trim().toLowerCase();
+  const companyMatchesLc = (company, lcId, lcName) => {
+    const companyLcId = company?.submittedByLcId;
+    if (companyLcId != null && lcId != null) {
+      return Number(companyLcId) === Number(lcId);
+    }
+    const rawLc = normalizeLcName(displayText(company?.submittedByLc, ''));
+    const expectedLc = normalizeLcName(lcName);
+    if (!rawLc || !expectedLc) return false;
+    if (expectedLc === 'alexandria') {
+      return rawLc === 'alexandria' || rawLc === 'alex';
+    }
+    return rawLc === expectedLc;
+  };
+
+  const dedupeCompaniesById = (rows) => {
+    const seen = new Set();
+    const out = [];
+    for (const row of rows || []) {
+      const id = row?.id;
+      if (id == null || seen.has(id)) continue;
+      seen.add(id);
+      out.push(row);
+    }
+    return out;
+  };
+
   // Fetch companies from Podio or local database.
   // Pass filters.showAllLCs to override state. Pass options.append and options.offset for "Load more".
   const fetchCompanies = useCallback(async (filters = {}, options = {}) => {
@@ -419,6 +447,76 @@ function MarketResearchPage() {
       if (usePodioData) {
         // Use FastAPI backend with pagination (limit 100 per request to avoid timeout)
         try {
+          // My LC mode: fast-first page + background fill for all historical accounts (up to cap).
+          const isMyLcMode = !useShowAll && lcId != null;
+          if (isMyLcMode && !append) {
+            const pageOne = await marketResearchAPI.getFromBackend({
+              limit: PODIO_PAGE_SIZE,
+              page: 1,
+              lc_id: lcId,
+            });
+            const pageOneItems = Array.isArray(pageOne?.data) ? pageOne.data : [];
+            let mappedPageOne = pageOneItems.map(mapBackendItemToCompany);
+            mappedPageOne = mergeAssignmentsIntoCompanies(mappedPageOne);
+            mappedPageOne = dedupeCompaniesById(mappedPageOne);
+
+            setLastFetchPageSize(mappedPageOne.length);
+            setAllCompanies(mappedPageOne);
+            setCompanies(mappedPageOne);
+
+            // If Podio LC filter returns empty, fallback to unfiltered scan + client-side LC match.
+            const useFallbackScan = mappedPageOne.length === 0;
+            if (useFallbackScan) {
+              const fallbackRows = [];
+              const expectedLcName = getUserLCName(currentUser);
+              for (let page = 1; page <= MY_LC_MAX_PAGES; page++) {
+                const res = await marketResearchAPI.getFromBackend({
+                  limit: PODIO_PAGE_SIZE,
+                  page,
+                });
+                const batch = Array.isArray(res?.data) ? res.data : [];
+                if (batch.length === 0) break;
+                const mapped = batch.map(mapBackendItemToCompany).filter((c) =>
+                  companyMatchesLc(c, lcId, expectedLcName)
+                );
+                fallbackRows.push(...mapped);
+                const deduped = dedupeCompaniesById(mergeAssignmentsIntoCompanies(fallbackRows));
+                setAllCompanies(deduped);
+                setCompanies(deduped);
+                setLastFetchPageSize(batch.length);
+                if (!(res?.pagination?.hasNextPage)) break;
+              }
+            } else {
+              // Background fill all remaining pages for the same LC filter.
+              const filledRows = [...mappedPageOne];
+              const hasNext = pageOne?.pagination?.hasNextPage === true;
+              if (hasNext) {
+                for (let page = 2; page <= MY_LC_MAX_PAGES; page++) {
+                  const res = await marketResearchAPI.getFromBackend({
+                    limit: PODIO_PAGE_SIZE,
+                    page,
+                    lc_id: lcId,
+                  });
+                  const batch = Array.isArray(res?.data) ? res.data : [];
+                  if (batch.length === 0) break;
+                  filledRows.push(...batch.map(mapBackendItemToCompany));
+                  const deduped = dedupeCompaniesById(mergeAssignmentsIntoCompanies(filledRows));
+                  setAllCompanies(deduped);
+                  setCompanies(deduped);
+                  setLastFetchPageSize(batch.length);
+                  if (!(res?.pagination?.hasNextPage)) break;
+                }
+              }
+            }
+
+            if (mappedPageOne.length > 0) {
+              showSuccess(`Loaded ${mappedPageOne.length} companies from your LC. Fetching the rest...`);
+            } else {
+              showInfo(`No companies found in first LC-filtered page. Running full scan for ${getUserLCName(currentUser) || lcId}...`);
+            }
+            return;
+          }
+
           const backendResponse = await marketResearchAPI.getFromBackend({
             limit: PODIO_PAGE_SIZE,
             offset,
@@ -440,7 +538,7 @@ function MarketResearchPage() {
             } catch (e) {}
             return c;
           });
-          parsedCompanies = mergeAssignmentsIntoCompanies(parsedCompanies);
+          parsedCompanies = dedupeCompaniesById(mergeAssignmentsIntoCompanies(parsedCompanies));
           setLastFetchPageSize(parsedCompanies.length);
           if (append) {
             setAllCompanies(prev => [...prev, ...parsedCompanies]);
