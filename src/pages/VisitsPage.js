@@ -55,6 +55,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import marketResearchAPI from '../api/services/marketResearchAPI';
 import EmptyState from '../components/Common/EmptyState';
+import { getLCIdByName } from '../utils/officeUtils';
 function VisitsPage() {
   const [companies, setCompanies] = useState([]);
   const [openVisitProfileDialog, setOpenVisitProfileDialog] = useState(false);
@@ -72,13 +73,95 @@ function VisitsPage() {
     followUpTime: '09:00'
   });
 
+  const normalizeName = (name) => (name || '').trim().toLowerCase();
+  const getCurrentLcId = () => {
+    const raw = Cookies.get('userLC') || localStorage.getItem('userLC') || '';
+    if (!raw) return null;
+    if (/^\d+$/.test(raw)) return parseInt(raw, 10);
+    const parsed = getLCIdByName(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const profileStorageKey = (company) => `visit_profile_${company.source || 'unknown'}_${company.sourceId || company.id}`;
+  const mergeStoredProfile = (company) => {
+    try {
+      const raw = localStorage.getItem(profileStorageKey(company));
+      if (!raw) return company;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return company;
+      return { ...company, ...parsed };
+    } catch (_) {
+      return company;
+    }
+  };
+  const saveStoredProfile = (company) => {
+    try {
+      localStorage.setItem(profileStorageKey(company), JSON.stringify(company));
+    } catch (_) {}
+  };
+  const fetchLcCompanyNames = async (lcId) => {
+    const names = new Set();
+    let page = 1;
+    let hasNextPage = true;
+    while (hasNextPage) {
+      const res = await marketResearchAPI.getFromBackend({ limit: 100, page, lc_id: lcId });
+      const rows = Array.isArray(res?.data) ? res.data : [];
+      rows.forEach((item) => {
+        const n = normalizeName(item?.company_name);
+        if (n) names.add(n);
+      });
+      hasNextPage = res?.pagination?.hasNextPage === true;
+      page += 1;
+      if (page > 50) break;
+    }
+    return names;
+  };
+
+  const buildVisitCompany = (visit) => {
+    const base = {
+      id: `${visit.source}-${visit.id}`,
+      source: visit.source,
+      sourceId: visit.id,
+      name: visit.company_name || '-',
+      companyName: visit.company_name || '-',
+      industry: '',
+      contact_person: '',
+      contact_position: '',
+      phone: '',
+      email: '',
+      linkedin: '',
+      address: '',
+      website: '',
+      submittedByLc: '',
+      submittedByLcId: null,
+      visitactualdate: visit.visit_date ? new Date(visit.visit_date) : null,
+      visitDate: visit.visit_date ? new Date(visit.visit_date) : null,
+      visitnotes: '',
+      visitStatus: 'Scheduled',
+      visit: 'Scheduled',
+      visitOutcome: '',
+      visitNumberOfSlots: 0,
+      visitOutcomeNotes: '',
+      currentStep: 2,
+      comments: [],
+      statusHistory: [],
+    };
+    return mergeStoredProfile(base);
+  };
+
   useEffect(() => {
-  
     const fetchCompaniesVisits = async () => {
-    try{
-      const response = await marketResearchAPI.getCompaniesVisits();
-      console.log("response: ", response);
-      setCompanies(response);
+    try {
+      const currentLcId = getCurrentLcId();
+      let allowedNames = null;
+      if (currentLcId != null) {
+        allowedNames = await fetchLcCompanyNames(currentLcId);
+      }
+      const response = await marketResearchAPI.getScheduledVisits();
+      const visits = Array.isArray(response) ? response : [];
+      const filtered = allowedNames instanceof Set
+        ? visits.filter(v => allowedNames.has(normalizeName(v.company_name)))
+        : visits;
+      setCompanies(filtered.map(buildVisitCompany));
       }
     catch(error){
       console.error("Error getting companies visits:", error);
@@ -90,13 +173,30 @@ function VisitsPage() {
 
   const handleOpenVisitProfile =async (company) => {
     try{
-      const response = await marketResearchAPI.getCompany(company.id);
-      console.log("response: ", response);
-      setSelectedVisitCompany(response[0]);
-      
-      
+      let mergedCompany = company;
+      if (company.source === 'podio') {
+        const response = await marketResearchAPI.getBackendCompany(company.sourceId);
+        mergedCompany = mergeStoredProfile({
+          ...company,
+          name: response.company_name || company.name,
+          companyName: response.company_name || company.companyName,
+          industry: response.industry || company.industry,
+          contact_person: response.contact_person_name || company.contact_person,
+          contact_position: response.contact_position || company.contact_position,
+          phone: response.contact_phone || company.phone,
+          email: response.contact_email || company.email,
+          linkedin: response.contact_linkedin || company.linkedin,
+          address: response.address || company.address,
+          website: response.website || company.website,
+          submittedByLc: response.local_committee || company.submittedByLc,
+          submittedByLcId: response.local_committee_id ?? company.submittedByLcId,
+          podioItemId: response.item_id || company.sourceId,
+        });
+      }
+      setSelectedVisitCompany(mergedCompany);
     }catch(error){
       console.error("Error getting company:", error);
+      setSelectedVisitCompany(company);
     }
     setVisitDetails({
       notes: company.visitnotes || '',
@@ -168,8 +268,26 @@ function VisitsPage() {
       };
       // Call backend API to update the company
       console.log('Updating company with visit details:', updatedCompany);
-      const response = await marketResearchAPI.updateCompany(selectedVisitCompany.id, updatedCompany);
-      console.log('Backend response:', response);
+      if (selectedVisitCompany.source === 'podio') {
+        const visitDate = visitDetails.visitactualdate || selectedVisitCompany.visitactualdate || selectedVisitCompany.visitDate;
+        if (visitDate) {
+          await marketResearchAPI.createOrUpdatePodioScheduledVisit({
+            podio_item_id: selectedVisitCompany.sourceId,
+            company_name: selectedVisitCompany.name || selectedVisitCompany.companyName || 'Company',
+            visit_date: new Date(visitDate).toISOString(),
+          });
+        }
+      } else if (selectedVisitCompany.source === 'igv') {
+        await marketResearchAPI.updateIGV(selectedVisitCompany.sourceId, {
+          visit_date: visitDetails.visitactualdate ? new Date(visitDetails.visitactualdate).toISOString() : null,
+        });
+      } else if (selectedVisitCompany.source === 'b2b') {
+        await marketResearchAPI.updateB2B(selectedVisitCompany.sourceId, {
+          visit_date: visitDetails.visitactualdate ? new Date(visitDetails.visitactualdate).toISOString() : null,
+        });
+      }
+      saveStoredProfile(updatedCompany);
+      setCompanies(prev => prev.map(c => c.id === updatedCompany.id ? updatedCompany : c));
 
       
       const visitDate = visitDetails.visitactualdate;
@@ -218,12 +336,26 @@ function VisitsPage() {
     try {
       // Call backend API to update company
       console.log('Calling backend API to mark visit complete:', updatedCompany);
-      const response = await marketResearchAPI.updateCompany(selectedVisitCompany.id, updatedCompany);
-      console.log('Backend API response:', response);
-
-      // Update the current view after successful API call
-      const updatedVisits = companies.map(c => 
-        c.id === updatedCompany.id ? response.data : c
+      if (selectedVisitCompany.source === 'igv') {
+        await marketResearchAPI.updateIGV(selectedVisitCompany.sourceId, {
+          status: 'visited',
+          visit_date: visitDetails.visitactualdate ? new Date(visitDetails.visitactualdate).toISOString() : null,
+        });
+      } else if (selectedVisitCompany.source === 'b2b') {
+        await marketResearchAPI.updateB2B(selectedVisitCompany.sourceId, {
+          status: 'visited',
+          visit_date: visitDetails.visitactualdate ? new Date(visitDetails.visitactualdate).toISOString() : null,
+        });
+      } else if (selectedVisitCompany.source === 'podio' && visitDetails.visitactualdate) {
+        await marketResearchAPI.createOrUpdatePodioScheduledVisit({
+          podio_item_id: selectedVisitCompany.sourceId,
+          company_name: selectedVisitCompany.name || 'Company',
+          visit_date: new Date(visitDetails.visitactualdate).toISOString(),
+        });
+      }
+      saveStoredProfile(updatedCompany);
+      const updatedVisits = companies.map(c =>
+        c.id === updatedCompany.id ? updatedCompany : c
       ).filter(company => company.visitStatus === 'Scheduled');
       
       setCompanies(updatedVisits);
@@ -347,12 +479,26 @@ function VisitsPage() {
     try {
       // Call backend API to update company
       console.log('Calling backend API to update company:', updatedCompany);
-      const response = await marketResearchAPI.updateCompany(selectedVisitCompany.id, updatedCompany);
-      console.log('Backend API response:', response);
-      console.log("Companies::",companies)
-      // Update the current view after successful API call
-      const updatedVisits = companies.map(c => 
-        c.id === updatedCompany.id ? response.data : c
+      if (selectedVisitCompany.source === 'igv') {
+        await marketResearchAPI.updateIGV(selectedVisitCompany.sourceId, {
+          status: updatedCompany.visitStatus === 'No' ? 'contacted' : 'visited',
+          visit_date: visitDetails.visitactualdate ? new Date(visitDetails.visitactualdate).toISOString() : null,
+        });
+      } else if (selectedVisitCompany.source === 'b2b') {
+        await marketResearchAPI.updateB2B(selectedVisitCompany.sourceId, {
+          status: updatedCompany.visitStatus === 'No' ? 'contacted' : 'visited',
+          visit_date: visitDetails.visitactualdate ? new Date(visitDetails.visitactualdate).toISOString() : null,
+        });
+      } else if (selectedVisitCompany.source === 'podio' && visitDetails.visitactualdate) {
+        await marketResearchAPI.createOrUpdatePodioScheduledVisit({
+          podio_item_id: selectedVisitCompany.sourceId,
+          company_name: selectedVisitCompany.name || 'Company',
+          visit_date: new Date(visitDetails.visitactualdate).toISOString(),
+        });
+      }
+      saveStoredProfile(updatedCompany);
+      const updatedVisits = companies.map(c =>
+        c.id === updatedCompany.id ? updatedCompany : c
       ).filter(company => company.visitStatus=== 'Scheduled');
       
       console.log('Updated Visits List:', updatedVisits);
@@ -395,12 +541,18 @@ function VisitsPage() {
 
       // Call backend API to update company
       console.log('Calling backend API to reset visit status:', updatedCompany);
-      const response = await marketResearchAPI.updateCompany(companyId, updatedCompany);
-      console.log('Backend API response:', response);
-
-      // Update the current view after successful API call
-      const updatedVisits = companies.map(c => 
-        c.id === companyId ? response.data : c
+      if (companyToUpdate.source === 'podio') {
+        await marketResearchAPI.createOrUpdatePodioScheduledVisit({
+          podio_item_id: companyToUpdate.sourceId,
+          company_name: companyToUpdate.name || 'Company',
+          visit_date: companyToUpdate.visitactualdate
+            ? new Date(companyToUpdate.visitactualdate).toISOString()
+            : new Date().toISOString(),
+        });
+      }
+      saveStoredProfile(updatedCompany);
+      const updatedVisits = companies.map(c =>
+        c.id === companyId ? updatedCompany : c
       ).filter(company => company.visitStatus === 'Scheduled');
       
       setCompanies(updatedVisits);
