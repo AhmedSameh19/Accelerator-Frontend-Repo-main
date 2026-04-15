@@ -433,6 +433,14 @@ function MarketResearchPage() {
     return out;
   };
 
+  const staleSnapshotNoticeShownRef = useRef(false);
+  const maybeWarnStaleSnapshot = (meta) => {
+    if (!meta?.snapshotStale || staleSnapshotNoticeShownRef.current) return;
+    staleSnapshotNoticeShownRef.current = true;
+    const last = meta?.snapshotLastSuccess ? ` Last successful sync: ${meta.snapshotLastSuccess}.` : '';
+    showInfo(`Showing cached Market Research snapshot while background sync catches up.${last}`);
+  };
+
   // Fetch companies from Podio or local database.
   // Pass filters.showAllLCs to override state. Pass options.append and options.offset for "Load more".
   const fetchCompanies = useCallback(async (filters = {}, options = {}) => {
@@ -455,6 +463,7 @@ function MarketResearchPage() {
               page: 1,
               lc_id: lcId,
             });
+            maybeWarnStaleSnapshot(pageOne?.meta);
             const pageOneItems = Array.isArray(pageOne?.data) ? pageOne.data : [];
             let mappedPageOne = pageOneItems.map(mapBackendItemToCompany);
             mappedPageOne = mergeAssignmentsIntoCompanies(mappedPageOne);
@@ -474,6 +483,7 @@ function MarketResearchPage() {
                   limit: PODIO_PAGE_SIZE,
                   page,
                 });
+                maybeWarnStaleSnapshot(res?.meta);
                 const batch = Array.isArray(res?.data) ? res.data : [];
                 if (batch.length === 0) break;
                 const mapped = batch.map(mapBackendItemToCompany).filter((c) =>
@@ -497,6 +507,7 @@ function MarketResearchPage() {
                     page,
                     lc_id: lcId,
                   });
+                  maybeWarnStaleSnapshot(res?.meta);
                   const batch = Array.isArray(res?.data) ? res.data : [];
                   if (batch.length === 0) break;
                   filledRows.push(...batch.map(mapBackendItemToCompany));
@@ -522,6 +533,7 @@ function MarketResearchPage() {
             offset,
             ...(lcId != null && { lc_id: lcId }),
           });
+          maybeWarnStaleSnapshot(backendResponse?.meta);
           const rawItems = Array.isArray(backendResponse)
             ? backendResponse
             : (backendResponse?.items ?? backendResponse?.data?.items ?? backendResponse?.data ?? []);

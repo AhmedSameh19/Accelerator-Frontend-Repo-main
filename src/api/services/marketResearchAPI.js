@@ -266,9 +266,35 @@ const marketResearchAPI = {
       });
       const data = response.data;
       const items = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-      return { data: items, pagination: data?.pagination };
+      const snapshotStale = String(response?.headers?.['x-mr-snapshot-stale'] || '').toLowerCase() === 'true';
+      const snapshotLastSuccess = response?.headers?.['x-mr-snapshot-last-success'] || null;
+      return {
+        data: items,
+        pagination: data?.pagination,
+        meta: { snapshotStale, snapshotLastSuccess },
+      };
     } catch (error) {
       console.error('Error fetching market research from backend:', error);
+      throw error;
+    }
+  },
+  getSyncStatus: async () => {
+    try {
+      const response = await backendApi.get('/market-research/sync-status');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching market research sync status:', error);
+      throw error;
+    }
+  },
+  triggerSyncNow: async (mode = 'incremental') => {
+    try {
+      const response = await backendApi.post('/market-research/sync-now', null, {
+        params: { mode },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error triggering market research sync:', error);
       throw error;
     }
   },
