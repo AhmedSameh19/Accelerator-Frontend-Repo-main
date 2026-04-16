@@ -126,6 +126,35 @@ const companySteps = [
 // Create a shared event emitter for follow-up status changes
 export const followUpStatusEmitter = new EventEmitter();
 
+const PODIO_LC_OPTION_IDS_BY_EXPA_ID = {
+  1609: [19],
+  1789: [1],
+  5688: [26],
+  257: [2],
+  1064: [3],
+  2820: [4],
+  1788: [6],
+  2124: [7],
+  1114: [8],
+  171: [9],
+  109: [10],
+  1725: [11],
+  899: [12],
+  1727: [13],
+  2126: [14],
+  2818: [15],
+  2125: [16],
+  15: [17],
+  2817: [21],
+  1489: [22],
+  6683: [28],
+};
+
+function getPodioLcOptionIdsByExpaId(lcId) {
+  if (lcId == null) return [];
+  return PODIO_LC_OPTION_IDS_BY_EXPA_ID[Number(lcId)] || [];
+}
+
 function getOfficeId(currentUser) {
   if (currentUser?.current_offices?.[0]?.id) {
     return currentUser.current_offices[0].id;
@@ -410,6 +439,10 @@ function MarketResearchPage() {
   const companyMatchesLc = (company, lcId, lcName) => {
     const companyLcId = company?.submittedByLcId;
     if (companyLcId != null && lcId != null) {
+      const allowedPodioIds = getPodioLcOptionIdsByExpaId(lcId);
+      if (allowedPodioIds.length > 0) {
+        return allowedPodioIds.includes(Number(companyLcId));
+      }
       return Number(companyLcId) === Number(lcId);
     }
     const rawLc = normalizeLcName(displayText(company?.submittedByLc, ''));
@@ -642,6 +675,7 @@ function MarketResearchPage() {
     const searchTermLower = searchTerm.toLowerCase();
     const userOfficeId = getOfficeId(currentUser);
     const userLCName = getUserLCName(currentUser);
+    const allowedPodioLcIds = getPodioLcOptionIdsByExpaId(userOfficeId);
     const filteredCompanies = allCompanies.filter(company => {
       // When "Show all LCs" is on, skip LC filter
       if (!showAllLCs) {
@@ -651,7 +685,13 @@ function MarketResearchPage() {
           return getLCIdByName(raw);
         })();
         if (userOfficeId != null) {
-          if (companyLcId != null && companyLcId === userOfficeId) {
+          if (
+            companyLcId != null &&
+            (
+              companyLcId === userOfficeId ||
+              (allowedPodioLcIds.length > 0 && allowedPodioLcIds.includes(Number(companyLcId)))
+            )
+          ) {
             // Match by LC id
           } else if (companyLcId != null) {
             return false;
