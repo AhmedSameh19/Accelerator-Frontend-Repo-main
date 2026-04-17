@@ -232,9 +232,10 @@ export const leadsApi = {
 
   createFollowUp: async (leadId, { text, next_follow_up_date }) => {
     try {
+      const created_by = Cookies.get('person_id') || null;
       const payload = {
         follow_up_text: text,
-        created_by: Cookies.get('person_id') || null,
+        created_by: created_by,
         follow_up_at: next_follow_up_date
       };
 
@@ -250,10 +251,11 @@ export const leadsApi = {
   // Backend: POST /api/v1/icx/leads/{application_id}/followups
   createICXFollowUp: async (applicationId, { text, next_follow_up_date, created_by } = {}) => {
     try {
+      const created_by = Cookies.get('person_id') || null;
       const payload = {
         application_id: applicationId,
         follow_up_text: text,
-        created_by: created_by ?? Cookies.get('person_id') ?? null,
+        created_by: created_by,
         follow_up_at: next_follow_up_date,
       };
 
