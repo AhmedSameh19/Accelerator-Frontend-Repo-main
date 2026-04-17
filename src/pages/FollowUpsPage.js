@@ -161,7 +161,15 @@ function FollowUpsPage() {
     
         // Update local state to show the new follow-up immediately
         const created = response?.data || response;
-        if (created) setFollowUps((prev) => [created, ...prev]);
+        if (created) {
+          const mappedCreated = {
+            ...created,
+            entityName: created.lead_name,
+            entityPhone: created.lead_phone,
+            entityType: 'lead'
+          };
+          setFollowUps((prev) => [mappedCreated, ...prev]);
+        }
     
         // Reset the input fields
         setNewFollowUp('');
@@ -186,6 +194,8 @@ function FollowUpsPage() {
           setFollowUps((prev) => [
             {
               ...created,
+              entityName: created.lead_name,
+              entityPhone: created.lead_phone,
               entityId: created.application_id || selectedEntity,
               entityType: 'lead',
             },
