@@ -65,8 +65,12 @@ function FollowUpsPage() {
   
         try {
           const response = await leadsApi.getFollowUpsCreatedBy();
-          // Assuming response.data is an array of follow-ups created by personId
-          allFollowUps = response;
+          allFollowUps = response.map(fu => ({
+            ...fu,
+            entityName: fu.lead_name,
+            entityPhone: fu.lead_phone,
+            entityType: 'lead'
+          }));
         } catch (error) {
           console.error('Failed to fetch follow-ups:', error);
         }
@@ -79,6 +83,8 @@ function FollowUpsPage() {
 
           allFollowUps = (Array.isArray(list) ? list : []).map((fu) => ({
             ...fu,
+            entityName: fu.lead_name,
+            entityPhone: fu.lead_phone,
             entityId: fu.application_id,
             entityType: 'lead',
           }));
@@ -413,9 +419,9 @@ function FollowUpsPage() {
                         )}
                       </Avatar>
                       <Box>
-                        {/* <Typography variant="subtitle2" fontWeight="medium" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+                        <Typography variant="subtitle2" fontWeight="medium" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                           {followUp.entityName}
-                        </Typography> */}
+                        </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                           <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                             {followUp.created_by_member_name||followUp.author} • {new Date(followUp.created_at||followUp.timestamp).toLocaleString()}
