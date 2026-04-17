@@ -469,7 +469,14 @@ async function getICXRealizations({ hostLcId, page = 1, limit = 50, search }) {
     const response = await axios.get(`${API_BASE_URL}/icx/realizations/`, {
       params: { host_lc_id: String(hostLcId), page, limit, search },
     });
-    return response.data;
+    const data = response.data;
+    if (data && data.items) {
+      data.items = data.items.map(item => ({
+        ...item,
+        id: item.application_id
+      }));
+    }
+    return data;
   } catch (error) {
     console.error('Error fetching iCX realizations:', error);
     throw error;
