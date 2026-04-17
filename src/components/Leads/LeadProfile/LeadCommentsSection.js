@@ -3,13 +3,13 @@ import { Paper, ButtonGroup, Button, TextField, List, ListItem, Typography, Box,
 import { Comment as CommentIcon, Schedule as ScheduleIcon } from '@mui/icons-material';
 import { Chip } from '@mui/material';
 
-export function LeadCommentsSection({ 
-  comments, 
-  newComment, 
-  setNewComment, 
-  onAddComment, 
-  addingComment, 
-  isB2C 
+export function LeadCommentsSection({
+  comments,
+  newComment,
+  setNewComment,
+  onAddComment,
+  addingComment,
+  isB2C
 }) {
   const theme = useTheme();
 
@@ -72,17 +72,18 @@ export function LeadCommentsSection({
   );
 }
 
-export function LeadFollowUpsSection({ 
-  followUps, 
-  followUpFilter, 
+export function LeadFollowUpsSection({
+  followUps,
+  followUpFilter,
   setFollowUpFilter,
-  newFollowUp, 
+  newFollowUp,
   setNewFollowUp,
   followUpDate,
   setFollowUpDate,
   onAddFollowUp,
   onMarkFollowUpComplete,
-  isB2C 
+  isB2C,
+  lead
 }) {
   const theme = useTheme();
   const filteredFollowUps = followUps.filter(followUp => followUp.status?.toLowerCase() === followUpFilter);
@@ -91,11 +92,11 @@ export function LeadFollowUpsSection({
     <>
       <Box sx={{ mb: { xs: 1, sm: 2 }, width: '100%', overflow: 'hidden' }}>
         <ButtonGroup variant="contained" fullWidth sx={{ width: '100%', overflow: 'hidden' }}>
-          <Button 
+          <Button
             onClick={() => setFollowUpFilter('pending')}
             variant={followUpFilter === 'pending' ? 'contained' : 'outlined'}
-            sx={{ 
-              fontSize: { xs: '0.7rem', sm: '0.875rem' }, 
+            sx={{
+              fontSize: { xs: '0.7rem', sm: '0.875rem' },
               py: { xs: 0.5, sm: 1 },
               minWidth: 0,
               flex: 1,
@@ -107,8 +108,8 @@ export function LeadFollowUpsSection({
           <Button
             onClick={() => setFollowUpFilter('completed')}
             variant={followUpFilter === 'completed' ? 'contained' : 'outlined'}
-            sx={{ 
-              fontSize: { xs: '0.7rem', sm: '0.875rem' }, 
+            sx={{
+              fontSize: { xs: '0.7rem', sm: '0.875rem' },
               py: { xs: 0.5, sm: 1 },
               minWidth: 0,
               flex: 1,
@@ -160,9 +161,9 @@ export function LeadFollowUpsSection({
           </Typography>
         ) : (
           filteredFollowUps.map((followUp) => (
-            <ListItem 
+            <ListItem
               key={followUp.id}
-              sx={{ 
+              sx={{
                 bgcolor: theme.palette.background.default,
                 borderRadius: 1,
                 mb: { xs: 0.5, sm: 1 },

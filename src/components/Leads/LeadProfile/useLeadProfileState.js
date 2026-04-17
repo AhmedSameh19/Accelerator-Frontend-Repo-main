@@ -528,6 +528,8 @@ export function useLeadProfileState({ lead, leadId, icxApplicationId = null, onS
       const followUpData = {
         text: newFollowUp,
         next_follow_up_date: followUpAtDate.toISOString(),
+        lead_name: lead?.full_name,
+        lead_phone: lead?.phone
       };
       const response = isICX
         ? await leadsApi.createICXFollowUp(icxApplicationId, followUpData)

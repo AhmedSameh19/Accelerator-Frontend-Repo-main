@@ -230,13 +230,15 @@ export const leadsApi = {
     }
   },
 
-  createFollowUp: async (leadId, { text, next_follow_up_date }) => {
+  createFollowUp: async (leadId, { text, next_follow_up_date, lead_name, lead_phone }) => {
     try {
       const created_by = Cookies.get('person_id') || null;
       const payload = {
         follow_up_text: text,
         created_by: created_by,
-        follow_up_at: next_follow_up_date
+        follow_up_at: next_follow_up_date,
+        lead_name: lead_name,
+        lead_phone: lead_phone
       };
 
       const response = await api.post(`/leads/${leadId}/followups`, payload);
@@ -249,7 +251,7 @@ export const leadsApi = {
 
   // iCX follow-ups
   // Backend: POST /api/v1/icx/leads/{application_id}/followups
-  createICXFollowUp: async (applicationId, { text, next_follow_up_date } = {}) => {
+  createICXFollowUp: async (applicationId, { text, next_follow_up_date, lead_name, lead_phone } = {}) => {
     try {
       const personId = Cookies.get('person_id') || 'unknown';
       const payload = {
@@ -257,6 +259,8 @@ export const leadsApi = {
         follow_up_text: text,
         created_by: personId,
         follow_up_at: next_follow_up_date,
+        lead_name: lead_name,
+        lead_phone: lead_phone
       };
 
       const response = await api.post(`/icx/leads/${personId}/followups`, payload);

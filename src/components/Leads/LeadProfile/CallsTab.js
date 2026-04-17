@@ -18,7 +18,7 @@ const CallsTab = memo(({
   onICXContactedChange, onICXInterviewedChange, onICXExpectationsEmailStatusChange, onICXOutOfProcessChange, onICXReasonChange,
   onBackToProcessContactStatusChange, onBackToProcessInterestedChange, onBackToProcessStatusChange, onBackToProcessReasonChange,
   onAddComment, onAddFollowUp, setActiveSection, setNewComment, setFollowUpFilter, setNewFollowUp, setFollowUpDate,
-  isB2C, isICX, isFromBackToProcess, isFromLeadsPage, addingComment,onMarkFollowUpComplete
+  isB2C, isICX, isFromBackToProcess, isFromLeadsPage, addingComment, onMarkFollowUpComplete
 }) => (
   <Stack spacing={3}>
     <LeadInfoSectionsWrapper {...{ leadId, lead, leadName, leadStatus, opportunitySectionRef }} />
@@ -50,7 +50,7 @@ const CallsTab = memo(({
         {activeSection === SECTIONS.COMMENTS ? (
           <LeadCommentsSection {...{ comments, newComment, setNewComment, onAddComment, addingComment, isB2C }} />
         ) : (
-          <LeadFollowUpsSection {...{ followUps, followUpFilter, setFollowUpFilter, newFollowUp, setNewFollowUp, followUpDate, setFollowUpDate, onAddFollowUp, onMarkFollowUpComplete, isB2C }} />
+          <LeadFollowUpsSection {...{ followUps, followUpFilter, setFollowUpFilter, newFollowUp, setNewFollowUp, followUpDate, setFollowUpDate, onAddFollowUp, onMarkFollowUpComplete, isB2C, lead }} />
         )}
       </Box>
     </Paper>
