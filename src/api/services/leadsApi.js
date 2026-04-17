@@ -239,7 +239,7 @@ export const leadsApi = {
         follow_up_at: next_follow_up_date
       };
 
-      const response = await api.post(`/leads/${created_by}/followups`, payload);
+      const response = await api.post(`/leads/${leadId}/followups`, payload);
       return response?.data || response;
     } catch (error) {
       console.error('Error creating follow-up:', error);
