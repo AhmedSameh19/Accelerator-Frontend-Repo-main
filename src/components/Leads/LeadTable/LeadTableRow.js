@@ -17,8 +17,17 @@ export default function LeadTableRow({
   const leadName = lead.full_name;
   const leadLcName = isICX ? (lead.home_lc_name || lead.host_lc_name) : (lead.host_lc_name || lead.home_lc_name);
   const homeMcName = lead.home_mc_name || lead.home_mc;
-  const leadStatus = lead.expa_status || lead.status || '-';
+  const leadStatus = lead.expa_status || (typeof lead.status === 'string' ? lead.status : '-');
   const assignedMember = lead.assigned_member_name || '-';
+
+  const contactStatus = lead.contact_status || lead.status?.contact_status || '-';
+  const processStatus = lead.process_status || lead.status?.process_status || '-';
+  
+  const comments = Array.isArray(lead.comments) ? lead.comments : [];
+  const latestComment = comments[0]?.comment || comments[0]?.text || '-';
+
+  const followups = Array.isArray(lead.followups) ? lead.followups : (Array.isArray(lead.follow_ups) ? lead.follow_ups : []);
+  const latestFollowup = followups[0]?.follow_up_text || followups[0]?.text || '-';
 
   return (
     <TableRow 
@@ -133,6 +142,18 @@ export default function LeadTableRow({
           color={STATUS_COLORS[leadStatus] || 'default'}
           size="small"
         />
+      </TableCell>
+      <TableCell>{contactStatus}</TableCell>
+      <TableCell>{processStatus}</TableCell>
+      <TableCell>
+        <Typography variant="body2" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={latestComment}>
+          {latestComment}
+        </Typography>
+      </TableCell>
+      <TableCell>
+        <Typography variant="body2" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={latestFollowup}>
+          {latestFollowup}
+        </Typography>
       </TableCell>
       <TableCell>
         {assignedMember && assignedMember !== '-' ? (

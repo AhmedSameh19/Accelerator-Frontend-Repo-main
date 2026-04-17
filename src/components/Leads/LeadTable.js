@@ -150,14 +150,18 @@ function LeadTable({
               {isICX ? <TableCell>Home MC</TableCell> : null}
               <TableCell>Phone</TableCell>
               <TableCell>Signup Date</TableCell>
-              <TableCell>Status</TableCell>
+              <TableCell>Expa Status</TableCell>
+              <TableCell>Contact Status</TableCell>
+              <TableCell>Process Status</TableCell>
+              <TableCell>Comments</TableCell>
+              <TableCell>Follow Ups</TableCell>
               <TableCell>Assigned To</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {actuallyFilteredLeads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                <TableCell colSpan={isICX ? 12 : 11} align="center" sx={{ py: 6 }}>
                   <EmptyState 
                     title="No Leads Found"
                     description="We couldn't find any leads matching your current view."

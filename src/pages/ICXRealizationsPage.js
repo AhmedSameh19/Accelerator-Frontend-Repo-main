@@ -449,11 +449,15 @@ function ICXRealizationsPage() {
     });
   }, [leads]);
 
-  // Add useEffect to trigger search when filters change
+  // Reset page to 0 when filters change
   useEffect(() => {
     setPage(0);
-    handleSearch();
   }, [searchTerm, selectedCountry, selectedHomeLC, selectedExchangeType, selectedStatus]);
+
+  // Re-run local filters whenever text/filters OR raw originalLeads change
+  useEffect(() => {
+    handleSearch();
+  }, [searchTerm, selectedCountry, selectedHomeLC, selectedExchangeType, selectedStatus, originalLeads]);
 
   useEffect(() => {
     const leadId = selectedLead?.id;

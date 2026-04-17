@@ -318,10 +318,10 @@ function processApplicationData(data) {
 //     return testData;
 //   }
 // }
-async function getRealizations({ lcCode, page = 1, limit = 50 }) {
+async function getRealizations({ lcCode, page = 1, limit = 50, search }) {
   try {
     const response = await axios.get(`${API_BASE_URL}/realizations/`, {
-      params: { home_lc_id: lcCode, page, limit }
+      params: { home_lc_id: lcCode, page, limit, search }
     });
     return response.data;
   } catch (error) {
@@ -462,12 +462,12 @@ async function getLeadAssignments() {
 //   PATCH /api/v1/icx/realizations/assign/bulk   { application_ids, member_id }
 // ---------------------------------------------------------------------------
 
-async function getICXRealizations({ hostLcId, page = 1, limit = 50 }) {
+async function getICXRealizations({ hostLcId, page = 1, limit = 50, search }) {
   if (hostLcId == null) throw new Error('host_lc_id is required');
 
   try {
     const response = await axios.get(`${API_BASE_URL}/icx/realizations/`, {
-      params: { host_lc_id: String(hostLcId), page, limit },
+      params: { host_lc_id: String(hostLcId), page, limit, search },
     });
     return response.data;
   } catch (error) {

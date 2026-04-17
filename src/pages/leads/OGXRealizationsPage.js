@@ -360,11 +360,15 @@ function OGXRealizationsPage({ crmTypeOverride }) {
   // FILTER HANDLERS
   // ===========================================================================
 
-  // Re-run search and reset pagination when filters change
+  // Reset pagination when filters change
   useEffect(() => {
     setPage(0);
-    handleSearch();
   }, [searchTerm, selectedCountry, selectedExchangeType, selectedStatus, selectedHostLC, selectedAssignedMember]);
+
+  // Re-run search when filters or original data changes
+  useEffect(() => {
+    handleSearch();
+  }, [searchTerm, selectedCountry, selectedExchangeType, selectedStatus, selectedHostLC, selectedAssignedMember, originalLeads]);
 
   /**
    * Handle date filter changes

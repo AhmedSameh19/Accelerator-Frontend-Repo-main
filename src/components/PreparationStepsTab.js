@@ -33,7 +33,7 @@ const PreparationStepsTab = ({
   setPrepState,
   updateStandardsFn = defaultUpdateStandards,
 }) => {
-  const leadId = selectedLead?.application_id || selectedLead?.id || selectedLead?.expa_person_id;
+  const leadId = selectedLead?.expa_person_id;
   const leadPrep = useMemo(() => (leadId ? prepState[leadId] || {} : {}), [leadId, prepState]);
 
   const handleToggle = async (standardKey, checked) => {
@@ -73,7 +73,7 @@ const PreparationStepsTab = ({
     }));
 
     if (!persistKeys.has(standardKey)) return;
-  
+
     try {
       const response = await updateStandardsFn(leadId, {
         standardName: standardKey,
@@ -81,7 +81,7 @@ const PreparationStepsTab = ({
       });
 
       const serverRow = response?.data ?? response;
-  
+
       // Update state with backend response (optional, ensures sync)
       setPrepState(prev => ({
         ...prev,
@@ -102,7 +102,7 @@ const PreparationStepsTab = ({
       }));
     }
   };
-  
+
   return (
     <Box sx={{ p: 4, color: 'text.secondary' }}>
       <Typography variant="h6" color="primary" sx={{ mb: 3, fontWeight: 700 }}>Preparation Steps</Typography>
@@ -115,16 +115,16 @@ const PreparationStepsTab = ({
             </Typography>
             <MUIList dense>
               <ListItem alignItems="flex-start">
-                  <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
-                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                    <Checkbox
-                      checked={leadPrep.pgs === true}
-                      onChange={e => handleToggle('pgs', e.target.checked)}
-                      color="primary"
-                      sx={{ mr: 1 }}
-                    />
-                    <ListItemText primary="PGS is done" />
-                  </Box>
+                <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                  <Checkbox
+                    checked={leadPrep.pgs === true}
+                    onChange={e => handleToggle('pgs', e.target.checked)}
+                    color="primary"
+                    sx={{ mr: 1 }}
+                  />
+                  <ListItemText primary="PGS is done" />
+                </Box>
               </ListItem>
               <ListItem>
                 <TextField
@@ -157,46 +157,46 @@ const PreparationStepsTab = ({
             </Typography>
             <MUIList dense>
               <ListItem>
-                  <ListItemIcon><InsertDriveFileIcon color="action" /></ListItemIcon>
-                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                    <Checkbox
-                      checked={leadPrep.ops === true}
-                      onChange={e => handleToggle('ops', e.target.checked)}
-                      color="primary"
-                      sx={{ mr: 1 }}
+                <ListItemIcon><InsertDriveFileIcon color="action" /></ListItemIcon>
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                  <Checkbox
+                    checked={leadPrep.ops === true}
+                    onChange={e => handleToggle('ops', e.target.checked)}
+                    color="primary"
+                    sx={{ mr: 1 }}
+                  />
+                  <ListItemText primary="Passport (3 months before realization date)" />
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    size="small"
+                    sx={{ minWidth: 120 }}
+                  >
+                    {leadPrep.passportFile ? 'Change File' : 'Upload File'}
+                    <input
+                      type="file"
+                      hidden
+                      onChange={async (e) => {
+                        if (!leadId) return;
+                        const file = e.target.files[0];
+                        if (file) {
+                          const base64 = await fileToBase64(file);
+                          setPrepState(prev => ({
+                            ...prev,
+                            [leadId]: {
+                              ...prev[leadId],
+                              passportFile: base64
+                            }
+                          }));
+                        }
+                      }}
                     />
-                    <ListItemText primary="Passport (3 months before realization date)" />
-                    <Button
-                      variant="outlined"
-                      component="label"
-                      size="small"
-                      sx={{ minWidth: 120 }}
-                    >
-                      {leadPrep.passportFile ? 'Change File' : 'Upload File'}
-                      <input
-                        type="file"
-                        hidden
-                        onChange={async (e) => {
-                          if (!leadId) return;
-                          const file = e.target.files[0];
-                          if (file) {
-                            const base64 = await fileToBase64(file);
-                            setPrepState(prev => ({
-                              ...prev,
-                              [leadId]: {
-                                ...prev[leadId],
-                                passportFile: base64
-                              }
-                            }));
-                          }
-                        }}
-                      />
-                    </Button>
-                  </Box>
+                  </Button>
+                </Box>
               </ListItem>
               <ListItem>
-                  <ListItemIcon><AttachMoneyIcon color="action" /></ListItemIcon>
-                  <ListItemText primary="EP starts collecting pocket money for the experience (3 months before realization date)" />
+                <ListItemIcon><AttachMoneyIcon color="action" /></ListItemIcon>
+                <ListItemText primary="EP starts collecting pocket money for the experience (3 months before realization date)" />
               </ListItem>
             </MUIList>
           </CardContent>
@@ -209,16 +209,16 @@ const PreparationStepsTab = ({
             </Typography>
             <MUIList dense>
               <ListItem>
-                  <ListItemIcon><LocalHospitalIcon color="action" /></ListItemIcon>
-                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                    <Checkbox
-                      checked={leadPrep.health_insurance === true}
-                      onChange={e => handleToggle('health_insurance', e.target.checked)}
-                      color="primary"
-                      sx={{ mr: 1 }}
-                    />
-                    <ListItemText primary="Health Insurance is done" />
-                  </Box>
+                <ListItemIcon><LocalHospitalIcon color="action" /></ListItemIcon>
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                  <Checkbox
+                    checked={leadPrep.health_insurance === true}
+                    onChange={e => handleToggle('health_insurance', e.target.checked)}
+                    color="primary"
+                    sx={{ mr: 1 }}
+                  />
+                  <ListItemText primary="Health Insurance is done" />
+                </Box>
               </ListItem>
             </MUIList>
           </CardContent>
@@ -231,25 +231,25 @@ const PreparationStepsTab = ({
             </Typography>
             <MUIList dense>
               <ListItem>
-                  <ListItemIcon><SettingsIcon color="action" /></ListItemIcon>
-                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                    <Checkbox
-                      checked={leadPrep.expectation_settings === true}
-                      onChange={e => handleToggle('expectation_settings', e.target.checked)}
-                      color="primary"
-                      sx={{ mr: 1 }}
-                    />
-                    <ListItemText primary="Expectation setting" />
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      size="small"
-                      sx={{ ml: 1, minWidth: 80 }}
-                      onClick={() => {/* Add send logic here */}}
-                    >
-                      Send
-                    </Button>
-                  </Box>
+                <ListItemIcon><SettingsIcon color="action" /></ListItemIcon>
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                  <Checkbox
+                    checked={leadPrep.expectation_settings === true}
+                    onChange={e => handleToggle('expectation_settings', e.target.checked)}
+                    color="primary"
+                    sx={{ mr: 1 }}
+                  />
+                  <ListItemText primary="Expectation setting" />
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    size="small"
+                    sx={{ ml: 1, minWidth: 80 }}
+                    onClick={() => {/* Add send logic here */ }}
+                  >
+                    Send
+                  </Button>
+                </Box>
               </ListItem>
             </MUIList>
           </CardContent>
@@ -262,16 +262,16 @@ const PreparationStepsTab = ({
             </Typography>
             <MUIList dense>
               <ListItem>
-                  <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
-                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                    <Checkbox
-                      checked={leadPrep.communication_10_days_before === true}
-                      onChange={e => handleToggle('communication_10_days_before', e.target.checked)}
-                      color="primary"
-                      sx={{ mr: 1 }}
-                    />
-                    <ListItemText primary="10 days before Realization" />
-                  </Box>
+                <ListItemIcon><ChatIcon color="action" /></ListItemIcon>
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                  <Checkbox
+                    checked={leadPrep.communication_10_days_before === true}
+                    onChange={e => handleToggle('communication_10_days_before', e.target.checked)}
+                    color="primary"
+                    sx={{ mr: 1 }}
+                  />
+                  <ListItemText primary="10 days before Realization" />
+                </Box>
               </ListItem>
             </MUIList>
           </CardContent>
@@ -284,33 +284,33 @@ const PreparationStepsTab = ({
             </Typography>
             <MUIList dense>
               <ListItem>
-                  <ListItemIcon><HomeIcon color="action" /></ListItemIcon>
-                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                    <Checkbox
-                      checked={leadPrep.accommodation === true}
-                      onChange={e => handleToggle('accommodation', e.target.checked)}
-                      color="primary"
-                      sx={{ mr: 1 }}
-                    />
-                    <ListItemText primary="Accommodation place" />
-                    <TextField
-                      label="Accommodation place"
-                      size="small"
-                      fullWidth
-                      value={leadPrep.accommodationPlace || ''}
-                      onChange={e => {
-                        if (!leadId) return;
-                        setPrepState(prev => ({
-                          ...prev,
-                          [leadId]: {
-                            ...prev[leadId],
-                            accommodationPlace: e.target.value
-                          }
-                        }));
-                      }}
-                      variant="outlined"
-                    />
-                  </Box>
+                <ListItemIcon><HomeIcon color="action" /></ListItemIcon>
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                  <Checkbox
+                    checked={leadPrep.accommodation === true}
+                    onChange={e => handleToggle('accommodation', e.target.checked)}
+                    color="primary"
+                    sx={{ mr: 1 }}
+                  />
+                  <ListItemText primary="Accommodation place" />
+                  <TextField
+                    label="Accommodation place"
+                    size="small"
+                    fullWidth
+                    value={leadPrep.accommodationPlace || ''}
+                    onChange={e => {
+                      if (!leadId) return;
+                      setPrepState(prev => ({
+                        ...prev,
+                        [leadId]: {
+                          ...prev[leadId],
+                          accommodationPlace: e.target.value
+                        }
+                      }));
+                    }}
+                    variant="outlined"
+                  />
+                </Box>
               </ListItem>
             </MUIList>
           </CardContent>
@@ -323,16 +323,16 @@ const PreparationStepsTab = ({
             </Typography>
             <MUIList dense>
               <ListItem>
-                  <ListItemIcon><SchoolIcon color="action" /></ListItemIcon>
-                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
-                    <Checkbox
-                      checked={leadPrep.ips === true}
-                      onChange={e => handleToggle('ips', e.target.checked)}
-                      color="primary"
-                      sx={{ mr: 1 }}
-                    />
-                    <ListItemText primary="IPS is done" />
-                  </Box>
+                <ListItemIcon><SchoolIcon color="action" /></ListItemIcon>
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2, flexWrap: 'wrap' }}>
+                  <Checkbox
+                    checked={leadPrep.ips === true}
+                    onChange={e => handleToggle('ips', e.target.checked)}
+                    color="primary"
+                    sx={{ mr: 1 }}
+                  />
+                  <ListItemText primary="IPS is done" />
+                </Box>
               </ListItem>
             </MUIList>
           </CardContent>
