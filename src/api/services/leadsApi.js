@@ -249,17 +249,17 @@ export const leadsApi = {
 
   // iCX follow-ups
   // Backend: POST /api/v1/icx/leads/{application_id}/followups
-  createICXFollowUp: async (applicationId, { text, next_follow_up_date, created_by } = {}) => {
+  createICXFollowUp: async (applicationId, { text, next_follow_up_date } = {}) => {
     try {
-      const created_by = Cookies.get('person_id') || null;
+      const personId = Cookies.get('person_id') || 'unknown';
       const payload = {
         application_id: applicationId,
         follow_up_text: text,
-        created_by: created_by,
+        created_by: personId,
         follow_up_at: next_follow_up_date,
       };
 
-      const response = await api.post(`/icx/leads/${created_by}/followups`, payload);
+      const response = await api.post(`/icx/leads/${personId}/followups`, payload);
       return response?.data || response;
     } catch (error) {
       console.error('Error creating iCX follow-up:', error);
