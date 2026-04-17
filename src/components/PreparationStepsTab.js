@@ -33,7 +33,7 @@ const PreparationStepsTab = ({
   setPrepState,
   updateStandardsFn = defaultUpdateStandards,
 }) => {
-  const leadId = selectedLead?.expa_person_id;
+  const leadId = selectedLead?.application_id || selectedLead?.id || selectedLead?.expa_person_id;
   const leadPrep = useMemo(() => (leadId ? prepState[leadId] || {} : {}), [leadId, prepState]);
 
   const handleToggle = async (standardKey, checked) => {
