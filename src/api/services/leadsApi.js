@@ -238,7 +238,7 @@ export const leadsApi = {
         follow_up_at: next_follow_up_date
       };
 
-      const response = await api.post(`/leads/${leadId}/followups`, payload);
+      const response = await api.post(`/leads/${created_by}/followups`, payload);
       return response?.data || response;
     } catch (error) {
       console.error('Error creating follow-up:', error);
@@ -251,12 +251,13 @@ export const leadsApi = {
   createICXFollowUp: async (applicationId, { text, next_follow_up_date, created_by } = {}) => {
     try {
       const payload = {
+        application_id: applicationId,
         follow_up_text: text,
         created_by: created_by ?? Cookies.get('person_id') ?? null,
         follow_up_at: next_follow_up_date,
       };
 
-      const response = await api.post(`/icx/leads/${applicationId}/followups`, payload);
+      const response = await api.post(`/icx/leads/${created_by}/followups`, payload);
       return response?.data || response;
     } catch (error) {
       console.error('Error creating iCX follow-up:', error);
