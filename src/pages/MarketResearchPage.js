@@ -3071,7 +3071,7 @@ function MarketResearchPage() {
                 ) : (
                   company?.comments
                     .filter(comment => comment && comment.text && comment.text.trim() !== '')
-                          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
                           .map((comment, index) => (
                             <Paper
                               key={comment.id}
@@ -3172,7 +3172,9 @@ function MarketResearchPage() {
                           No follow-ups yet.
                         </Typography>
                       ) : (
-                        company?.followups.map((followup) => (
+                        (company?.followups || [])
+                          .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
+                          .map((followup) => (
                           <Box 
                             key={followup.id} 
                             sx={{
